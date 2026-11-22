@@ -3,19 +3,23 @@
 	CarryService: the server-side carry list (up to GameConfig.Carry.MaxJunk junk per player).
 
 	Design
-	  - The list holds Types.CarriedJunk records { Uid, Id } (runtime state, not saved). A
-	    picked-up object leaves the world and keeps its Uid; when it is thrown or dropped it is
+	  - The list holds Types.CarriedJunk records { Uid, Id } of ANY catalog item (ItemConfig).
+	    A picked-up object leaves the world and keeps its Uid; when it is thrown or dropped it is
 	    re-created from that record, so one object can never exist twice.
+	  - The list is SAVED in the profile (ProfileData.Carry) on every change and restored when
+	    the player's data loads; nothing can be carried before that. Leaving the game keeps the
+	    items with the player.
 	  - A Uid can be owned by one place only: one player's list, or the world. AddJunk and
-	    TryPickup refuse anything else.
+	    TryPickup refuse anything else. Objects reserved for another player (a machine's
+	    output tray) cannot be picked up.
 	  - Pickup is validated here, never trusted from the client: player alive, junk still
 	    available, distance to the junk, carry capacity, per-player cooldown.
 	  - The list is published as the Player attribute "CarryList": "uid:id,uid:id" (oldest
 	    first). Attributes replicate to every client and only when they change, so each client
 	    can draw junk on any player's back by itself (client CarryController) and the HUD can
 	    show the local list. No remote and no server-side visuals are needed for that.
-	  - If a player dies, respawns or leaves, the carried junk is dropped on the ground where
-	    they were. A death with no ground within reach (a void) loses the junk.
+	  - If a player dies, the carried items are dropped on the ground where they were (anyone can
+	    take them). A death with no ground within reach (a void) loses them.
 
 	Public API (server only)
 	  TryPickup(player, junk)     -> (ok, errorCode?)   used by the prompt handler
@@ -34,11 +38,12 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
-local JunkConfig = require(ReplicatedStorage.Shared.Config.JunkConfig)
+local ItemConfig = require(ReplicatedStorage.Shared.Config.ItemConfig)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Signal = require(ReplicatedStorage.Shared.Util.Signal)
 local Validate = require(ReplicatedStorage.Shared.Util.Validate)
+local DataService = require(script.Parent.DataService)
 local JunkService = require(script.Parent.JunkService)
 
 type CarriedJunk = Types.CarriedJunk
@@ -61,6 +66,7 @@ CarryService.Errors = table.freeze({
 	UnknownJunk = "UnknownJunk",
 	InvalidUid = "InvalidUid",
 	UidInUse = "UidInUse",
+	Reserved = "Reserved",
 })
 
 CarryService.Changed = Signal.new() -- (player: Player)
@@ -88,6 +94,15 @@ local function publish(player: Player)
 		value = table.concat(parts, ",")
 	end
 	player:SetAttribute(LIST_ATTRIBUTE, value)
+	-- Saved with the profile (ProfileStore auto-saves; the session ends with a final save).
+	local data = DataService.GetData(player)
+	if data ~= nil and list ~= nil then
+		local saved = table.create(#list)
+		for index, entry in list do
+			saved[index] = { Uid = entry.Uid, Id = entry.Id }
+		end
+		data.Carry = saved
+	end
 	CarryService.Changed:Fire(player)
 end
 
@@ -158,7 +173,8 @@ function CarryService.AddJunk(player: Player, junkId: string, uid: string?): (bo
 	if not Validate.IsItemId(junkId) then
 		return false, CarryService.Errors.InvalidJunkId
 	end
-	if not JunkConfig.Exists(junkId) then
+	local definition = ItemConfig.Get(junkId)
+	if definition == nil or definition.IsDebug == true then
 		return false, CarryService.Errors.UnknownJunk
 	end
 	local list = carried[player]
@@ -293,6 +309,9 @@ function CarryService.TryPickup(player: Player, junk: any): (boolean, string?)
 	if not JunkService.IsClaimable(junk) then
 		return false, CarryService.Errors.NotReady -- still flying after a throw
 	end
+	if not JunkService.CanClaim(junk, player) then
+		return false, CarryService.Errors.Reserved -- waiting on someone else's machine tray
+	end
 
 	local maxDistance = GameConfig.Junk.PickupMaxDistance + GameConfig.Carry.PickupDistanceTolerance
 	if (root.Position - junkPosition).Magnitude > maxDistance then
@@ -305,7 +324,7 @@ function CarryService.TryPickup(player: Player, junk: any): (boolean, string?)
 	end
 
 	-- Everything is validated; from here on nothing yields, so nobody can interleave.
-	local junkId, uid = JunkService.Claim(junk)
+	local junkId, uid = JunkService.Claim(junk, player)
 	if junkId == nil or uid == nil then
 		return false, CarryService.Errors.JunkGone
 	end
@@ -334,29 +353,69 @@ local function hookCharacter(player: Player, character: Model)
 end
 
 local function onPlayerAdded(player: Player)
-	if carried[player] ~= nil then
-		return
-	end
-	carried[player] = {}
 	player:SetAttribute(LIST_ATTRIBUTE, nil)
-
 	player.CharacterAdded:Connect(function(character: Model)
 		task.spawn(hookCharacter, player, character)
-	end)
-	-- Respawns without a death (e.g. LoadCharacter) must not keep junk on an invisible back.
-	player.CharacterRemoving:Connect(function(character: Model)
-		CarryService.DropAll(player, rootPosition(character))
 	end)
 	if player.Character ~= nil then
 		task.spawn(hookCharacter, player, player.Character)
 	end
 end
 
+-- Restores the saved list once the profile is loaded. Invalid, unknown, duplicate or
+-- already-existing uids are dropped (never duplicated); at most MaxJunk entries are kept.
+local function restore(player: Player)
+	if carried[player] ~= nil then
+		return
+	end
+	local data = DataService.GetData(player)
+	if data == nil then
+		return
+	end
+	local list: { CarriedJunk } = {}
+	local saved = data.Carry
+	if type(saved) == "table" then
+		for _, entry in saved do
+			if #list >= GameConfig.Carry.MaxJunk then
+				break
+			end
+			local uid = if type(entry) == "table" then entry.Uid else nil
+			local id = if type(entry) == "table" then entry.Id else nil
+			local definition = if type(id) == "string" then ItemConfig.Get(id) else nil
+			if Validate.IsUid(uid) and definition ~= nil and definition.IsDebug ~= true
+				and ownerByUid[uid] == nil and not JunkService.IsUidActive(uid)
+			then
+				table.insert(list, { Uid = uid, Id = id })
+				ownerByUid[uid] = player
+			else
+				warn(`[CarryService] {player.Name}: dropped an invalid saved carried item ({tostring(id)})`)
+			end
+		end
+	end
+	carried[player] = list
+	publish(player)
+end
+
 local function onPlayerRemoving(player: Player)
-	CarryService.DropAll(player, rootPosition(player.Character))
+	-- Nothing is dropped: the list is already saved in the profile and leaves with the player.
+	local list = carried[player]
+	if list ~= nil then
+		for _, entry in list do
+			if ownerByUid[entry.Uid] == player then
+				ownerByUid[entry.Uid] = nil
+			end
+		end
+	end
 	carried[player] = nil
 	lastPickupAt[player] = nil
 	lastNotify[player] = nil
+end
+
+-- Drops the in-memory list and restores it from the saved profile, exactly like a rejoin.
+-- Used by DevTests to verify persistence without leaving the server.
+function CarryService.ReloadFromSave(player: Player)
+	onPlayerRemoving(player)
+	restore(player)
 end
 
 function CarryService.Start()
@@ -372,8 +431,12 @@ function CarryService.Start()
 
 	Players.PlayerAdded:Connect(onPlayerAdded)
 	Players.PlayerRemoving:Connect(onPlayerRemoving)
+	DataService.PlayerLoaded:Connect(restore)
 	for _, player in Players:GetPlayers() do
 		onPlayerAdded(player)
+		if DataService.IsLoaded(player) then
+			restore(player)
+		end
 	end
 end
 

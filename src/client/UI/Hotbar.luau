@@ -14,7 +14,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
 
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
-local JunkConfig = require(ReplicatedStorage.Shared.Config.JunkConfig)
+local ItemConfig = require(ReplicatedStorage.Shared.Config.ItemConfig)
+local Rarities = require(ReplicatedStorage.Shared.Config.Rarities)
 local Preview = require(script.Parent.Preview)
 local Theme = require(script.Parent.Theme)
 
@@ -223,7 +224,10 @@ function Hotbar.Mount(screenGui: ScreenGui): Hotbar
 			local selected = index == selectedIndex and entry ~= nil
 			slot.Frame.BackgroundTransparency = if entry ~= nil then 0.05 else 0.45
 			slot.Frame.BackgroundColor3 = if selected then Color3.fromRGB(255, 236, 200) else Theme.Colors.Panel
-			slot.Stroke.Color = if selected then Theme.Colors.Accent else Theme.Colors.Ink
+			-- Unselected slots show the item's rarity (Common keeps the plain outline).
+			local rarity = if entry ~= nil then ItemConfig.GetRarity(entry.Id) else nil
+			local rarityColor = if rarity ~= nil and rarity ~= "Common" then Rarities.GetColor(rarity) else Theme.Colors.Ink
+			slot.Stroke.Color = if selected then Theme.Colors.Accent else rarityColor
 			slot.Stroke.Thickness = if selected then 4 else 2.5
 			local targetScale = if selected then 1.1 else 1
 			if slot.Scale.Scale ~= targetScale then
@@ -242,7 +246,7 @@ function Hotbar.Mount(screenGui: ScreenGui): Hotbar
 
 		local selectedEntry = list[selectedIndex]
 		if selectedEntry ~= nil then
-			local definition = JunkConfig.Get(selectedEntry.Id)
+			local definition = ItemConfig.Get(selectedEntry.Id)
 			nameLabel.Text = if definition ~= nil then definition.DisplayName else selectedEntry.Id
 		else
 			nameLabel.Text = if count == 0 then "Pick up junk!" else ""

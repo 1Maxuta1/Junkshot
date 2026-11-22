@@ -15,6 +15,15 @@
       }
     },
 
+    "ServerStorage": {
+      "Assets": {
+        "$className": "Folder",
+        "RecyclingMachine": {
+          "$path": "src/assets/RecyclingMachine.rbxm"
+        }
+      }
+    },
+
     "StarterPlayer": {
       "StarterPlayerScripts": {
         "Client": {

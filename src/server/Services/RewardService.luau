@@ -1,38 +1,26 @@
 --!strict
 --[[
-	RewardService: server-side reward rolling and delivery. The client never chooses a rarity
-	or an item.
+	RewardService: server-side reward rolling. The client never chooses a rarity or an item.
 
-	  RollRarity()            -> rarityId   weighted by Rarities chances
+	  RollRarity(chances)     -> rarityId   chances = a DropTables table (percent per rarity)
 	  RollItem(rarityId)      -> itemId     uniform pick from ItemConfig.GetRewardPool
-	  Roll()                  -> (itemId, rarityId)
-	  Deliver(player, itemId) -> (uid?, errorCode?)
-	      Adds the item to the player's saved inventory through InventoryService (the only code
-	      allowed to add items), which assigns the unique item uid.
+	  RollRecycle()           -> (itemId, rarityId)   the Recycling mode result
 
-	Balancing lives in Rarities (chances) and ItemConfig (pools); nothing here needs to change.
+	Balancing lives in DropTables (chances) and ItemConfig (pools); nothing here needs to change.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local DropTables = require(ReplicatedStorage.Shared.Config.DropTables)
 local ItemConfig = require(ReplicatedStorage.Shared.Config.ItemConfig)
-local Rarities = require(ReplicatedStorage.Shared.Config.Rarities)
-local InventoryService = require(script.Parent.InventoryService)
+local WeightedRandom = require(ReplicatedStorage.Shared.Util.WeightedRandom)
 
 local RewardService = {}
 
 local random = Random.new()
 
-function RewardService.RollRarity(): string
-	local roll = random:NextNumber() * 100
-	for _, rarityId in Rarities.Order do
-		local info = Rarities.Info[rarityId]
-		roll -= info.Chance
-		if roll < 0 then
-			return rarityId
-		end
-	end
-	return Rarities.Order[1] -- floating point safety net (chances add up to exactly 100)
+function RewardService.RollRarity(chances: { [string]: number }): string
+	return WeightedRandom.PickRarity(chances, random)
 end
 
 function RewardService.RollItem(rarityId: string): string
@@ -41,13 +29,9 @@ function RewardService.RollItem(rarityId: string): string
 	return pool[random:NextInteger(1, #pool)]
 end
 
-function RewardService.Roll(): (string, string)
-	local rarityId = RewardService.RollRarity()
+function RewardService.RollRecycle(): (string, string)
+	local rarityId = RewardService.RollRarity(DropTables.Recycle)
 	return RewardService.RollItem(rarityId), rarityId
-end
-
-function RewardService.Deliver(player: Player, itemId: string): (string?, string?)
-	return InventoryService.AddItem(player, itemId)
 end
 
 return RewardService

@@ -700,8 +700,11 @@ function Prefabs.RecyclingMachine(parent, cf, machineId)
 		CastShadow = false,
 	})
 
-	m:SetAttribute("MachineId", machineId)
+	if machineId ~= nil then
+		m:SetAttribute("MachineId", machineId)
+	end
 	m:AddTag("RecyclingMachine")
+	m.WorldPivot = cf -- the base's center on the ground, so PivotTo places it on a plot
 	-- A ~40-part landmark every client animates: always fully present, never streamed out.
 	m.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
 	return m

@@ -17,7 +17,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 ReplicatedStorage:WaitForChild("Shared")
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
-local JunkConfig = require(ReplicatedStorage.Shared.Config.JunkConfig)
+local ItemConfig = require(ReplicatedStorage.Shared.Config.ItemConfig)
 local Types = require(ReplicatedStorage.Shared.Types)
 
 local CarryController = require(script.Parent.CarryController)
@@ -74,7 +74,7 @@ local function mount()
 	CarryController.Changed:Connect(refresh)
 	CarryController.ItemsAdded:Connect(function(entries: { Types.CarriedJunk })
 		local last = entries[#entries]
-		local definition = JunkConfig.Get(last.Id)
+		local definition = ItemConfig.Get(last.Id)
 		local name = if definition ~= nil then definition.DisplayName else last.Id
 		local count = #CarryController.GetLocalCarried()
 		NotifyController.Show(`Picked up {name} ({count}/{GameConfig.Carry.MaxJunk})`, "Success")

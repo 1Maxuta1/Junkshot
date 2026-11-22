@@ -1,219 +1,98 @@
 --!strict
 --[[
-	ItemConfig: definitions of collectible items (what players own in their saved inventory).
-	The Recycling Machine rewards these (RewardService picks one of the rolled rarity).
+	ItemConfig: THE item catalog. Every physical thing in JUNKSHOT is an item here: junk,
+	materials, collectibles, components and crafted creations. They all share one lifecycle
+	(world <-> carried, throwable, recyclable) and one model builder (Util/JunkFactory).
+
+	Data lives in Config/Items/*:
+	  Junk.luau          everyday scrap (crafting material, never a reward)
+	  Materials.luau     crafting parts (spawn in the world, drop from recycling)
+	  Collectibles.luau  valuable objects (drop from recycling / mythic crafting, rare finds)
+	  Crafted.luau       components and creations that only come from crafting
+
+	Item fields (Types.ItemDefinition)
+	  Id, DisplayName, Rarity, Category, Parts (model), Description?
+	  NaturalSpawn + SpawnWeight   may appear in the yard (rarity rolled by DropTables.WorldSpawn,
+	                               SpawnWeight = relative chance within that rarity)
+	  RecyclePool                  may be the result of recycling / mythic crafting
+	  CanBeRecycled                false = the machine refuses it (default true)
+	  ItemType, BehaviorId         what the object does (behaviors arrive in Stage 2B)
+	  IsDebug                      tests only
 
 	Rules
 	  - Item ids are stored in player data: NEVER rename or remove an id that has shipped.
-	  - Every non-debug item needs Parts (its look; same format as JunkConfig, built by
-	    JunkFactory.BuildItem). Parts[1] is the root; cylinders run along X (UPRIGHT stands them).
-	  - Every rarity in Rarities must have at least one non-debug item (checked at startup).
-	  - The two debug_* items exist only for tests; InventoryService refuses them outside Studio
-	    and they are never rewarded.
+	  - Every non-debug item needs Parts.
+	  - Every rarity needs at least one RecyclePool item and one NaturalSpawn item (checked).
+
+	Adding an item: add one entry to the right data module. Nothing else needs to change.
 ]]
 
 local Types = require(script.Parent.Parent.Types)
 local Rarities = require(script.Parent.Rarities)
 
-local Block = Enum.PartType.Block
-local Ball = Enum.PartType.Ball
-local Cylinder = Enum.PartType.Cylinder
-local M = Enum.Material
-
-local UPRIGHT = Vector3.new(0, 0, 90)
-local V = Vector3.new
-
-local function rgb(r: number, g: number, b: number): Color3
-	return Color3.fromRGB(r, g, b)
-end
-
-local function part(
-	shape: Enum.PartType,
-	size: Vector3,
-	color: Color3,
-	material: Enum.Material,
-	offset: Vector3?,
-	rotation: Vector3?
-): Types.JunkPartSpec
-	return {
-		Shape = shape,
-		Size = size,
-		Color = color,
-		Material = material,
-		Offset = offset or Vector3.zero,
-		Rotation = rotation or Vector3.zero,
-	}
-end
-
-local function item(id: string, displayName: string, rarity: string, parts: { Types.JunkPartSpec }): Types.ItemDefinition
-	return { Id = id, DisplayName = displayName, Rarity = rarity, Parts = parts }
-end
-
-local definitions: { Types.ItemDefinition } = {
-	-- Debug items (tests only; never rewarded).
-	{ Id = "debug_rusty_gear", DisplayName = "DEBUG Rusty Gear", Rarity = "Common", IsDebug = true },
-	{ Id = "debug_golden_toaster", DisplayName = "DEBUG Golden Toaster", Rarity = "Epic", IsDebug = true },
-
-	-- Common
-	item("tin_robot", "Tin Robot", "Common", {
-		part(Block, V(1.6, 1.8, 1.2), rgb(176, 188, 204), M.Metal),
-		part(Block, V(1.2, 1, 1), rgb(196, 206, 220), M.Metal, V(0, 1.45, 0)),
-		part(Ball, V(0.35, 0.35, 0.35), rgb(255, 80, 70), M.Neon, V(0, 2.15, 0)),
-		part(Block, V(0.5, 0.2, 0.1), rgb(40, 50, 70), M.SmoothPlastic, V(0, 1.5, -0.52)),
-	}),
-	item("snow_globe", "Snow Globe", "Common", {
-		part(Cylinder, V(0.6, 1.8, 1.8), rgb(150, 96, 60), M.Wood, nil, UPRIGHT),
-		part(Ball, V(1.7, 1.7, 1.7), rgb(210, 236, 255), M.Glass, V(0, 1.1, 0)),
-		part(Ball, V(0.7, 0.7, 0.7), rgb(255, 255, 255), M.SmoothPlastic, V(0, 0.9, 0)),
-	}),
-	item("patched_mitten", "Patched Mitten", "Common", {
-		part(Block, V(1.4, 1.8, 0.6), rgb(220, 70, 70), M.Fabric),
-		part(Block, V(0.6, 0.8, 0.55), rgb(220, 70, 70), M.Fabric, V(0.85, 0.1, 0), V(0, 0, -30)),
-		part(Block, V(1.5, 0.4, 0.65), rgb(250, 250, 250), M.Fabric, V(0, -0.9, 0)),
-		part(Block, V(0.5, 0.5, 0.05), rgb(255, 200, 60), M.Fabric, V(-0.2, 0.3, -0.31)),
-	}),
-
-	-- Uncommon
-	item("copper_kettle", "Copper Kettle", "Uncommon", {
-		part(Ball, V(1.9, 1.9, 1.9), rgb(214, 126, 70), M.Metal),
-		part(Cylinder, V(0.3, 1.2, 1.2), rgb(60, 60, 70), M.Metal, V(0, 0.95, 0), UPRIGHT),
-		part(Cylinder, V(1.2, 0.35, 0.35), rgb(214, 126, 70), M.Metal, V(1.1, 0.2, 0), V(0, 0, 40)),
-		part(Block, V(0.2, 1, 1.4), rgb(60, 60, 70), M.Metal, V(-1, 0.4, 0)),
-	}),
-	item("ice_skate", "Ice Skate", "Uncommon", {
-		part(Block, V(0.9, 1.4, 2), rgb(80, 200, 120), M.SmoothPlastic),
-		part(Block, V(0.9, 0.8, 0.9), rgb(80, 200, 120), M.SmoothPlastic, V(0, 1.05, 0.55)),
-		part(Block, V(0.15, 0.25, 2.6), rgb(220, 230, 240), M.Metal, V(0, -0.85, 0)),
-	}),
-	item("spring_bot", "Spring Bot", "Uncommon", {
-		part(Ball, V(1.5, 1.5, 1.5), rgb(80, 210, 140), M.SmoothPlastic),
-		part(Cylinder, V(0.3, 1.1, 1.1), rgb(235, 55, 130), M.Metal, V(0, -0.95, 0), UPRIGHT),
-		part(Cylinder, V(0.3, 1.1, 1.1), rgb(235, 55, 130), M.Metal, V(0, -1.3, 0), UPRIGHT),
-		part(Ball, V(0.45, 0.45, 0.45), rgb(255, 255, 255), M.Neon, V(0, 0.2, -0.6)),
-	}),
-
-	-- Rare
-	item("neon_gear", "Neon Gear", "Rare", {
-		part(Cylinder, V(0.5, 2.4, 2.4), rgb(60, 150, 255), M.Neon, nil, UPRIGHT),
-		part(Cylinder, V(0.6, 0.9, 0.9), rgb(30, 40, 70), M.Metal, nil, UPRIGHT),
-		part(Block, V(0.6, 0.5, 0.6), rgb(60, 150, 255), M.Neon, V(1.3, 0, 0)),
-		part(Block, V(0.6, 0.5, 0.6), rgb(60, 150, 255), M.Neon, V(-1.3, 0, 0)),
-		part(Block, V(0.6, 0.5, 0.6), rgb(60, 150, 255), M.Neon, V(0, 0, 1.3)),
-		part(Block, V(0.6, 0.5, 0.6), rgb(60, 150, 255), M.Neon, V(0, 0, -1.3)),
-	}),
-	item("arcade_joystick", "Arcade Joystick", "Rare", {
-		part(Block, V(2.2, 0.6, 1.6), rgb(40, 60, 120), M.SmoothPlastic),
-		part(Cylinder, V(1.2, 0.25, 0.25), rgb(30, 30, 40), M.Metal, V(-0.4, 0.8, 0), UPRIGHT),
-		part(Ball, V(0.6, 0.6, 0.6), rgb(255, 60, 60), M.SmoothPlastic, V(-0.4, 1.45, 0)),
-		part(Cylinder, V(0.15, 0.45, 0.45), rgb(60, 150, 255), M.Neon, V(0.5, 0.35, -0.2), UPRIGHT),
-		part(Cylinder, V(0.15, 0.45, 0.45), rgb(255, 210, 60), M.Neon, V(0.5, 0.35, 0.35), UPRIGHT),
-	}),
-	item("frost_lantern", "Frost Lantern", "Rare", {
-		part(Block, V(1.3, 0.25, 1.3), rgb(40, 50, 80), M.Metal, V(0, -0.9, 0)),
-		part(Block, V(1.1, 1.5, 1.1), rgb(140, 210, 255), M.Glass),
-		part(Ball, V(0.7, 0.7, 0.7), rgb(120, 200, 255), M.Neon),
-		part(Block, V(1.3, 0.25, 1.3), rgb(40, 50, 80), M.Metal, V(0, 0.9, 0)),
-		part(Cylinder, V(0.15, 0.7, 0.7), rgb(40, 50, 80), M.Metal, V(0, 1.2, 0)),
-	}),
-
-	-- Epic
-	item("plasma_toaster", "Plasma Toaster", "Epic", {
-		part(Block, V(2.2, 1.4, 1.4), rgb(120, 70, 200), M.Metal),
-		part(Block, V(1.6, 0.12, 0.35), rgb(220, 120, 255), M.Neon, V(0, 0.72, -0.25)),
-		part(Block, V(1.6, 0.12, 0.35), rgb(220, 120, 255), M.Neon, V(0, 0.72, 0.25)),
-		part(Block, V(0.35, 0.3, 0.35), rgb(255, 255, 255), M.Neon, V(0.75, 0.3, -0.72)),
-	}),
-	item("crystal_snowman", "Crystal Snowman", "Epic", {
-		part(Ball, V(1.8, 1.8, 1.8), rgb(200, 170, 255), M.Glass),
-		part(Ball, V(1.3, 1.3, 1.3), rgb(200, 170, 255), M.Glass, V(0, 1.35, 0)),
-		part(Ball, V(0.9, 0.9, 0.9), rgb(220, 200, 255), M.Glass, V(0, 2.3, 0)),
-		part(Block, V(0.15, 0.15, 0.5), rgb(255, 140, 40), M.Neon, V(0, 2.3, -0.6)),
-		part(Cylinder, V(0.6, 0.7, 0.7), rgb(140, 70, 220), M.Neon, V(0, 2.85, 0), UPRIGHT),
-	}),
-	item("jet_sled", "Jet Sled", "Epic", {
-		part(Block, V(1.6, 0.4, 3), rgb(150, 80, 230), M.SmoothPlastic),
-		part(Block, V(0.2, 0.2, 3.2), rgb(220, 230, 240), M.Metal, V(-0.6, -0.35, 0)),
-		part(Block, V(0.2, 0.2, 3.2), rgb(220, 230, 240), M.Metal, V(0.6, -0.35, 0)),
-		part(Cylinder, V(1, 0.7, 0.7), rgb(60, 60, 80), M.Metal, V(0, 0.5, 1.2), V(0, 90, 0)),
-		part(Cylinder, V(0.2, 0.55, 0.55), rgb(255, 140, 40), M.Neon, V(0, 0.5, 1.75), V(0, 90, 0)),
-	}),
-
-	-- Legendary
-	item("golden_wrench", "Golden Wrench", "Legendary", {
-		part(Block, V(0.4, 0.3, 2.8), rgb(255, 200, 40), M.Metal),
-		part(Block, V(1.2, 0.3, 0.6), rgb(255, 200, 40), M.Metal, V(0, 0, -1.6)),
-		part(Block, V(0.35, 0.3, 0.7), rgb(255, 200, 40), M.Metal, V(-0.42, 0, -2.1)),
-		part(Block, V(0.35, 0.3, 0.7), rgb(255, 200, 40), M.Metal, V(0.42, 0, -2.1)),
-		part(Ball, V(0.35, 0.35, 0.35), rgb(255, 255, 200), M.Neon, V(0, 0.2, 0.9)),
-	}),
-	item("aurora_orb", "Aurora Orb", "Legendary", {
-		part(Ball, V(1.8, 1.8, 1.8), rgb(120, 255, 200), M.Neon),
-		part(Cylinder, V(0.15, 2.4, 2.4), rgb(255, 210, 60), M.Metal, nil, V(0, 0, 90)),
-		part(Cylinder, V(0.15, 2.4, 2.4), rgb(255, 210, 60), M.Metal, nil, V(0, 90, 0)),
-		part(Cylinder, V(0.4, 1.2, 1.2), rgb(60, 50, 80), M.Metal, V(0, -1.1, 0), UPRIGHT),
-	}),
-	item("frozen_crown", "Frozen Crown", "Legendary", {
-		part(Cylinder, V(0.6, 2, 2), rgb(255, 205, 50), M.Metal, nil, UPRIGHT),
-		part(Block, V(0.35, 0.9, 0.35), rgb(255, 205, 50), M.Metal, V(0.8, 0.6, 0)),
-		part(Block, V(0.35, 0.9, 0.35), rgb(255, 205, 50), M.Metal, V(-0.8, 0.6, 0)),
-		part(Block, V(0.35, 0.9, 0.35), rgb(255, 205, 50), M.Metal, V(0, 0.6, 0.8)),
-		part(Block, V(0.35, 0.9, 0.35), rgb(255, 205, 50), M.Metal, V(0, 0.6, -0.8)),
-		part(Ball, V(0.5, 0.5, 0.5), rgb(140, 220, 255), M.Neon, V(0, 0.15, -1)),
-	}),
-
-	-- Mythic
-	item("starforged_core", "Starforged Core", "Mythic", {
-		part(Ball, V(1.6, 1.6, 1.6), rgb(255, 90, 180), M.Neon),
-		part(Block, V(2.4, 0.3, 0.3), rgb(255, 230, 120), M.Neon, nil, V(0, 0, 45)),
-		part(Block, V(2.4, 0.3, 0.3), rgb(255, 230, 120), M.Neon, nil, V(0, 0, -45)),
-		part(Block, V(0.3, 0.3, 2.4), rgb(120, 230, 255), M.Neon, nil, V(45, 0, 0)),
-		part(Cylinder, V(0.15, 2.6, 2.6), rgb(40, 30, 70), M.Metal, nil, V(0, 0, 90)),
-	}),
-	item("dragon_egg", "Polar Dragon Egg", "Mythic", {
-		part(Ball, V(1.8, 1.8, 1.8), rgb(110, 220, 255), M.Glass),
-		part(Ball, V(1.3, 1.3, 1.3), rgb(255, 80, 170), M.Neon),
-		part(Ball, V(1.5, 1.5, 1.5), rgb(110, 220, 255), M.Glass, V(0, 0.75, 0)),
-		part(Cylinder, V(0.4, 2, 2), rgb(60, 50, 90), M.Slate, V(0, -0.9, 0), UPRIGHT),
-	}),
-	item("comet_shard", "Comet Shard", "Mythic", {
-		part(Block, V(0.9, 2.6, 0.9), rgb(255, 120, 220), M.Neon, nil, V(0, 45, 15)),
-		part(Block, V(0.6, 1.6, 0.6), rgb(140, 230, 255), M.Neon, V(0.7, -0.3, 0.2), V(0, 20, -25)),
-		part(Block, V(0.5, 1.2, 0.5), rgb(255, 230, 120), M.Neon, V(-0.6, -0.5, -0.2), V(10, 0, 30)),
-		part(Cylinder, V(0.4, 1.8, 1.8), rgb(50, 40, 80), M.Slate, V(0, -1.3, 0), UPRIGHT),
-	}),
+local SOURCES = {
+	require(script.Parent.Items.Junk),
+	require(script.Parent.Items.Materials),
+	require(script.Parent.Items.Collectibles),
+	require(script.Parent.Items.Crafted),
 }
 
+local VALID_CATEGORIES = { Junk = true, Material = true, Collectible = true, Component = true, Crafted = true }
+
 local items: { [string]: Types.ItemDefinition } = {}
-local byRarity: { [string]: { string } } = {}
+local rewardPools: { [string]: { string } } = {}
+local spawnPools: { [string]: { { Id: string, Weight: number } } } = {}
 
 -- Fail loudly at startup on a broken config instead of corrupting player data later.
-for _, definition in definitions do
-	local id = definition.Id
-	assert(items[id] == nil, `[ItemConfig] duplicate id "{id}"`)
-	assert(string.match(id, "^[%w_]+$") ~= nil, `[ItemConfig] invalid id "{id}"`)
-	assert(Rarities.IsValid(definition.Rarity), `[ItemConfig] "{id}" has unknown rarity "{definition.Rarity}"`)
-	local parts = definition.Parts
-	if definition.IsDebug ~= true then
-		assert(parts ~= nil and #parts > 0, `[ItemConfig] "{id}" needs Parts`)
-		local pool = byRarity[definition.Rarity]
-		if pool == nil then
-			pool = {}
-			byRarity[definition.Rarity] = pool
+for _, source in SOURCES do
+	for _, definition in source :: { Types.ItemDefinition } do
+		local id = definition.Id
+		assert(items[id] == nil, `[ItemConfig] duplicate id "{id}"`)
+		assert(string.match(id, "^[%w_]+$") ~= nil, `[ItemConfig] invalid id "{id}"`)
+		assert(Rarities.IsValid(definition.Rarity), `[ItemConfig] "{id}" has unknown rarity "{definition.Rarity}"`)
+		assert(VALID_CATEGORIES[definition.Category], `[ItemConfig] "{id}" has unknown category "{tostring(definition.Category)}"`)
+		local parts = definition.Parts
+		if definition.IsDebug ~= true then
+			assert(parts ~= nil and #parts > 0, `[ItemConfig] "{id}" needs Parts`)
+			for index, spec in parts do
+				local size = spec.Size
+				assert(size.X > 0 and size.Y > 0 and size.Z > 0, `[ItemConfig] "{id}" part {index} has a non-positive size`)
+			end
+			if definition.RecyclePool then
+				rewardPools[definition.Rarity] = rewardPools[definition.Rarity] or {}
+				table.insert(rewardPools[definition.Rarity], id)
+			end
+			if definition.NaturalSpawn then
+				local weight = definition.SpawnWeight or 1
+				assert(weight >= 0, `[ItemConfig] "{id}" has a negative SpawnWeight`)
+				if weight > 0 then
+					spawnPools[definition.Rarity] = spawnPools[definition.Rarity] or {}
+					table.insert(spawnPools[definition.Rarity], { Id = id, Weight = weight })
+				end
+			end
 		end
-		table.insert(pool, id)
-	end
-	if parts ~= nil then
-		for _, spec in parts do
-			table.freeze(spec)
+		if parts ~= nil then
+			for _, spec in parts do
+				table.freeze(spec)
+			end
+			table.freeze(parts)
 		end
-		table.freeze(parts)
+		items[id] = table.freeze(definition)
 	end
-	items[id] = table.freeze(definition)
 end
+
 for _, rarity in Rarities.Order do
-	assert(byRarity[rarity] ~= nil and #byRarity[rarity] > 0, `[ItemConfig] no rewardable item has rarity "{rarity}"`)
-	table.sort(byRarity[rarity]) -- deterministic order
-	table.freeze(byRarity[rarity])
+	assert(rewardPools[rarity] ~= nil, `[ItemConfig] no RecyclePool item has rarity "{rarity}"`)
+	assert(spawnPools[rarity] ~= nil, `[ItemConfig] no NaturalSpawn item has rarity "{rarity}"`)
+	table.sort(rewardPools[rarity])
+	table.sort(spawnPools[rarity], function(a, b)
+		return a.Id < b.Id
+	end)
+	table.freeze(rewardPools[rarity])
+	for _, entry in spawnPools[rarity] do
+		table.freeze(entry)
+	end
+	table.freeze(spawnPools[rarity])
 end
 
 local ItemConfig = {}
@@ -228,9 +107,29 @@ function ItemConfig.Exists(itemId: any): boolean
 	return type(itemId) == "string" and items[itemId] ~= nil
 end
 
--- Non-debug item ids of one rarity (the reward pool). Frozen; never empty for a valid rarity.
+-- Item ids that recycling / mythic crafting can produce for a rarity (never empty).
 function ItemConfig.GetRewardPool(rarity: string): { string }
-	return byRarity[rarity] or {}
+	return rewardPools[rarity] or {}
+end
+
+-- Weighted item ids that can appear in the world for a rarity (never empty).
+function ItemConfig.GetSpawnPool(rarity: string): { { Id: string, Weight: number } }
+	return spawnPools[rarity] or {}
+end
+
+function ItemConfig.GetRarity(itemId: string): string?
+	local definition = items[itemId]
+	return if definition ~= nil then definition.Rarity else nil
+end
+
+function ItemConfig.GetDisplayName(itemId: string): string
+	local definition = items[itemId]
+	return if definition ~= nil then definition.DisplayName else itemId
+end
+
+function ItemConfig.CanBeRecycled(itemId: string): boolean
+	local definition = items[itemId]
+	return definition ~= nil and definition.IsDebug ~= true and definition.CanBeRecycled ~= false
 end
 
 return table.freeze(ItemConfig)

@@ -12,7 +12,7 @@ local GameConfig = {
 		StoreName = "PlayerData",
 		KeyPrefix = "Player_",
 		-- Bump when the profile shape changes and add a migration in DataService.
-		ProfileVersion = 1,
+		ProfileVersion = 2, -- 2: Carry, Machine, Purchases added (Stage 2A)
 	},
 
 	Klunks = {
@@ -99,8 +99,11 @@ local GameConfig = {
 		Default = { MaxRequests = 10, Window = 1 },
 		GetSnapshot = { MaxRequests = 3, Window = 5 },
 		ThrowRequest = { MaxRequests = 6, Window = 1 },
-		MachineInsert = { MaxRequests = 3, Window = 2 },
-		MachineClaim = { MaxRequests = 3, Window = 2 },
+		MachineStart = { MaxRequests = 3, Window = 2 }, -- recycle / craft / mythic
+		MachineTake = { MaxRequests = 6, Window = 2 },
+		MachineUpgrade = { MaxRequests = 3, Window = 2 },
+		-- Clicks above this rate are rejected (not counted): an autoclicker gains nothing extra.
+		MachineAccelerate = { MaxRequests = 10, Window = 1 },
 	},
 
 	Debug = {

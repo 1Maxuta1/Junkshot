@@ -24,9 +24,14 @@ local definitions: { [string]: string } = {
 	Notify = "RemoteEvent", -- server -> client: short message text for the local player
 	ThrowRequest = "RemoteEvent", -- client -> server: (uid, aimTarget) throw one carried junk
 	ThrowFx = "RemoteEvent", -- server -> clients: a validated throw to draw locally (Types.ThrowFx)
-	MachineInsert = "RemoteEvent", -- client -> server: (machineId, uid) recycle one carried junk
-	MachineClaim = "RemoteEvent", -- client -> server: (machineId) collect a reward held in the tray
-	-- Machine state needs no remote: it is published as attributes on the machine model.
+	-- Machine requests always act on the CALLER's own machine; no machine id is ever accepted.
+	MachineRecycle = "RemoteEvent", -- client -> server: (uid) recycle one carried item
+	MachineCraft = "RemoteEvent", -- client -> server: (recipeId) craft from carried items
+	MachineMythic = "RemoteEvent", -- client -> server: (uidA, uidB, uidC) mythic crafting
+	MachineAccelerate = "RemoteEvent", -- client -> server: () one click = minus one second
+	MachineTake = "RemoteEvent", -- client -> server: (uid) move a finished item into the hands
+	MachineUpgrade = "RemoteEvent", -- client -> server: (upgradeId) buy the next level
+	-- Machine state needs no remote: it is published as attributes on each machine model.
 }
 
 local Remotes = {}

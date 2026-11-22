@@ -27,7 +27,142 @@
 
 ---
 
-# Stage 2 — Recycling Machine
+# Stage 2A — Personal Machines, Recycling & Crafting
+
+> Заменяет машину на площади из прежней Stage 2 (раздел ниже оставлен как история).
+> Stage 2B (функциональные предметы, транспорт, размещение) **ещё не начата**.
+
+## Что изменилось для игрока
+
+- **У каждого своя машина** на своём участке (табличка «ИМЯ'S BASE»). Чужая машина видна, но открыть,
+  ускорить, улучшить или забрать из неё нельзя.
+- **Награду можно подобрать (баг 1 исправлен).** Готовый предмет — настоящий предмет мира на лотке
+  машины, зарезервированный за владельцем. Он не исчезает: подбирается по **E**, потом его можно бросить,
+  снова переработать или пустить в крафт. Раньше награда уходила в невидимый инвентарь, а на постаменте
+  была только картинка.
+- **Переработка** — 30 с. Редкость результата: 55 / 25 / 12 / 6 / 1.8 / 0.2 %.
+- **Крафт** — 22 рецепта в 5 категориях. Длительность по редкости результата: Common 1 мин,
+  Uncommon 5, Rare 10, Epic 30, Legendary 1 ч, Mythic 6 ч.
+- **Мифический крафт** — 3 любых предмета, ровно 6 часов. Чем выше средняя редкость входов, тем выше шанс
+  на Legendary/Mythic; из трёх Common Legendary и Mythic не выпадают никогда. Две особые комбинации дают
+  фиксированный результат (3× Crystal Shard → Comet Shard и Aurora Orb + Frozen Crown + Golden Wrench →
+  Starforged Core).
+- **Ускорение кликами:** 1 клик = ровно 1 секунда, не больше 10 кликов в секунду (сервер).
+- **Улучшения** за Klunks: скорость (до −50 %), слоты лотка (1–3), уровень машины (1–3, открывает
+  рецепты). Цены — заготовки до стадии экономики.
+- **Редкие предметы на свалке без крафта:** природный спавн по редкостям
+  72 / 21 / 5.4 / 1.3 / 0.25 / 0.05 %.
+- **Подсветка редкости** в мире: с Uncommon — цветное кольцо, с Epic — луч, с Legendary — искры, у Mythic —
+  второе кольцо. В руках — обводка цветом редкости; слот хотбара тоже окрашен.
+- **Руки сохраняются** при выходе и возвращаются при входе. При смерти предметы падают на землю.
+- Задание продолжается, пока игрок офлайн: если оно закончилось за это время, при входе результат уже на
+  лотке.
+
+## Архитектура машины
+
+- **Один `MachineService`** на сервере, машины хранятся по игрокам. Remotes (`MachineRecycle`,
+  `MachineCraft`, `MachineMythic`, `MachineAccelerate`, `MachineTake`, `MachineUpgrade`) **не принимают id
+  машины**: сервер всегда берёт машину вызывающего.
+- **Состояния:** `Idle → Processing → RewardReady → Idle`. Задание хранит `StartedAt` и `Duration` во
+  времени `Workspace:GetServerTimeNow()`. Результат выбирается в момент запуска. На задание ставится один
+  `task.delay` с токеном, циклов опроса нет.
+- **Сохранение:** `profile.Data.Machine` = `{ Job?, Output, Upgrades, BoostUntil, InstantCredits, ResultSeq }`,
+  руки — в `profile.Data.Carry`, обработанные чеки — в `profile.Data.Purchases`. `ProfileVersion` = 2,
+  новые ключи добавляет Reconcile.
+- **Синхронизация с клиентом** только атрибутами модели машины (`State`, `JobKind`, `JobLabel`,
+  `JobStartedAt`, `JobDuration`, `JobCompletesAt`, `OutputList`, `OutputCapacity`, `Upgrade*`, `ResultSeq`,
+  `LastResultId/Rarity` …). Клиент раз в секунду обновляет таймер локально.
+- **Лоток:** предметы спавнятся через `JunkService.SpawnAt` с `ReservedFor = владелец` и колбэком
+  `OnClaimed`, который синхронно (без yield) убирает предмет из `Output`. Поэтому предмет не может быть
+  одновременно и на лотке, и в руках. Чужой подбор — ошибка `Reserved`. На клиенте чужие подсказки
+  скрыты.
+- **Длительность:** `база × множитель Speed × геймпасс × активный буст`, не меньше `MinDuration` (5 с).
+  Мифический крафт — всегда ровно 6 ч (ускоряют только клики и Instant Finish).
+
+## Данные: как добавить предмет или рецепт
+
+| Что | Где |
+|---|---|
+| Хлам со свалки | `src/shared/Config/Items/Junk.luau` (`NaturalSpawn = true`) |
+| Материалы | `Items/Materials.luau` |
+| Коллекционные награды | `Items/Collectibles.luau` (`RecyclePool = true`) |
+| Крафтовые предметы (для 2B: `ItemType`, `BehaviorId`) | `Items/Crafted.luau` |
+| Рецепты | `src/shared/Config/Recipes.luau` |
+| Шансы | `src/shared/Config/DropTables.luau` (`Recycle`, `WorldSpawn`, `Mythic[1..6]`) |
+| Длительности, улучшения, комбо | `src/shared/Config/MachineConfig.luau` |
+
+- **Предмет:** добавить запись с `Id`, `DisplayName`, `Rarity`, `Category` и моделью из деталей
+  (`Builder.part`, см. соседние записи). `ItemConfig` при загрузке проверяет поля и сам строит пулы.
+- **Рецепт:** `recipe(категория, idРезультата, уровеньМашины, описание, { ing("id", count), … })`. Id рецепта
+  совпадает с id результата. Проверяется, что все ингредиенты существуют и в сумме их не больше 6
+  (вместимость рук). Длительность берётся из редкости результата.
+- Каждая таблица шансов при загрузке проверяется на сумму 100 %.
+
+## Robux (заготовка, ничего не активировано)
+
+`src/shared/Config/MonetizationConfig.luau` — **все id равны 0**. Ненастроенные товары показываются как
+«coming soon», купить их нельзя.
+
+| Ключ | Тип | Что делает |
+|---|---|---|
+| `InstantFinish` | Developer Product | завершает текущее задание (без задания — копится кредит) |
+| `SpeedBoost` | Developer Product | 30 мин заданий ×0.5 длительности |
+| `FastMachine` | Game Pass | навсегда ×0.8 длительности |
+
+`MonetizationService.ProcessReceipt` идемпотентен: `PurchaseId` хранится в профиле (последние 50),
+повторный чек подтверждается без повторной выдачи. Чтобы включить товар: создать его в Creator Dashboard,
+вписать id и опубликовать. Автоматически ничего не создаётся.
+
+## Новые и изменённые файлы (Stage 2A)
+
+| Файл | Что |
+|---|---|
+| `src/shared/Config/Items/*` | **новые**: каталог из 66 предметов (Junk 20, Materials 6, Collectibles 18, Crafted 22) |
+| `src/shared/Config/ItemConfig.luau` | единый каталог: проверка, пулы спавна и наград |
+| `src/shared/Config/DropTables.luau`, `Recipes.luau`, `MonetizationConfig.luau` | **новые** |
+| `src/shared/Config/MachineConfig.luau`, `Rarities.luau`, `GameConfig.luau` | длительности, улучшения; шансы перенесены в DropTables |
+| `src/shared/Config/JunkConfig.luau` | **удалён** (данные в `Items/Junk.luau`) |
+| `src/shared/Util/WeightedRandom.luau`, `RarityVisuals.luau` | **новые** |
+| `src/shared/Remotes.luau`, `Types.luau` | новые remotes машины, типы задания и профиля |
+| `src/server/Services/MachineService.luau` | переписан: персональные машины |
+| `src/server/Services/PlotService.luau`, `CraftingService.luau`, `MonetizationService.luau` | **новые** |
+| `src/server/Services/JunkService.luau` | спавн по редкостям, резервация (`ReservedFor`, `OnClaimed`, `CanClaim`) |
+| `src/server/Services/CarryService.luau` | сохранение рук, ошибка `Reserved` |
+| `src/server/Services/DataService.luau` | новые ключи профиля, сигнал `PlayerLoaded` |
+| `src/server/Main.server.luau` | порядок запуска; только в Studio — `ServerStorage.JunkshotDebugBridge` для мультиклиентных тестов |
+| `src/client/UI/Machine/*` | **новые**: панель с вкладками Recycle / Craft / Mythic / Upgrades |
+| `src/client/UI/MachinePanel.luau` | **удалён** |
+| `src/client/MachineController`, `UI/RewardReveal`, `UI/PickupPrompt`, `UI/Hotbar` | персональные машины, скрытие чужих подсказок, цвет редкости |
+| `tools/map/*`, `src/assets/RecyclingMachine.rbxm` | машина убрана с площади, шаблон в `ServerStorage.Assets` |
+
+## Что проверено (Stage 2A)
+
+| Проверка | Как | Результат |
+|---|---|---|
+| Автотесты (каталог, шансы, рецепты, машина, сохранение, улучшения, чеки) | DevTests в Studio | **197 / 0** |
+| Распределения Recycle и WorldSpawn | 200 000 бросков на таблицу | все 12 в допуске |
+| Машина стоит на участке игрока | снимок + координаты | низ основания = верх площадки |
+| Полный цикл реальным вводом | E (подбор) → R (панель) → RECYCLE | задание «Recycling Bike Wheel», 30 с |
+| 1 клик = 1 с | 10 кликов по кнопке SPEED UP | ровно **10.00 с** |
+| Награда на лотке и подбор | E у лотка | предмет с тем же uid в руках, машина Idle |
+| 2 клиента: Player2 ускоряет / перерабатывает чужое / улучшает | реальные remotes с клиента | машина Player1 не изменилась, предмет Player1 на месте |
+| 2 клиента: Player2 забирает награду Player1 (`MachineTake`, подбор) | remote + серверный подбор | отказ, ошибка `Reserved` |
+| Лимит кликов | 25 кликов пачкой | засчитано 10 |
+| Вкладки панели, подписи категорий | снимки экрана | всё читается |
+
+## Не проверено / ограничения (Stage 2A)
+
+- **Скрытие чужих подсказок на клиенте в мультиклиенте.** В тестовых окнах Studio `PromptShown` не
+  срабатывает (даже для своей машины), поэтому проверить это там нельзя. Сервер всё равно отклоняет любые
+  действия с чужим.
+- **Телефон и геймпад** для новой панели не проверялись (Device Simulator — следующий шаг).
+- **Покупки за Robux** проверены только тестовым чеком (`ProcessReceiptForTest`); реальных товаров нет.
+- Цены улучшений и экономика — заготовки.
+- Крафтовые предметы пока ведут себя как обычные (2B: транспорт, инструменты, размещение).
+
+---
+
+# Stage 2 — Recycling Machine (история, заменено Stage 2A)
 
 ## Исправление: дубль предмета при броске
 

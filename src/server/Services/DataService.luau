@@ -27,6 +27,7 @@ local RunService = game:GetService("RunService")
 
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local Types = require(ReplicatedStorage.Shared.Types)
+local Signal = require(ReplicatedStorage.Shared.Util.Signal)
 
 -- The library is third-party and not shipped with this project, so check before requiring.
 -- Use a direct path so static type checkers can resolve this ModuleScript.
@@ -58,6 +59,18 @@ local TEMPLATE: Types.ProfileData = {
 	Version = GameConfig.Data.ProfileVersion,
 	Klunks = 0,
 	Items = {},
+	-- Carried items survive leaving the game (CarryService).
+	Carry = {},
+	-- The personal machine (MachineService). Upgrade values are level indexes (1 = default).
+	Machine = {
+		Output = {},
+		Upgrades = { Speed = 1, Storage = 1, Level = 1 },
+		BoostUntil = 0,
+		InstantCredits = 0,
+		ResultSeq = 0,
+	},
+	-- Processed Robux receipt ids (MonetizationService idempotency).
+	Purchases = {},
 	Stats = {
 		TotalKlunksEarned = 0,
 	},
@@ -65,10 +78,17 @@ local TEMPLATE: Types.ProfileData = {
 }
 
 -- MIGRATIONS[n] upgrades data from version n to n + 1 (mutating it in place).
--- Empty while ProfileVersion is 1.
-local MIGRATIONS: { [number]: (data: any) -> () } = {}
+-- Reconcile() fills new template keys afterwards, so additive changes need no code here.
+local MIGRATIONS: { [number]: (data: any) -> () } = {
+	[1] = function(_data: any)
+		-- 1 -> 2: Carry, Machine and Purchases were added; Reconcile() creates them.
+	end,
+}
 
 local DataService = {}
+
+-- Fires (player) once the player's data is loaded and validated.
+DataService.PlayerLoaded = Signal.new()
 
 local store: any = nil
 local started = false
@@ -156,6 +176,7 @@ local function loadProfile(player: Player)
 	end
 
 	Ready[player] = true
+	DataService.PlayerLoaded:Fire(player) -- services restore carried items, machine, plot
 	player:SetAttribute("DataLoaded", true)
 end
 

@@ -32,7 +32,7 @@ local Workspace = game:GetService("Workspace")
 
 ReplicatedStorage:WaitForChild("Shared")
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
-local JunkConfig = require(ReplicatedStorage.Shared.Config.JunkConfig)
+local ItemConfig = require(ReplicatedStorage.Shared.Config.ItemConfig)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Ballistics = require(ReplicatedStorage.Shared.Util.Ballistics)
@@ -427,7 +427,7 @@ local function isValidFx(fx: any): boolean
 		return false
 	end
 	return Validate.IsUid(fx.Uid)
-		and JunkConfig.Exists(fx.JunkId)
+		and ItemConfig.Exists(fx.JunkId)
 		and typeof(fx.Origin) == "Vector3"
 		and typeof(fx.Velocity) == "Vector3"
 		and typeof(fx.FinalPivot) == "CFrame"
@@ -446,7 +446,7 @@ local function onThrowFx(fx: Types.ThrowFx)
 		if pendingUid == fx.Uid then
 			pendingUid = nil
 		end
-		local definition = JunkConfig.Get(fx.JunkId)
+		local definition = ItemConfig.Get(fx.JunkId)
 		NotifyController.Show(`Threw {if definition ~= nil then definition.DisplayName else "junk"}!`, "Success")
 	end
 

@@ -1,0 +1,79 @@
+--!strict
+--[[
+	DropTables: every rarity probability in the game, in percent. Separate systems get
+	separate tables, so rebalancing one never changes another. Each table must add up to 100
+	(checked at startup). Rolling happens on the server only (RewardService).
+
+	  Recycle      result rarity of the machine's Recycling mode
+	  WorldSpawn   rarity of items appearing in the yard (JunkService)
+	  Mythic       rows for the Mythic Crafting mode, indexed by the AVERAGE rarity rank of
+	               the three inputs (1 = three Commons ... 6 = three Mythics). A fractional
+	               average blends the two neighbouring rows, so every better input helps.
+]]
+
+local Rarities = require(script.Parent.Rarities)
+
+export type Table = { [string]: number }
+
+local DropTables = {}
+
+DropTables.Recycle = {
+	Common = 55,
+	Uncommon = 25,
+	Rare = 12,
+	Epic = 6,
+	Legendary = 1.8,
+	Mythic = 0.2,
+} :: Table
+
+DropTables.WorldSpawn = {
+	Common = 72,
+	Uncommon = 21,
+	Rare = 5.4,
+	Epic = 1.3,
+	Legendary = 0.25,
+	Mythic = 0.05,
+} :: Table
+
+DropTables.Mythic = {
+	[1] = { Common = 55, Uncommon = 30, Rare = 12, Epic = 3, Legendary = 0, Mythic = 0 },
+	[2] = { Common = 30, Uncommon = 38, Rare = 22, Epic = 8, Legendary = 2, Mythic = 0 },
+	[3] = { Common = 10, Uncommon = 28, Rare = 35, Epic = 19, Legendary = 7, Mythic = 1 },
+	[4] = { Common = 0, Uncommon = 12, Rare = 33, Epic = 36, Legendary = 15, Mythic = 4 },
+	[5] = { Common = 0, Uncommon = 0, Rare = 18, Epic = 42, Legendary = 30, Mythic = 10 },
+	[6] = { Common = 0, Uncommon = 0, Rare = 0, Epic = 35, Legendary = 45, Mythic = 20 },
+} :: { [number]: Table }
+
+local function validate(name: string, tableValue: Table)
+	local total = 0
+	for rarity, chance in tableValue do
+		assert(Rarities.IsValid(rarity), `[DropTables] {name}: unknown rarity "{rarity}"`)
+		assert(chance >= 0, `[DropTables] {name}: negative chance for {rarity}`)
+		total += chance
+	end
+	assert(math.abs(total - 100) < 1e-6, `[DropTables] {name} adds up to {total}, expected 100`)
+	table.freeze(tableValue)
+end
+
+validate("Recycle", DropTables.Recycle)
+validate("WorldSpawn", DropTables.WorldSpawn)
+for rank = 1, #Rarities.Order do
+	assert(DropTables.Mythic[rank] ~= nil, `[DropTables] Mythic is missing row {rank}`)
+	validate(`Mythic[{rank}]`, DropTables.Mythic[rank])
+end
+table.freeze(DropTables.Mythic)
+
+-- The Mythic row for an average input rank (1..6), blending the two nearest rows.
+function DropTables.MythicFor(averageRank: number): Table
+	local clamped = math.clamp(averageRank, 1, #Rarities.Order)
+	local low = math.floor(clamped)
+	local high = math.min(low + 1, #Rarities.Order)
+	local blend = clamped - low
+	local result: Table = {}
+	for _, rarity in Rarities.Order do
+		result[rarity] = (DropTables.Mythic[low][rarity] or 0) * (1 - blend) + (DropTables.Mythic[high][rarity] or 0) * blend
+	end
+	return result
+end
+
+return table.freeze(DropTables)

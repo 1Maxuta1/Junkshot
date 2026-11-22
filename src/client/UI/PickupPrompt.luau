@@ -54,6 +54,17 @@ local function isJunk(prompt: ProximityPrompt): boolean
 	return prompt:GetAttribute("PromptKind") == nil
 end
 
+-- Items reserved for another player (their machine tray) and other players' machines.
+local function isForSomeoneElse(prompt: ProximityPrompt): boolean
+	local me = Players.LocalPlayer.UserId
+	local reserved = prompt:GetAttribute("ReservedFor")
+	if type(reserved) == "number" and reserved ~= me then
+		return true
+	end
+	local owner = prompt:GetAttribute("OwnerUserId")
+	return prompt:GetAttribute("PromptKind") == "Machine" and type(owner) == "number" and owner ~= me
+end
+
 function PickupPrompt.Mount(onTriggeredLocally: (prompt: ProximityPrompt) -> ()): PickupPrompt
 	local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
 	local cards: { [ProximityPrompt]: Card } = {}
@@ -179,6 +190,15 @@ function PickupPrompt.Mount(onTriggeredLocally: (prompt: ProximityPrompt) -> ())
 
 	ProximityPromptService.PromptShown:Connect(function(prompt: ProximityPrompt, inputType: Enum.ProximityPromptInputType)
 		if prompt.Style ~= Enum.ProximityPromptStyle.Custom then
+			return
+		end
+		if isForSomeoneElse(prompt) then
+			-- Someone else's reward or machine: hide it locally (the server refuses it anyway).
+			-- When a pooled object is reused without a reservation, show it again.
+			prompt.Enabled = false
+			prompt:GetAttributeChangedSignal("ReservedFor"):Once(function()
+				prompt.Enabled = true
+			end)
 			return
 		end
 		removeCard(prompt)

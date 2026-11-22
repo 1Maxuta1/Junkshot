@@ -1,9 +1,8 @@
 --!strict
 --[[
-	JunkFactory: builds a Model from a parts definition: junk (JunkConfig, Build) and reward
-	items (ItemConfig, BuildItem) share one builder. Shared, because the server builds the real
-	junk objects and clients build cosmetic copies (carried on the back, hotbar and reward
-	previews).
+	JunkFactory: builds the Model of any catalog item (Config/ItemConfig) from its Parts.
+	Shared, because the server builds the real world objects and clients build cosmetic copies
+	(carried on the back, hotbar and reward previews).
 
 	Modes
 	  "World"    anchored, non-colliding, non-queryable. Costs no physics (good for mobile).
@@ -17,7 +16,7 @@
 ]]
 
 local ItemConfig = require(script.Parent.Parent.Config.ItemConfig)
-local JunkConfig = require(script.Parent.Parent.Config.JunkConfig)
+
 local Types = require(script.Parent.Parent.Types)
 
 export type Mode = "World" | "Cosmetic"
@@ -64,49 +63,27 @@ local function partsBounds(cacheKey: string, parts: { Types.JunkPartSpec }): Bou
 	return bounds
 end
 
--- Extents relative to the junk's origin (unscaled). nil for an unknown junk id.
-function JunkFactory.GetBounds(junkId: string): Bounds?
-	local definition = JunkConfig.Get(junkId)
-	if definition == nil then
-		return nil
-	end
-	return partsBounds(junkId, definition.Parts)
-end
-
--- Same for a reward item (ItemConfig). nil for unknown or part-less (debug) items.
-function JunkFactory.GetItemBounds(itemId: string): Bounds?
+-- Extents relative to the item's origin (unscaled). nil for unknown or part-less (debug) items.
+function JunkFactory.GetBounds(itemId: string): Bounds?
 	local definition = ItemConfig.Get(itemId)
 	if definition == nil or definition.Parts == nil then
 		return nil
 	end
-	return partsBounds(`item:{itemId}`, definition.Parts)
+	return partsBounds(itemId, definition.Parts)
 end
 
 local buildParts -- forward declaration (defined below)
 
-function JunkFactory.Build(junkId: string, mode: Mode, targetSize: number?): Model?
-	local definition = JunkConfig.Get(junkId)
-	local bounds = JunkFactory.GetBounds(junkId)
-	if definition == nil or bounds == nil then
-		return nil
-	end
-	local model = buildParts(junkId, definition.Parts, bounds, mode, targetSize)
-	if model ~= nil then
-		model:SetAttribute("JunkId", junkId)
-	end
-	return model
-end
-
--- Builds a reward item's look (ItemConfig.Parts). Same modes as Build.
-function JunkFactory.BuildItem(itemId: string, mode: Mode, targetSize: number?): Model?
+-- Builds any catalog item (junk, material, collectible, crafted). nil for unknown ids.
+function JunkFactory.Build(itemId: string, mode: Mode, targetSize: number?): Model?
 	local definition = ItemConfig.Get(itemId)
-	local bounds = JunkFactory.GetItemBounds(itemId)
+	local bounds = JunkFactory.GetBounds(itemId)
 	if definition == nil or definition.Parts == nil or bounds == nil then
 		return nil
 	end
 	local model = buildParts(itemId, definition.Parts, bounds, mode, targetSize)
 	if model ~= nil then
-		model:SetAttribute("ItemId", itemId)
+		model:SetAttribute("JunkId", itemId)
 	end
 	return model
 end

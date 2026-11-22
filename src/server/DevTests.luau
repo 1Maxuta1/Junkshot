@@ -26,7 +26,8 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local DataService = require(script.Parent.Services.DataService)
 local CurrencyService = require(script.Parent.Services.CurrencyService)
 local InventoryService = require(script.Parent.Services.InventoryService)
-local JunkConfig = require(ReplicatedStorage.Shared.Config.JunkConfig)
+local DropTables = require(ReplicatedStorage.Shared.Config.DropTables)
+local Recipes = require(ReplicatedStorage.Shared.Config.Recipes)
 local JunkFactory = require(ReplicatedStorage.Shared.Util.JunkFactory)
 local JunkService = require(script.Parent.Services.JunkService)
 local CarryService = require(script.Parent.Services.CarryService)
@@ -38,6 +39,9 @@ local MachineConfig = require(ReplicatedStorage.Shared.Config.MachineConfig)
 local Rarities = require(ReplicatedStorage.Shared.Config.Rarities)
 local MachineService = require(script.Parent.Services.MachineService)
 local RewardService = require(script.Parent.Services.RewardService)
+local CraftingService = require(script.Parent.Services.CraftingService)
+local PlotService = require(script.Parent.Services.PlotService)
+local MonetizationService = require(script.Parent.Services.MonetizationService)
 
 local DevTests = {}
 
@@ -208,29 +212,39 @@ local function waitForCooldown()
 	task.wait(GameConfig.Carry.PickupCooldown + 0.05)
 end
 
-local function runJunkConfigTests()
+local function runCatalogTests()
 	local count = 0
 	local failures: { string } = {}
-	for id in JunkConfig.Items do
-		count += 1
-		local world = JunkFactory.Build(id, "World")
-		local cosmetic = JunkFactory.Build(id, "Cosmetic", 1)
-		local good = world ~= nil
-			and cosmetic ~= nil
-			and JunkFactory.GetRoot(world) ~= nil
-			and JunkFactory.GetRoot(cosmetic) ~= nil
-		if not good then
-			table.insert(failures, id)
-		end
-		if world ~= nil then
-			world:Destroy()
-		end
-		if cosmetic ~= nil then
-			cosmetic:Destroy()
+	for id, definition in ItemConfig.Items do
+		if definition.IsDebug ~= true then
+			count += 1
+			local world = JunkFactory.Build(id, "World")
+			local cosmetic = JunkFactory.Build(id, "Cosmetic", 1)
+			local good = world ~= nil
+				and cosmetic ~= nil
+				and JunkFactory.GetRoot(world) ~= nil
+				and JunkFactory.GetRoot(cosmetic) ~= nil
+			if not good then
+				table.insert(failures, id)
+			end
+			if world ~= nil then
+				world:Destroy()
+			end
+			if cosmetic ~= nil then
+				cosmetic:Destroy()
+			end
 		end
 	end
-	check("JunkConfig defines exactly 20 junk types", count == 20, tostring(count))
-	check("every junk type builds in World and Cosmetic mode", #failures == 0, table.concat(failures, ", "))
+	check("the item catalog has 66 buildable items", count == 66, tostring(count))
+	check("every catalog item builds in World and Cosmetic mode", #failures == 0, table.concat(failures, ", "))
+	check("there are 15-25 recipes", #Recipes.List >= 15 and #Recipes.List <= 25, tostring(#Recipes.List))
+	local badRecipes: { string } = {}
+	for _, recipe in Recipes.List do
+		if not ItemConfig.Exists(recipe.OutputItemId) or Recipes.TotalIngredients(recipe) > GameConfig.Carry.MaxJunk then
+			table.insert(badRecipes, recipe.RecipeId)
+		end
+	end
+	check("every recipe has a real output and fits in the hands", #badRecipes == 0, table.concat(badRecipes, ", "))
 end
 
 local function runJunkServiceTests()
@@ -247,7 +261,7 @@ local function runJunkServiceTests()
 		return
 	end
 	local junkId = JunkService.GetJunkId(junk)
-	check("active junk has a valid junk id", junkId ~= nil and JunkConfig.Exists(junkId))
+	check("active junk has a valid junk id", junkId ~= nil and ItemConfig.Exists(junkId))
 	check("active junk has a pickup prompt", junk:FindFirstChildWhichIsA("ProximityPrompt", true) ~= nil)
 	check(
 		"active junk lives in the junk container",
@@ -535,132 +549,323 @@ local function runThrowTests(player: Player)
 end
 
 ---------------------------------------------------------------------------------------------
--- Stage 2: rarity rolls and the Recycling Machine
+-- Stage 2A: drop tables, crafting rules, personal machines, persistence, receipts
 ---------------------------------------------------------------------------------------------
 
-local function runRewardTests()
+local function checkDistribution(name: string, chances: { [string]: number })
 	local samples = 200_000
 	local counts: { [string]: number } = {}
 	for _ = 1, samples do
-		local rarity = RewardService.RollRarity()
+		local rarity = RewardService.RollRarity(chances)
 		counts[rarity] = (counts[rarity] or 0) + 1
 	end
 	for _, rarityId in Rarities.Order do
-		local expected = Rarities.Info[rarityId].Chance
+		local expected = chances[rarityId] or 0
 		local actual = (counts[rarityId] or 0) / samples * 100
 		-- About 5 standard deviations, so the test is practically never flaky.
 		local tolerance = 5 * math.sqrt(expected * (100 - expected) / samples) + 0.01
 		check(
-			`{rarityId} rolls about {expected}%`,
+			`{name}: {rarityId} rolls about {expected}%`,
 			math.abs(actual - expected) <= tolerance,
 			string.format("%.3f%% (allowed %.3f)", actual, tolerance)
 		)
 	end
+end
+
+local function runRewardTests()
+	checkDistribution("Recycle", DropTables.Recycle)
+	checkDistribution("WorldSpawn", DropTables.WorldSpawn)
 	for _, rarityId in Rarities.Order do
 		local itemId = RewardService.RollItem(rarityId)
 		local definition = ItemConfig.Get(itemId)
 		check(
-			`a {rarityId} roll gives a non-debug {rarityId} item`,
-			definition ~= nil and definition.Rarity == rarityId and definition.IsDebug ~= true,
+			`a {rarityId} reward is a non-debug {rarityId} reward-pool item`,
+			definition ~= nil and definition.Rarity == rarityId and definition.RecyclePool == true and definition.IsDebug ~= true,
 			itemId
 		)
 	end
-end
 
-local function findMachineModel(): Model?
-	for _, instance in game:GetService("CollectionService"):GetTagged(MachineConfig.Tag) do
-		if instance:IsA("Model") and instance:GetAttribute("MachineId") == "Main" then
-			return instance
+	-- Mythic crafting odds depend on the inputs.
+	local commons = CraftingService.MythicChances({ "rusty_can", "soda_bottle", "old_boot" })
+	local legends = CraftingService.MythicChances({ "golden_wrench", "aurora_orb", "frozen_crown" })
+	local mixed = CraftingService.MythicChances({ "rusty_can", "circuit_board", "crystal_shard" })
+	check("three Commons can never give Legendary or Mythic", commons.Legendary == 0 and commons.Mythic == 0)
+	check("three Legendaries never give Common and often give Mythic", legends.Common == 0 and legends.Mythic >= 10)
+	check("mixed inputs sit in between", mixed.Mythic > commons.Mythic and mixed.Mythic < legends.Mythic, string.format("%.2f", mixed.Mythic))
+	local bad = 0
+	for _ = 1, 20_000 do
+		local _, rarity = CraftingService.RollMythic({ "rusty_can", "soda_bottle", "old_boot" })
+		if rarity == "Legendary" or rarity == "Mythic" then
+			bad += 1
 		end
 	end
-	return nil
+	check("20,000 Common mythic rolls never give Legendary/Mythic", bad == 0, tostring(bad))
+	check("a special combo gives its fixed result", CraftingService.RollMythic({ "crystal_shard", "crystal_shard", "crystal_shard" }) == "comet_shard")
+
+	-- Recipe planning.
+	local carried = {
+		{ Uid = JunkService.NewUid(), Id = "bike_wheel" },
+		{ Uid = JunkService.NewUid(), Id = "pipe_segment" },
+		{ Uid = JunkService.NewUid(), Id = "bike_wheel" },
+		{ Uid = JunkService.NewUid(), Id = "rusty_can" },
+	}
+	local bicycle = Recipes.Get("bicycle") :: any
+	local plan = CraftingService.PlanRecipe(bicycle, carried)
+	check("a complete recipe plans exactly its ingredients", plan ~= nil and #plan == 3)
+	local short, missing = CraftingService.PlanRecipe(bicycle, { carried[1], carried[2] })
+	check("a missing ingredient is reported", short == nil and missing.bike_wheel == 1)
+end
+
+local function teleportNear(player: Player, cframe: CFrame)
+	local character = player.Character
+	if character ~= nil then
+		character:PivotTo(cframe)
+	end
+end
+
+local function finishJob(player: Player)
+	MachineService.InstantFinish(player)
+end
+
+local function trayModelOf(uid: string): Model?
+	return JunkService.GetByUid(uid)
 end
 
 local function runMachineTests(player: Player)
 	local errors = MachineService.Errors
-	local model = findMachineModel()
-	check("the Recycling Machine exists in the world", model ~= nil)
-	if model == nil then
-		return
-	end
-	check("the machine starts Idle", MachineService.GetState("Main") == "Idle" and model:GetAttribute("State") == "Idle")
-	local anchor = model:FindFirstChild("PromptAnchor", true) :: BasePart?
-	local character = player.Character
 	local root = waitForLiveRoot(player, 15)
-	if anchor == nil or character == nil or root == nil then
-		warn("[DevTests] no machine anchor or live character: machine tests skipped")
+	local deadline = os.clock() + 10
+	while os.clock() < deadline and MachineService.GetModel(player) == nil do
+		task.wait(0.2)
+	end
+	local model = MachineService.GetModel(player)
+	local plot = PlotService.GetPlot(player)
+	check("the player got a base plot", plot ~= nil)
+	check("the player's personal machine stands on their plot", model ~= nil and plot ~= nil and model:IsDescendantOf(plot))
+	if model == nil or root == nil then
+		warn("[DevTests] no machine or no character: machine tests skipped")
 		return
 	end
+	check("the machine belongs to the player", model:GetAttribute("OwnerUserId") == player.UserId)
+	check("the machine starts Idle", model:GetAttribute("State") == "Idle", tostring(model:GetAttribute("State")))
+	local anchor = model:FindFirstChild("PromptAnchor", true) :: BasePart
+	local front = anchor.CFrame * CFrame.new(0, 0, -12)
+	local character = player.Character :: Model
 	local home = character:GetPivot()
 	CarryService.Clear(player)
 
-	local badOk, badErr = MachineService.TryInsert(player, "Main", "not-a-uid")
-	check("insert with a malformed uid is rejected", not badOk and badErr == errors.InvalidArguments, tostring(badErr))
-	local unknownOk, unknownErr = MachineService.TryInsert(player, "NoSuchMachine", JunkService.NewUid())
-	check("insert into an unknown machine is rejected", not unknownOk and unknownErr == errors.UnknownMachine, tostring(unknownErr))
-
-	character:PivotTo(anchor.CFrame * CFrame.new(0, 0, -10))
-	local strangerOk, strangerErr = MachineService.TryInsert(player, "Main", JunkService.NewUid())
-	check("inserting junk the player does not carry is rejected", not strangerOk and strangerErr == errors.NotCarried, tostring(strangerErr))
-
+	-- Rejections
+	local badOk, badErr = MachineService.Recycle(player, "nope")
+	check("recycle with a malformed uid is rejected", not badOk and badErr == errors.InvalidArguments, tostring(badErr))
+	teleportNear(player, front)
+	local strangerOk, strangerErr = MachineService.Recycle(player, JunkService.NewUid())
+	check("recycling an item the player does not carry is rejected", not strangerOk and strangerErr == errors.NotCarried, tostring(strangerErr))
 	local uid = JunkService.NewUid()
 	CarryService.AddJunk(player, "rusty_can", uid)
-	character:PivotTo(anchor.CFrame * CFrame.new(0, 0, -120))
-	local farOk, farErr = MachineService.TryInsert(player, "Main", uid)
-	check("inserting from far away is rejected", not farOk and farErr == errors.TooFar, tostring(farErr))
-	check("a rejected insert keeps the junk carried", CarryService.HasUid(player, uid))
+	teleportNear(player, anchor.CFrame * CFrame.new(0, 0, -120))
+	local farOk, farErr = MachineService.Recycle(player, uid)
+	check("recycling from far away is rejected", not farOk and farErr == errors.TooFar, tostring(farErr))
+	check("a rejected request keeps the item carried", CarryService.HasUid(player, uid))
 
-	character:PivotTo(anchor.CFrame * CFrame.new(0, 0, -10))
-	local itemsBefore = InventoryService.GetAllItems(player) or {}
-	local ok, err = MachineService.TryInsert(player, "Main", uid)
-	check("a valid insert is accepted", ok, tostring(err))
-	check("the inserted junk is consumed", not CarryService.HasUid(player, uid))
-	check("the machine is AcceptingItem with the player as owner",
-		model:GetAttribute("State") == "AcceptingItem" and model:GetAttribute("OwnerUserId") == player.UserId)
-	check("the reward is not revealed while processing", model:GetAttribute("RewardItemId") == "")
+	-- Recycling + acceleration
+	teleportNear(player, front)
+	local ok, err = MachineService.Recycle(player, uid)
+	check("a valid recycle is accepted", ok, tostring(err))
+	check("the recycled item is consumed exactly once", not CarryService.HasUid(player, uid) and not JunkService.IsUidActive(uid))
+	check("the machine is Processing a Recycle job", model:GetAttribute("State") == "Processing" and model:GetAttribute("JobKind") == "Recycle")
+	check("recycling takes the configured 30 s", model:GetAttribute("JobDuration") == MachineConfig.RecycleDuration, tostring(model:GetAttribute("JobDuration")))
+	local againUid = JunkService.NewUid()
+	CarryService.AddJunk(player, "old_boot", againUid)
+	local busyOk, busyErr = MachineService.Recycle(player, againUid)
+	check("a second job while busy is rejected", not busyOk and busyErr == errors.Busy, tostring(busyErr))
+	check("the rejected item stays carried", CarryService.HasUid(player, againUid))
 
-	local againOk, againErr = MachineService.TryInsert(player, "Main", uid)
-	check("inserting the same junk again is rejected", not againOk and againErr == errors.Busy, tostring(againErr))
-	local otherUid = JunkService.NewUid()
-	CarryService.AddJunk(player, "old_boot", otherUid)
-	local busyOk, busyErr = MachineService.TryInsert(player, "Main", otherUid)
-	check("a second insert while busy is rejected", not busyOk and busyErr == errors.Busy, tostring(busyErr))
-	check("junk rejected as busy stays carried", CarryService.HasUid(player, otherUid))
-	local claimOk, claimErr = MachineService.TryClaim(player, "Main")
-	check("claiming while processing is rejected", not claimOk and claimErr == errors.NothingToClaim, tostring(claimErr))
+	local before = MachineService.GetRemaining(player) :: number
+	MachineService.Accelerate(player)
+	local after = MachineService.GetRemaining(player) :: number
+	check("one click removes exactly one second", math.abs((before - after) - 1) < 0.15, string.format("%.3f", before - after))
+	for _ = 1, 5 do
+		MachineService.Accelerate(player)
+	end
+	local afterFive = MachineService.GetRemaining(player) :: number
+	check("five more clicks remove five more seconds", math.abs((after - afterFive) - 5) < 0.2, string.format("%.3f", after - afterFive))
+	local clicks = 0
+	while MachineService.GetRemaining(player) ~= nil and clicks < 60 do
+		MachineService.Accelerate(player)
+		clicks += 1
+	end
+	check("clicking to zero finishes the job", MachineService.GetRemaining(player) == nil and model:GetAttribute("State") == "RewardReady")
+	local extraOk, extraErr = MachineService.Accelerate(player)
+	check("clicking a finished machine is rejected", not extraOk and extraErr == errors.NoJob, tostring(extraErr))
 
-	task.wait(MachineConfig.InsertDuration + 0.2)
-	check("the machine moves on to Processing", model:GetAttribute("State") == "Processing")
-	task.wait(MachineConfig.ProcessDuration)
-	check("the machine reaches RewardReady", model:GetAttribute("State") == "RewardReady")
+	-- The reward is a real, reserved world item on the tray
+	local data = MachineService.GetData(player) :: any
+	check("the result waits in the output", #data.Output == 1)
+	local reward = data.Output[1]
+	local trayModel = if reward ~= nil then trayModelOf(reward.Uid) else nil
+	check("the result lies on the tray as a world item", trayModel ~= nil)
+	if reward == nil or trayModel == nil then
+		return
+	end
+	local prompt = trayModel:FindFirstChildWhichIsA("ProximityPrompt", true)
+	check("the tray item is reserved for its owner", prompt ~= nil and prompt:GetAttribute("ReservedFor") == player.UserId)
+	check("nobody else can claim the reserved tray item", JunkService.Claim(trayModel, nil) == nil and JunkService.IsUidActive(reward.Uid))
+	check("the output is full, so a new job cannot start", (select(2, MachineService.Recycle(player, againUid))) == errors.OutputFull)
 
-	local rewardId = model:GetAttribute("RewardItemId")
-	local rewardRarity = model:GetAttribute("RewardRarity")
-	local definition = if type(rewardId) == "string" then ItemConfig.Get(rewardId) else nil
-	check("the revealed reward is a real item of the revealed rarity",
-		definition ~= nil and definition.Rarity == rewardRarity, `{tostring(rewardId)} / {tostring(rewardRarity)}`)
-	check("the reward is marked delivered", model:GetAttribute("RewardDelivered") == true)
+	-- Full hands keep the reward on the tray
+	CarryService.Clear(player)
+	for _ = 1, GameConfig.Carry.MaxJunk do
+		CarryService.AddJunk(player, "rusty_can")
+	end
+	local fullOk, fullErr = MachineService.Take(player, reward.Uid)
+	check("taking with full hands is rejected", not fullOk and fullErr == errors.CarryFull, tostring(fullErr))
+	check("the reward stays on the tray when hands are full", JunkService.IsUidActive(reward.Uid) and #(MachineService.GetData(player) :: any).Output == 1)
+	CarryService.Clear(player)
 
-	local itemsAfter = InventoryService.GetAllItems(player) or {}
-	local newUids: { string } = {}
-	for itemUid, record in itemsAfter do
-		if itemsBefore[itemUid] == nil then
-			table.insert(newUids, itemUid)
-			check("the new inventory item is the revealed reward", record.id == rewardId, record.id)
+	-- Picking it up like any item (E on the tray)
+	local trayPosition = JunkService.GetPosition(trayModel) :: Vector3
+	teleportNear(player, CFrame.new(trayPosition + Vector3.new(0, 3, -3)))
+	waitForCooldown()
+	local pickOk, pickErr = CarryService.TryPickup(player, trayModel)
+	check("the owner picks the reward up from the tray", pickOk, tostring(pickErr))
+	check("picking it up empties the output in the same step", CarryService.HasUid(player, reward.Uid) and #(MachineService.GetData(player) :: any).Output == 0)
+	check("the machine is Idle again", model:GetAttribute("State") == "Idle")
+
+	-- It is an ordinary item now: throw it, pick it up, recycle it again
+	waitForCooldown()
+	local throwOk = ThrowService.TryThrow(player, reward.Uid, front.Position + Vector3.new(0, 0, -15))
+	check("the reward can be thrown", throwOk)
+	task.wait(GameConfig.Throw.MaxFlightTime + 0.3)
+	local landed = JunkService.GetByUid(reward.Uid)
+	check("the thrown reward is a normal, unreserved world item", landed ~= nil and JunkService.CanClaim(landed, player))
+	if landed ~= nil then
+		teleportNear(player, CFrame.new((JunkService.GetPosition(landed) :: Vector3) + Vector3.new(2, 3, 0)))
+		waitForCooldown()
+		check("the thrown reward can be picked up again", (CarryService.TryPickup(player, landed)))
+		teleportNear(player, front)
+		local againOk = MachineService.Recycle(player, reward.Uid)
+		check("the reward can be recycled again", againOk)
+		finishJob(player)
+		local out = (MachineService.GetData(player) :: any).Output[1]
+		if out ~= nil then
+			MachineService.Take(player, out.Uid)
 		end
 	end
-	check("exactly one reward item was added to the inventory", #newUids == 1, tostring(#newUids))
-	local lateClaim = MachineService.TryClaim(player, "Main")
-	check("a delivered reward cannot be claimed again", not lateClaim)
+	CarryService.Clear(player)
 
-	task.wait(MachineConfig.RevealDuration + 0.3)
-	check("the machine returns to Idle", model:GetAttribute("State") == "Idle")
-	check("still exactly one reward item after the cycle", #newUids == 1 and InventoryService.HasItem(player, newUids[1]))
-
-	-- Clean up: tests must not leave items behind.
-	for _, itemUid in newUids do
-		InventoryService.RemoveItem(player, itemUid)
+	-- Crafting
+	teleportNear(player, front)
+	local unknownOk, unknownErr = MachineService.Craft(player, "flying_castle")
+	check("an unknown recipe is rejected", not unknownOk and unknownErr == errors.UnknownRecipe, tostring(unknownErr))
+	CarryService.AddJunk(player, "bike_wheel")
+	CarryService.AddJunk(player, "pipe_segment")
+	local missingOk, missingErr = MachineService.Craft(player, "bicycle")
+	check("crafting with a missing ingredient is rejected", not missingOk and missingErr == errors.MissingIngredients, tostring(missingErr))
+	check("nothing is consumed by a rejected craft", CarryService.GetCount(player) == 2)
+	CarryService.AddJunk(player, "bike_wheel")
+	CarryService.AddJunk(player, "rusty_can")
+	local craftOk, craftErr = MachineService.Craft(player, "bicycle")
+	check("a complete recipe starts crafting", craftOk, tostring(craftErr))
+	local remainingIds = CarryService.GetCarried(player)
+	check("exactly the ingredients were consumed", #remainingIds == 1 and remainingIds[1].Id == "rusty_can")
+	check("an Uncommon craft takes 5 minutes", model:GetAttribute("JobDuration") == MachineConfig.CraftDurations.Uncommon)
+	finishJob(player)
+	local crafted = (MachineService.GetData(player) :: any).Output[1]
+	check("crafting produced a Bicycle", crafted ~= nil and crafted.Id == "bicycle")
+	if crafted ~= nil then
+		check("the crafted item can be taken", (MachineService.Take(player, crafted.Uid)))
 	end
+	CarryService.Clear(player)
+	for _ = 1, 4 do
+		CarryService.AddJunk(player, "old_tire")
+	end
+	CarryService.AddJunk(player, "metal_frame")
+	CarryService.AddJunk(player, "small_engine")
+	local lockedOk, lockedErr = MachineService.Craft(player, "homemade_car")
+	check("a recipe above the machine level is rejected", not lockedOk and lockedErr == errors.Locked, tostring(lockedErr))
+	CarryService.Clear(player)
+
+	-- Mythic crafting
+	local a, b, c = JunkService.NewUid(), JunkService.NewUid(), JunkService.NewUid()
+	CarryService.AddJunk(player, "rusty_can", a)
+	CarryService.AddJunk(player, "circuit_board", b)
+	CarryService.AddJunk(player, "crystal_shard", c)
+	local dupOk, dupErr = MachineService.Mythic(player, a, a, b)
+	check("mythic crafting rejects the same item in two slots", not dupOk and dupErr == errors.InvalidArguments, tostring(dupErr))
+	local mythicOk, mythicErr = MachineService.Mythic(player, a, b, c)
+	check("mythic crafting with three items starts", mythicOk, tostring(mythicErr))
+	check("all three inputs are consumed", CarryService.GetCount(player) == 0)
+	check("mythic crafting takes exactly six hours", model:GetAttribute("JobDuration") == 6 * 60 * 60, tostring(model:GetAttribute("JobDuration")))
+
+	-- Persistence: leave and rejoin while it runs, then come back after it finished offline
+	local completesBefore = model:GetAttribute("JobCompletesAt") :: number
+	MachineService.Unload(player)
+	check("unloading removes the machine from the world", MachineService.GetModel(player) == nil)
+	MachineService.Load(player)
+	local reloaded = MachineService.GetModel(player)
+	check("after a rejoin the job is still running with the same end time",
+		reloaded ~= nil and reloaded:GetAttribute("State") == "Processing"
+			and math.abs((reloaded:GetAttribute("JobCompletesAt") :: number) - completesBefore) < 0.01)
+	MachineService.Unload(player)
+	MachineService.DebugShiftJob(player, 6 * 60 * 60) -- six hours pass while offline
+	MachineService.Load(player)
+	model = MachineService.GetModel(player) :: Model
+	local offlineOut = (MachineService.GetData(player) :: any).Output[1]
+	check("a job that finished offline is ready on rejoin", model:GetAttribute("State") == "RewardReady" and offlineOut ~= nil)
+	check("the offline result is on the tray", offlineOut ~= nil and JunkService.IsUidActive(offlineOut.Uid))
+	anchor = model:FindFirstChild("PromptAnchor", true) :: BasePart
+	front = anchor.CFrame * CFrame.new(0, 0, -12)
+	teleportNear(player, front)
+	if offlineOut ~= nil then
+		MachineService.Take(player, offlineOut.Uid)
+	end
+
+	-- Carried items survive a rejoin
+	CarryService.Clear(player)
+	local keepA, keepB = JunkService.NewUid(), JunkService.NewUid()
+	CarryService.AddJunk(player, "gear_wheel", keepA)
+	CarryService.AddJunk(player, "bicycle", keepB)
+	CarryService.ReloadFromSave(player)
+	check("carried items are restored after a rejoin", CarryService.HasUid(player, keepA) and CarryService.HasUid(player, keepB) and CarryService.GetCount(player) == 2)
+	CarryService.Clear(player)
+
+	-- Upgrades
+	local startKlunks = CurrencyService.GetKlunks(player) :: number
+	local noMoney = MachineService.BuyUpgrade(player, "Level")
+	check("an unaffordable upgrade is rejected", not noMoney or startKlunks >= 3000)
+	check("an unknown upgrade is rejected", (select(2, MachineService.BuyUpgrade(player, "Turbo"))) == errors.UnknownUpgrade)
+	CurrencyService.AddKlunks(player, 500)
+	local buyOk, buyErr = MachineService.BuyUpgrade(player, "Speed")
+	check("buying the Speed upgrade works", buyOk, tostring(buyErr))
+	check("the upgrade costs its price", CurrencyService.GetKlunks(player) == startKlunks)
+	check("the machine shows the new level", model:GetAttribute("UpgradeSpeed") == 2)
+	local speedUid = JunkService.NewUid()
+	CarryService.AddJunk(player, "rusty_can", speedUid)
+	MachineService.Recycle(player, speedUid)
+	check("a faster machine takes 10% less time", model:GetAttribute("JobDuration") == 27, tostring(model:GetAttribute("JobDuration")))
+	finishJob(player)
+	local speedOut = (MachineService.GetData(player) :: any).Output[1]
+	if speedOut ~= nil then
+		MachineService.Take(player, speedOut.Uid)
+	end
+	-- Test cleanup: back to the default machine.
+	local profile = DataService.GetData(player) :: any
+	profile.Machine.Upgrades.Speed = 1
+	MachineService.Unload(player)
+	MachineService.Load(player)
+
+	-- Robux receipts are idempotent
+	local grants = 0
+	MonetizationService.RegisterHandlerForTest(424242, function(): boolean
+		grants += 1
+		return true
+	end)
+	local receipt = { PlayerId = player.UserId, ProductId = 424242, PurchaseId = "devtest-" .. JunkService.NewUid() }
+	local first = MonetizationService.ProcessReceiptForTest(receipt)
+	local second = MonetizationService.ProcessReceiptForTest(receipt)
+	check("a receipt is granted once", first == Enum.ProductPurchaseDecision.PurchaseGranted and grants == 1)
+	check("a repeated receipt is acknowledged without granting again", second == Enum.ProductPurchaseDecision.PurchaseGranted and grants == 1)
+
 	CarryService.Clear(player)
 	character:PivotTo(home)
 end
@@ -682,7 +887,7 @@ function DevTests.Run()
 
 	runCurrencyTests(player)
 	runInventoryTests(player)
-	runJunkConfigTests()
+	runCatalogTests()
 	runJunkServiceTests()
 	runCarryTests(player)
 	runPickupTests(player)

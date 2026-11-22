@@ -147,11 +147,9 @@ local site = Part(plaza, {
 	CastShadow = false,
 })
 site:AddTag("RecyclerSite")
-site:SetAttribute("Reserved", "RecyclingMachine")
-
--- The Recycling Machine itself, centered on the site, its front (input/output) facing the
--- south spoke (-Z). The ground under it is the plaza floor (top at y = 0.4).
-Prefabs.RecyclingMachine(plaza, CFrame.new(0, 0.4, 0), "Main")
+-- Machines are personal now (one per player, on their base plot); the plaza site stays
+-- reserved for a future shared attraction.
+site:SetAttribute("Reserved", "SharedAttraction")
 
 local half = RECYCLER_SITE_SIZE / 2
 for index, edge in {
@@ -428,4 +426,14 @@ end
 
 fs.writeDir("src/map")
 fs.writeFile(OUTPUT, roblox.serializeModel({ map }))
+
+-- The personal machine template (ServerStorage.Assets.RecyclingMachine). MachineService clones
+-- it onto each player's plot; its pivot is the center of its base on the ground.
+local MACHINE_OUTPUT = "src/assets/RecyclingMachine.rbxm"
+local templateHolder = Instance.new("Folder")
+local template = Prefabs.RecyclingMachine(templateHolder, CFrame.new(), nil)
+template.Parent = nil
+fs.writeDir("src/assets")
+fs.writeFile(MACHINE_OUTPUT, roblox.serializeModel({ template }))
+print(`[map] wrote {MACHINE_OUTPUT}`)
 print(`[map] wrote {OUTPUT}: {Prefabs.GetPartCount()} parts`)

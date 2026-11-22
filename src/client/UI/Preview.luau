@@ -38,7 +38,7 @@ function Preview.Junk(viewport: ViewportFrame, junkId: string)
 end
 
 function Preview.Item(viewport: ViewportFrame, itemId: string)
-	show(viewport, JunkFactory.BuildItem(itemId, "Cosmetic", PREVIEW_SIZE))
+	show(viewport, JunkFactory.Build(itemId, "Cosmetic", PREVIEW_SIZE))
 end
 
 -- Default lighting for preview frames, so every preview looks the same.

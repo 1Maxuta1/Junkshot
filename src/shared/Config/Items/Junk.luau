@@ -1,64 +1,56 @@
 --!strict
 --[[
-	JunkConfig: the 20 types of junk that lie around the junkyard.
+	Junk: the everyday scrap lying around the yard (Category "Junk"). Mostly Common/Uncommon,
+	a few Rare. Junk is the main crafting material and can be recycled, but it is never a
+	recycling reward itself (RecyclePool = false).
 
-	Junk is built from simple Parts (see JunkFactory), so no models or assets are needed yet.
-	Later you can swap any entry for a real model without touching the spawn/carry logic.
-
-	Conventions
-	  - Parts[1] is the Root part; keep it near the middle of the object because the pickup
-	    prompt is attached to it.
-	  - Cylinders are built along their X axis. Rotation (0, 0, 90) (UPRIGHT) stands them up,
-	    so Size.X becomes the height.
-	  - Rotation is in degrees. -Z is the "front" of an object.
-	  - SpawnWeight is a relative chance, not a percentage. Rarity of junk does not exist yet:
-	    rarity belongs to reward items and arrives with the loot system.
-
-	Junk ids are stored in nothing permanent yet, but keep them stable anyway.
+	SpawnWeight is a relative chance WITHIN the item's rarity when the world spawns that rarity
+	(the rarity itself is rolled from DropTables.WorldSpawn).
 ]]
 
-local Types = require(script.Parent.Parent.Types)
+local Types = require(script.Parent.Parent.Parent.Types)
+local B = require(script.Parent.Builder)
 
-local Block = Enum.PartType.Block
-local Ball = Enum.PartType.Ball
-local Cylinder = Enum.PartType.Cylinder
+local Block, Ball, Cylinder = B.Block, B.Ball, B.Cylinder
+local UPRIGHT, V, rgb, part = B.UPRIGHT, B.V, B.rgb, B.part
 
-local UPRIGHT = Vector3.new(0, 0, 90)
+local RARITY: { [string]: string } = {
+	rusty_can = "Common",
+	soda_bottle = "Common",
+	old_tire = "Common",
+	giant_fork = "Common",
+	tin_bucket = "Common",
+	wooden_crate = "Common",
+	old_boot = "Common",
+	pipe_segment = "Common",
+	bike_wheel = "Common",
+	paint_bucket = "Common",
+	broken_toaster = "Uncommon",
+	cracked_monitor = "Uncommon",
+	rubber_duck = "Uncommon",
+	bouncy_spring = "Uncommon",
+	car_battery = "Uncommon",
+	gear_wheel = "Uncommon",
+	broken_lamp = "Uncommon",
+	old_radio = "Uncommon",
+	dented_trophy = "Rare",
+	toxic_barrel = "Rare",
+}
 
-local function rgb(r: number, g: number, b: number): Color3
-	return Color3.fromRGB(r, g, b)
-end
-
-local function part(
-	shape: Enum.PartType,
-	size: Vector3,
-	color: Color3,
-	material: Enum.Material,
-	offset: Vector3?,
-	rotation: Vector3?
-): Types.JunkPartSpec
+local function def(id: string, displayName: string, spawnWeight: number, parts: { Types.JunkPartSpec }): Types.ItemDefinition
 	return {
-		Shape = shape,
-		Size = size,
-		Color = color,
-		Material = material,
-		Offset = offset or Vector3.zero,
-		Rotation = rotation or Vector3.zero,
+		Id = id,
+		DisplayName = displayName,
+		Rarity = assert(RARITY[id], `[Items/Junk] no rarity for {id}`),
+		Category = "Junk",
+		Parts = parts,
+		NaturalSpawn = true,
+		SpawnWeight = spawnWeight,
+		RecyclePool = false,
 	}
 end
 
-local function def(
-	id: string,
-	displayName: string,
-	spawnWeight: number,
-	parts: { Types.JunkPartSpec }
-): Types.JunkDefinition
-	return { Id = id, DisplayName = displayName, SpawnWeight = spawnWeight, Parts = parts }
-end
-
-local V = Vector3.new
-
-local definitions: { Types.JunkDefinition } = {
+return {
 	def("rusty_can", "Rusty Can", 10, {
 		part(Cylinder, V(1.5, 1.1, 1.1), rgb(163, 95, 52), Enum.Material.CorrodedMetal, nil, UPRIGHT),
 	}),
@@ -180,36 +172,3 @@ local definitions: { Types.JunkDefinition } = {
 		part(Cylinder, V(0.25, 2.0, 2.0), rgb(40, 40, 45), Enum.Material.Metal, V(0, -0.7, 0), UPRIGHT),
 	}),
 }
-
-local items: { [string]: Types.JunkDefinition } = {}
-
--- Fail loudly at startup on a broken config instead of spawning broken junk later.
-for _, definition in definitions do
-	local id = definition.Id
-	assert(string.match(id, "^[%w_]+$") ~= nil, `[JunkConfig] invalid id "{id}"`)
-	assert(items[id] == nil, `[JunkConfig] duplicate id "{id}"`)
-	assert(definition.SpawnWeight >= 0, `[JunkConfig] "{id}" has a negative SpawnWeight`)
-	assert(#definition.Parts > 0, `[JunkConfig] "{id}" has no parts`)
-	for index, spec in definition.Parts do
-		local size = spec.Size
-		assert(size.X > 0 and size.Y > 0 and size.Z > 0, `[JunkConfig] "{id}" part {index} has a non-positive size`)
-		table.freeze(spec)
-	end
-	table.freeze(definition.Parts)
-	table.freeze(definition)
-	items[id] = definition
-end
-
-local JunkConfig = {}
-
-JunkConfig.Items = table.freeze(items)
-
-function JunkConfig.Get(junkId: string): Types.JunkDefinition?
-	return items[junkId]
-end
-
-function JunkConfig.Exists(junkId: any): boolean
-	return type(junkId) == "string" and items[junkId] ~= nil
-end
-
-return table.freeze(JunkConfig)

@@ -10,6 +10,7 @@
 	  4  + suspense beat before the reveal, rotating shine on the glow, bigger pop
 	  5  + rainbow glow and banner
 	All tweens and connections exist only while the card is visible and are cleaned up on Hide.
+	The card only presents a result; `note` tells the player where the item is.
 	Gamepad: the button gets selection focus.
 ]]
 
@@ -23,8 +24,7 @@ local Preview = require(script.Parent.Preview)
 local Theme = require(script.Parent.Theme)
 
 export type RewardReveal = {
-	Show: (itemId: string, rarity: string, delivered: boolean, gamepad: boolean) -> (),
-	SetDelivered: (delivered: boolean) -> (),
+	Show: (itemId: string, rarity: string, note: string, gamepad: boolean) -> (),
 	Hide: () -> (),
 	IsShown: () -> boolean,
 }
@@ -42,7 +42,7 @@ local RAINBOW = ColorSequence.new({
 
 local RewardReveal = {}
 
-function RewardReveal.Mount(screenGui: ScreenGui, onClaim: () -> ()): RewardReveal
+function RewardReveal.Mount(screenGui: ScreenGui): RewardReveal
 	local overlay = Instance.new("Frame")
 	overlay.Name = "RewardReveal"
 	overlay.Size = UDim2.fromScale(1, 1)
@@ -183,7 +183,6 @@ function RewardReveal.Mount(screenGui: ScreenGui, onClaim: () -> ()): RewardReve
 	Theme.TextStroke(buttonLabel, Theme.Colors.AccentDark, 2)
 
 	local shown = false
-	local delivered = true
 	local token = 0
 	local tweens: { Tween } = {}
 	local connections: { RBXScriptConnection } = {}
@@ -203,18 +202,6 @@ function RewardReveal.Mount(screenGui: ScreenGui, onClaim: () -> ()): RewardReve
 		end
 		table.clear(connections)
 		viewport:ClearAllChildren()
-	end
-
-	local function updateButton()
-		if delivered then
-			buttonLabel.Text = "AWESOME!"
-			button.BackgroundColor3 = Theme.Colors.Accent
-			note.Text = "Added to your inventory"
-		else
-			buttonLabel.Text = "CLAIM"
-			button.BackgroundColor3 = Theme.Colors.Success
-			note.Text = "Your inventory is full - claim it when there is room"
-		end
 	end
 
 	local function hide()
@@ -263,22 +250,15 @@ function RewardReveal.Mount(screenGui: ScreenGui, onClaim: () -> ()): RewardReve
 		}))
 	end
 
-	button.Activated:Connect(function()
-		if delivered then
-			hide()
-		else
-			onClaim()
-		end
-	end)
+	button.Activated:Connect(hide)
 
 	return {
-		Show = function(itemId: string, rarity: string, isDelivered: boolean, gamepad: boolean)
+		Show = function(itemId: string, rarity: string, noteText: string, gamepad: boolean)
 			hide()
 			shown = true
 			token += 1
 			local myToken = token
-			delivered = isDelivered
-			updateButton()
+			note.Text = noteText
 
 			local rarityInfo = Rarities.Get(rarity) or Rarities.Info.Common
 			local effect = rarityInfo.Effect
@@ -326,12 +306,6 @@ function RewardReveal.Mount(screenGui: ScreenGui, onClaim: () -> ()): RewardReve
 				end)
 			else
 				reveal(itemId, rarityInfo)
-			end
-		end,
-		SetDelivered = function(isDelivered: boolean)
-			delivered = isDelivered
-			if shown then
-				updateButton()
 			end
 		end,
 		Hide = hide,

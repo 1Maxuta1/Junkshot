@@ -44,9 +44,12 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
-local JunkConfig = require(ReplicatedStorage.Shared.Config.JunkConfig)
+local DropTables = require(ReplicatedStorage.Shared.Config.DropTables)
+local ItemConfig = require(ReplicatedStorage.Shared.Config.ItemConfig)
 local JunkFactory = require(ReplicatedStorage.Shared.Util.JunkFactory)
+local RarityVisuals = require(ReplicatedStorage.Shared.Util.RarityVisuals)
 local Signal = require(ReplicatedStorage.Shared.Util.Signal)
+local WeightedRandom = require(ReplicatedStorage.Shared.Util.WeightedRandom)
 
 type ActiveJunk = {
 	Uid: string,
@@ -54,11 +57,8 @@ type ActiveJunk = {
 	Position: Vector3,
 	ExpiresAt: number?, -- os.clock() deadline; nil = never expires
 	ClaimableAt: number, -- os.clock() from which it may be claimed (thrown junk is locked while it flies)
-}
-
-type PoolEntry = {
-	Id: string,
-	Weight: number,
+	ReservedFor: number?, -- UserId: only this player may claim it (a machine's output)
+	OnClaimed: ((uid: string) -> ())?, -- called synchronously when it is claimed
 }
 
 export type SpawnOptions = {
@@ -71,6 +71,13 @@ export type SpawnOptions = {
 	-- Called with the finished model just before it is parented into the world, so a caller can
 	-- send a remote event that clients receive BEFORE the object itself (see ThrowService).
 	BeforeParent: ((model: Model) -> ())?,
+	-- Only this UserId may claim it (e.g. a reward waiting on its owner's machine tray).
+	ReservedFor: number?,
+	-- Called synchronously (same frame, no yield) when the object is claimed, so the owner of
+	-- the reservation can forget it in the same step the claimer receives it.
+	OnClaimed: ((uid: string) -> ())?,
+	-- Overrides the prompt's object text (e.g. "Alex's reward").
+	ObjectText: string?,
 }
 
 local UID_ATTRIBUTE = "JunkUid"
@@ -92,9 +99,6 @@ local container: Folder? = nil
 local active: { [Model]: ActiveJunk } = {}
 local byUid: { [string]: Model } = {}
 local activeCount = 0
-
-local spawnPool: { PoolEntry } = {}
-local totalWeight = 0
 
 local modelPool: { [string]: { Model } } = {}
 
@@ -119,25 +123,11 @@ local function getContainer(): Folder
 	return existing
 end
 
-local function buildSpawnPool()
-	for id, definition in JunkConfig.Items do
-		if definition.SpawnWeight > 0 then
-			table.insert(spawnPool, { Id = id, Weight = definition.SpawnWeight })
-			totalWeight += definition.SpawnWeight
-		end
-	end
-	assert(#spawnPool > 0, "[JunkService] no junk with SpawnWeight > 0 in JunkConfig")
-end
-
+-- World spawns: roll a rarity (DropTables.WorldSpawn), then an item of that rarity.
 local function pickJunkId(): string
-	local roll = random:NextNumber() * totalWeight
-	for _, entry in spawnPool do
-		roll -= entry.Weight
-		if roll < 0 then
-			return entry.Id
-		end
-	end
-	return spawnPool[#spawnPool].Id -- floating point safety net
+	local rarity = WeightedRandom.PickRarity(DropTables.WorldSpawn, random)
+	local entry = WeightedRandom.PickEntry(ItemConfig.GetSpawnPool(rarity), random)
+	return entry.Id
 end
 
 local function unregister(model: Model)
@@ -254,7 +244,7 @@ local function isFarEnough(position: Vector3): boolean
 end
 
 local function addPrompt(model: Model, root: BasePart, junkId: string)
-	local definition = JunkConfig.Get(junkId)
+	local definition = ItemConfig.Get(junkId)
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.ActionText = PROMPT_ACTION_TEXT
 	prompt.ObjectText = if definition ~= nil then definition.DisplayName else junkId
@@ -291,6 +281,7 @@ local function acquireModel(junkId: string): Model?
 	end
 	-- Small objects stream in and out as a whole, so a client never sees half a junk.
 	model.ModelStreamingMode = Enum.ModelStreamingMode.Atomic
+	RarityVisuals.ApplyWorld(model, junkId)
 	addPrompt(model, root, junkId)
 	model.Destroying:Connect(function()
 		unregister(model) -- also covers junk destroyed by something other than Claim
@@ -334,6 +325,7 @@ local function createJunk(junkId: string, groundPosition: Vector3, options: Spaw
 
 	local now = os.clock()
 	local lifetime = if options ~= nil then options.Lifetime else nil
+	local reservedFor = if options ~= nil then options.ReservedFor else nil
 	local lockedFor = if options ~= nil and options.LockedFor ~= nil then math.max(options.LockedFor, 0) else 0
 	active[model] = {
 		Uid = uid,
@@ -341,6 +333,8 @@ local function createJunk(junkId: string, groundPosition: Vector3, options: Spaw
 		Position = root.Position,
 		ExpiresAt = if lifetime ~= nil then now + lockedFor + lifetime else nil,
 		ClaimableAt = now + lockedFor,
+		ReservedFor = reservedFor,
+		OnClaimed = if options ~= nil then options.OnClaimed else nil,
 	}
 	byUid[uid] = model
 	activeCount += 1
@@ -348,6 +342,9 @@ local function createJunk(junkId: string, groundPosition: Vector3, options: Spaw
 	-- Pooled models keep their prompt, so its state is set on every spawn.
 	local prompt = root:FindFirstChildOfClass("ProximityPrompt")
 	if prompt ~= nil then
+		-- Clients hide prompts reserved for someone else; the server enforces it in Claim.
+		prompt:SetAttribute("ReservedFor", reservedFor)
+		prompt.ObjectText = if options ~= nil and options.ObjectText ~= nil then options.ObjectText else ItemConfig.GetDisplayName(junkId)
 		prompt.Enabled = lockedFor <= 0
 		if lockedFor > 0 then
 			task.delay(lockedFor, function()
@@ -434,7 +431,6 @@ function JunkService.Start()
 	started = true
 
 	container = getContainer()
-	buildSpawnPool()
 
 	task.spawn(function()
 		fillToMax()
@@ -462,13 +458,42 @@ end
 
 -- Atomically takes a junk object out of the world. Returns (junkId, uid), or nil if it is
 -- not an active junk object (already claimed, destroyed, or not junk at all).
-function JunkService.Claim(junk: any): (string?, string?)
+-- `claimant` (optional) is checked against a reservation; a reserved object can only be
+-- claimed by its reserving player.
+function JunkService.Claim(junk: any, claimant: Player?): (string?, string?)
 	local entry = active[junk]
 	if entry == nil or os.clock() < entry.ClaimableAt then
 		return nil, nil
 	end
+	if entry.ReservedFor ~= nil and (claimant == nil or claimant.UserId ~= entry.ReservedFor) then
+		return nil, nil
+	end
 	release(junk :: Model, entry.Id)
+	local onClaimed = entry.OnClaimed
+	if onClaimed ~= nil then
+		onClaimed(entry.Uid) -- synchronous: no frame exists where the item is in two places
+	end
 	return entry.Id, entry.Uid
+end
+
+-- True when `player` may claim this object right now (exists, landed, not reserved for others).
+function JunkService.CanClaim(junk: any, player: Player): boolean
+	local entry = active[junk]
+	return entry ~= nil
+		and os.clock() >= entry.ClaimableAt
+		and (entry.ReservedFor == nil or entry.ReservedFor == player.UserId)
+end
+
+-- Removes the world object of `uid` WITHOUT calling OnClaimed (the owner keeps its record,
+-- e.g. a machine unloading its tray when its owner leaves). Returns true if one was removed.
+function JunkService.Despawn(uid: string): boolean
+	local model = byUid[uid]
+	local entry = if model ~= nil then active[model] else nil
+	if model == nil or entry == nil then
+		return false
+	end
+	release(model, entry.Id)
+	return true
 end
 
 -- Places junk on the ground near `position` (a drop or a throw landing). Ignores MaxActive
@@ -476,7 +501,7 @@ end
 -- Returns nil if there is no ground within reach (e.g. a death in the void) or if
 -- options.Uid is already in the world.
 function JunkService.SpawnAt(junkId: string, position: Vector3, options: SpawnOptions?): Model?
-	if container == nil or not JunkConfig.Exists(junkId) then
+	if container == nil or not ItemConfig.Exists(junkId) or JunkFactory.GetBounds(junkId) == nil then
 		return nil
 	end
 	local excluded = buildExcluded(getMarkers())
