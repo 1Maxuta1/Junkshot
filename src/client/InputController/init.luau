@@ -12,12 +12,18 @@
 	Input that the game UI or chat already handled (gameProcessedEvent) is ignored, so typing
 	in chat or clicking a button never throws.
 
+	Menus: any GuiObject tagged MENU_TAG ("JunkshotMenu") blocks throwing while it is shown
+	(machine panel, reward card, future shops...). Opening a menu cancels a throw being aimed.
+
 	API
 	  ThrowBegan, ThrowReleased, SlotRequested(index), CycleRequested(direction)   Signals
 	  InputTypeChanged(kind)   Signal; kind is "KeyboardMouse" | "Gamepad" | "Touch"
 	  GetInputKind(), IsThrowHeld(), BeginThrow(), EndThrow(), CancelThrow()
+	  IsMenuOpen(), MenuChanged(open)   Signal
+	  MENU_TAG   tag a menu's root GuiObject with it (CollectionService) to block throwing
 ]]
 
+local CollectionService = game:GetService("CollectionService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 
@@ -35,6 +41,11 @@ InputController.ThrowCancelled = Signal.new()
 InputController.SlotRequested = Signal.new() -- (index: number)
 InputController.CycleRequested = Signal.new() -- (direction: number)
 InputController.InputTypeChanged = Signal.new() -- (kind: InputKind)
+InputController.MenuChanged = Signal.new() -- (open: boolean)
+InputController.MENU_TAG = "JunkshotMenu"
+
+local menus: { [GuiObject]: RBXScriptConnection } = {}
+local menuOpen = false
 
 local throwHeld = false
 local throwSource: Enum.KeyCode | Enum.UserInputType | string | nil = nil
@@ -81,9 +92,17 @@ local function setKind(inputType: Enum.UserInputType)
 	end
 end
 
+local function isShown(gui: GuiObject): boolean
+	if not gui.Visible or not gui:IsDescendantOf(game) then
+		return false
+	end
+	local screen = gui:FindFirstAncestorWhichIsA("LayerCollector")
+	return screen ~= nil and screen.Enabled
+end
+
 -- `source` remembers what started the throw, so only releasing that same input throws.
 local function begin(source: Enum.KeyCode | Enum.UserInputType | string)
-	if throwHeld then
+	if throwHeld or menuOpen then
 		return
 	end
 	throwHeld = true
@@ -152,7 +171,51 @@ function InputController.CancelThrow()
 	end
 end
 
+function InputController.IsMenuOpen(): boolean
+	return menuOpen
+end
+
+local function refreshMenus()
+	local open = false
+	for gui in menus do
+		if isShown(gui) then
+			open = true
+			break
+		end
+	end
+	if open == menuOpen then
+		return
+	end
+	menuOpen = open
+	if open then
+		InputController.CancelThrow() -- a menu opened while aiming: never throw from behind it
+	end
+	InputController.MenuChanged:Fire(open)
+end
+
+local function trackMenu(instance: Instance)
+	if not instance:IsA("GuiObject") or menus[instance] ~= nil then
+		return
+	end
+	menus[instance] = instance:GetPropertyChangedSignal("Visible"):Connect(refreshMenus)
+	refreshMenus()
+end
+
+local function untrackMenu(instance: Instance)
+	local connection = menus[instance :: GuiObject]
+	if connection ~= nil then
+		connection:Disconnect()
+		menus[instance :: GuiObject] = nil
+		refreshMenus()
+	end
+end
+
 function InputController.Start()
+	for _, instance in CollectionService:GetTagged(InputController.MENU_TAG) do
+		trackMenu(instance)
+	end
+	CollectionService:GetInstanceAddedSignal(InputController.MENU_TAG):Connect(trackMenu)
+	CollectionService:GetInstanceRemovedSignal(InputController.MENU_TAG):Connect(untrackMenu)
 	setKind(UserInputService:GetLastInputType())
 	if UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled then
 		inputKind = "Touch"

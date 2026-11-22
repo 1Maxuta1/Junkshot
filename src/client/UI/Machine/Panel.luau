@@ -51,6 +51,7 @@ function Panel.Mount(screenGui: ScreenGui, actions: Widgets.Actions, durationFor
 	root.Size = UDim2.fromScale(0.66, 0.78)
 	root.BackgroundColor3 = Theme.Colors.Panel
 	root.Visible = false
+	root:AddTag("JunkshotMenu") -- blocks throwing while open (InputController)
 	Theme.Corner(root, UDim.new(0, 20))
 	Theme.Stroke(root, Theme.Colors.Ink, 3)
 	local limit = Instance.new("UISizeConstraint")

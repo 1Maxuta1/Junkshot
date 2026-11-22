@@ -50,6 +50,7 @@ function RewardReveal.Mount(screenGui: ScreenGui): RewardReveal
 	overlay.BackgroundTransparency = 0.55
 	overlay.Visible = false
 	overlay.ZIndex = 10
+	overlay:AddTag("JunkshotMenu") -- blocks throwing while shown (InputController)
 	overlay.Parent = screenGui
 
 	local holder = Instance.new("Frame")
