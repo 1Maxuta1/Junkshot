@@ -1,0 +1,725 @@
+--[[
+	Prefabs: reusable map pieces for the JUNKSHOT winter junkyard (run by Lune, see build.luau).
+
+	Every prefab takes (parent, cframe, ...) where cframe is the piece's center ON THE GROUND
+	(y = ground height) and its -Z axis is the piece's "front". Pieces are low-part-count on
+	purpose: big readable shapes, flat bright colors, no textures.
+]]
+
+local roblox = require("@lune/roblox")
+
+local Instance = roblox.Instance
+local Vector3 = roblox.Vector3
+local CFrame = roblox.CFrame
+local Color3 = roblox.Color3
+local Enum = roblox.Enum
+
+local Prefabs = {}
+
+local function rgb(r, g, b)
+	return Color3.fromRGB(r, g, b)
+end
+
+Prefabs.Colors = {
+	Snow = rgb(246, 250, 255),
+	SnowShade = rgb(222, 234, 250),
+	Path = rgb(206, 221, 241),
+	PlazaTop = rgb(232, 240, 252),
+	Ice = rgb(120, 186, 246),
+	Ink = rgb(44, 56, 82),
+	Red = rgb(236, 74, 70),
+	Orange = rgb(255, 148, 36),
+	Yellow = rgb(255, 204, 48),
+	Blue = rgb(58, 138, 236),
+	Teal = rgb(36, 188, 186),
+	Green = rgb(72, 188, 98),
+	Purple = rgb(150, 104, 228),
+	Pine = rgb(46, 140, 96),
+	PineDark = rgb(34, 112, 82),
+	Trunk = rgb(124, 82, 52),
+	Wood = rgb(176, 124, 74),
+	Rubber = rgb(48, 50, 60),
+	Metal = rgb(176, 188, 204),
+	Warm = rgb(255, 196, 110),
+}
+local C = Prefabs.Colors
+
+Prefabs.Accents = { C.Red, C.Orange, C.Yellow, C.Blue, C.Teal, C.Green, C.Purple }
+
+local count = 0
+function Prefabs.GetPartCount()
+	return count
+end
+
+-- Plain anchored part with the shared defaults.
+function Prefabs.Part(parent, props)
+	local part = Instance.new(props.ClassName or "Part")
+	part.Anchored = true
+	part.TopSurface = Enum.SurfaceType.Smooth
+	part.BottomSurface = Enum.SurfaceType.Smooth
+	part.Material = props.Material or Enum.Material.SmoothPlastic
+	part.Color = props.Color or C.Snow
+	part.Size = props.Size
+	part.CFrame = props.CFrame
+	if props.Shape ~= nil then
+		part.Shape = props.Shape
+	end
+	part.Name = props.Name or "Part"
+	if props.CanCollide == false then
+		part.CanCollide = false
+	end
+	if props.CanQuery == false then
+		part.CanQuery = false
+	end
+	if props.CastShadow == false then
+		part.CastShadow = false
+	end
+	if props.Transparency ~= nil then
+		part.Transparency = props.Transparency
+	end
+	part.CanTouch = false
+	part.Parent = parent
+	count += 1
+	return part
+end
+
+local function model(parent, name)
+	local m = Instance.new("Model")
+	m.Name = name
+	m.Parent = parent
+	return m
+end
+
+local UPRIGHT = CFrame.Angles(0, 0, math.rad(90)) -- cylinders run along X; this stands them up
+
+-- Tiny deterministic RNG, so the same seed always builds the same map.
+local function newRandom(seed)
+	local state = (seed * 2654435761) % 4294967296
+	local rng = {}
+	function rng:NextNumber()
+		state = (1103515245 * state + 12345) % 2147483648
+		return state / 2147483648
+	end
+	function rng:NextInteger(min, max)
+		return min + math.floor(self:NextNumber() * (max - min + 1))
+	end
+	return rng
+end
+
+---------------------------------------------------------------------------------------------
+-- Pieces
+---------------------------------------------------------------------------------------------
+
+-- Shipping container, 24 x 9 x 9, with a darker door end and a snow cap.
+function Prefabs.Container(parent, cf, color, name)
+	local m = model(parent, name or "Container")
+	local body = Prefabs.Part(m, {
+		Name = "Body",
+		Size = Vector3.new(24, 9, 9),
+		CFrame = cf * CFrame.new(0, 4.5, 0),
+		Color = color,
+	})
+	Prefabs.Part(m, {
+		Name = "Doors",
+		Size = Vector3.new(0.4, 8.2, 8.2),
+		CFrame = cf * CFrame.new(12.1, 4.5, 0),
+		Color = color:Lerp(C.Ink, 0.25),
+	})
+	Prefabs.Part(m, {
+		Name = "SnowCap",
+		Size = Vector3.new(24.6, 0.7, 9.6),
+		CFrame = cf * CFrame.new(0, 9.3, 0),
+		Color = C.Snow,
+	})
+	m.PrimaryPart = body
+	return m
+end
+
+-- Stylized pine: trunk + three rotated tiers with snow on top. scale 1 = 20 studs tall.
+function Prefabs.Pine(parent, cf, scale)
+	scale = scale or 1
+	local m = model(parent, "Pine")
+	Prefabs.Part(m, {
+		Name = "Trunk",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(4 * scale, 1.8 * scale, 1.8 * scale),
+		CFrame = cf * CFrame.new(0, 2 * scale, 0) * UPRIGHT,
+		Color = C.Trunk,
+	})
+	local tiers = {
+		{ Width = 11, Height = 5, Y = 6.5, Color = C.PineDark },
+		{ Width = 8.2, Height = 4.5, Y = 10.5, Color = C.Pine },
+		{ Width = 5.2, Height = 4, Y = 14.2, Color = C.Pine },
+	}
+	for index, tier in tiers do
+		local twist = CFrame.Angles(0, math.rad(if index % 2 == 0 then 45 else 0), 0)
+		Prefabs.Part(m, {
+			Name = `Tier{index}`,
+			Size = Vector3.new(tier.Width, tier.Height, tier.Width) * scale,
+			CFrame = cf * CFrame.new(0, tier.Y * scale, 0) * twist,
+			Color = tier.Color,
+		})
+		if index < #tiers then
+			Prefabs.Part(m, {
+				Name = `Snow{index}`,
+				Size = Vector3.new(tier.Width * 0.82, 0.8, tier.Width * 0.82) * scale,
+				CFrame = cf * CFrame.new(0, (tier.Y + tier.Height / 2) * scale, 0) * twist,
+				Color = C.Snow,
+				CastShadow = false,
+			})
+		end
+	end
+	Prefabs.Part(m, {
+		Name = "Top",
+		Size = Vector3.new(2.6, 2.2, 2.6) * scale,
+		CFrame = cf * CFrame.new(0, 17.2 * scale, 0) * CFrame.Angles(0, math.rad(45), 0),
+		Color = C.Snow,
+	})
+	return m
+end
+
+-- Soft snow mound made of spheres sunk into the ground (domes; collision matches the look).
+function Prefabs.SnowPile(parent, cf, size)
+	size = size or 1
+	local m = model(parent, "SnowPile")
+	local balls = {
+		{ D = 14, X = 0, Z = 0, Sink = 0.62 },
+		{ D = 10, X = 5.5, Z = 2, Sink = 0.6 },
+		{ D = 8, X = -5, Z = -1.5, Sink = 0.6 },
+	}
+	for index, ball in balls do
+		local d = ball.D * size
+		Prefabs.Part(m, {
+			Name = `Mound{index}`,
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.new(d, d, d),
+			CFrame = cf * CFrame.new(ball.X * size, d / 2 - d * ball.Sink, ball.Z * size),
+			Color = if index == 1 then C.Snow else C.SnowShade,
+		})
+	end
+	return m
+end
+
+-- Snowy heap with colorful scrap sticking out of it.
+function Prefabs.JunkHeap(parent, cf, size, seed)
+	size = size or 1
+	local random = newRandom(seed or 1)
+	local m = model(parent, "JunkHeap")
+	local d = 22 * size
+	Prefabs.Part(m, {
+		Name = "Mound",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.new(d, d, d),
+		CFrame = cf * CFrame.new(0, d / 2 - d * 0.6, 0),
+		Color = C.Snow,
+	})
+	for index = 1, 6 do
+		local angle = (index / 6) * math.pi * 2 + random:NextNumber() * 0.6
+		local radius = (3 + random:NextNumber() * 5) * size
+		local height = (2.5 + random:NextNumber() * 3) * size
+		local color = Prefabs.Accents[random:NextInteger(1, #Prefabs.Accents)]
+		local tilt = CFrame.Angles(random:NextNumber() * 0.9, random:NextNumber() * 3, random:NextNumber() * 0.9)
+		local isCylinder = index % 3 == 0
+		Prefabs.Part(m, {
+			Name = `Scrap{index}`,
+			Shape = if isCylinder then Enum.PartType.Cylinder else nil,
+			Size = if isCylinder
+				then Vector3.new(5, 2.2, 2.2) * size
+				else Vector3.new(2 + random:NextNumber() * 3, 1.2 + random:NextNumber() * 2, 2 + random:NextNumber() * 2) * size,
+			CFrame = cf * CFrame.new(math.cos(angle) * radius, height, math.sin(angle) * radius) * tilt,
+			Color = color,
+			Material = if isCylinder then Enum.Material.Metal else Enum.Material.SmoothPlastic,
+		})
+	end
+	return m
+end
+
+function Prefabs.TireStack(parent, cf, tires)
+	local m = model(parent, "TireStack")
+	for index = 1, tires do
+		Prefabs.Part(m, {
+			Name = `Tire{index}`,
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(1.6, 5, 5),
+			CFrame = cf * CFrame.new(0, 0.8 + (index - 1) * 1.6, 0) * CFrame.Angles(0, index * 0.5, 0) * UPRIGHT,
+			Color = if index == tires then C.Yellow else C.Rubber,
+		})
+	end
+	return m
+end
+
+function Prefabs.Barrel(parent, cf, color)
+	return Prefabs.Part(parent, {
+		Name = "Barrel",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(4, 3, 3),
+		CFrame = cf * CFrame.new(0, 2, 0) * UPRIGHT,
+		Color = color,
+		Material = Enum.Material.Metal,
+	})
+end
+
+-- Small industrial shed (14 x 9 x 12) with a snowy roof and a warm glowing window.
+function Prefabs.Shed(parent, cf, wallColor, roofColor)
+	local m = model(parent, "Shed")
+	Prefabs.Part(m, { Name = "Walls", Size = Vector3.new(14, 9, 12), CFrame = cf * CFrame.new(0, 4.5, 0), Color = wallColor })
+	Prefabs.Part(m, {
+		Name = "Roof",
+		Size = Vector3.new(16, 1, 14),
+		CFrame = cf * CFrame.new(0, 9.5, 0),
+		Color = roofColor,
+	})
+	Prefabs.Part(m, {
+		Name = "RoofSnow",
+		Size = Vector3.new(15.4, 0.8, 13.4),
+		CFrame = cf * CFrame.new(0, 10.4, 0),
+		Color = C.Snow,
+	})
+	Prefabs.Part(m, {
+		Name = "Door",
+		Size = Vector3.new(4, 6.5, 0.3),
+		CFrame = cf * CFrame.new(-3, 3.25, -6.1),
+		Color = wallColor:Lerp(C.Ink, 0.35),
+	})
+	Prefabs.Part(m, {
+		Name = "Window",
+		Size = Vector3.new(4, 2.6, 0.3),
+		CFrame = cf * CFrame.new(3.5, 5, -6.1),
+		Color = C.Warm,
+		Material = Enum.Material.Neon,
+		CastShadow = false,
+	})
+	return m
+end
+
+-- Lamp post with a warm bulb. Only some lamps get a real PointLight (lights cost GPU time).
+function Prefabs.Lamp(parent, cf, withLight)
+	local m = model(parent, "Lamp")
+	Prefabs.Part(m, {
+		Name = "Pole",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(11, 0.7, 0.7),
+		CFrame = cf * CFrame.new(0, 5.5, 0) * UPRIGHT,
+		Color = C.Ink,
+	})
+	Prefabs.Part(m, {
+		Name = "Cap",
+		Size = Vector3.new(2.4, 0.5, 2.4),
+		CFrame = cf * CFrame.new(0, 12.6, 0),
+		Color = C.Ink,
+	})
+	local bulb = Prefabs.Part(m, {
+		Name = "Bulb",
+		Shape = Enum.PartType.Ball,
+		Size = Vector3.new(1.8, 1.8, 1.8),
+		CFrame = cf * CFrame.new(0, 11.6, 0),
+		Color = C.Warm,
+		Material = Enum.Material.Neon,
+		CastShadow = false,
+	})
+	if withLight then
+		local light = Instance.new("PointLight")
+		light.Color = rgb(255, 190, 120)
+		light.Range = 18
+		light.Brightness = 1.3
+		light.Shadows = false
+		light.Parent = bulb
+	end
+	return m
+end
+
+function Prefabs.Bollard(parent, cf, color)
+	local m = model(parent, "Bollard")
+	Prefabs.Part(m, {
+		Name = "Post",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(2.4, 1.2, 1.2),
+		CFrame = cf * CFrame.new(0, 1.2, 0) * UPRIGHT,
+		Color = color,
+	})
+	Prefabs.Part(m, {
+		Name = "Top",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.4, 1.3, 1.3),
+		CFrame = cf * CFrame.new(0, 2.5, 0) * UPRIGHT,
+		Color = C.Snow,
+		CastShadow = false,
+	})
+	return m
+end
+
+function Prefabs.LogPile(parent, cf)
+	local m = model(parent, "LogPile")
+	local logs = { { 0, 1.1, -1.1 }, { 0, 1.1, 1.1 }, { 0, 2.9, 0 } }
+	for index, offset in logs do
+		Prefabs.Part(m, {
+			Name = `Log{index}`,
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(9, 2.2, 2.2),
+			CFrame = cf * CFrame.new(offset[1], offset[2], offset[3]),
+			Color = C.Wood,
+		})
+	end
+	return m
+end
+
+-- Two posts and a colored board with text on its front (-Z) face.
+function Prefabs.Sign(parent, cf, text, color)
+	local m = model(parent, "Sign")
+	for _, x in { -4.5, 4.5 } do
+		Prefabs.Part(m, {
+			Name = "Post",
+			Size = Vector3.new(0.6, 6, 0.6),
+			CFrame = cf * CFrame.new(x, 3, 0),
+			Color = C.Ink,
+		})
+	end
+	local board = Prefabs.Part(m, {
+		Name = "Board",
+		Size = Vector3.new(11, 3.4, 0.6),
+		CFrame = cf * CFrame.new(0, 5.6, 0),
+		Color = color,
+	})
+	Prefabs.Part(m, {
+		Name = "Snow",
+		Size = Vector3.new(11.2, 0.5, 0.9),
+		CFrame = cf * CFrame.new(0, 7.5, 0),
+		Color = C.Snow,
+		CastShadow = false,
+	})
+
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 40
+	gui.LightInfluence = 0
+	gui.Parent = board
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = roblox.UDim2.fromScale(0.92, 0.8)
+	label.Position = roblox.UDim2.fromScale(0.04, 0.1)
+	label.Text = text
+	label.TextScaled = true
+	label.Font = Enum.Font.FredokaOne
+	label.TextColor3 = C.Snow
+	label.TextStrokeTransparency = 0.4
+	label.TextStrokeColor3 = C.Ink
+	label.Parent = gui
+	return m
+end
+
+-- Tall yellow crane: a landmark visible from everywhere in the yard.
+function Prefabs.Crane(parent, cf)
+	local m = model(parent, "Crane")
+	Prefabs.Part(m, { Name = "Base", Size = Vector3.new(10, 2, 10), CFrame = cf * CFrame.new(0, 1, 0), Color = C.Ink })
+	Prefabs.Part(m, { Name = "Mast", Size = Vector3.new(3.2, 48, 3.2), CFrame = cf * CFrame.new(0, 26, 0), Color = C.Yellow })
+	Prefabs.Part(m, { Name = "Jib", Size = Vector3.new(46, 2.4, 2.4), CFrame = cf * CFrame.new(12, 50, 0), Color = C.Yellow })
+	Prefabs.Part(m, { Name = "Cab", Size = Vector3.new(5, 4, 4.5), CFrame = cf * CFrame.new(0, 47, -3.6), Color = C.Red })
+	Prefabs.Part(m, {
+		Name = "Counterweight",
+		Size = Vector3.new(5, 4, 4),
+		CFrame = cf * CFrame.new(-9, 47.6, 0),
+		Color = C.Ink,
+	})
+	Prefabs.Part(m, {
+		Name = "Cable",
+		Size = Vector3.new(0.3, 22, 0.3),
+		CFrame = cf * CFrame.new(30, 38, 0),
+		Color = C.Ink,
+		CastShadow = false,
+	})
+	Prefabs.Part(m, {
+		Name = "Hook",
+		Size = Vector3.new(4, 1.4, 4),
+		CFrame = cf * CFrame.new(30, 26.5, 0),
+		Color = C.Orange,
+	})
+	return m
+end
+
+-- Reserved base plot: flat pad with a colored border and a numbered sign. Empty on purpose.
+function Prefabs.BasePlot(parent, cf, index, color, size)
+	local m = model(parent, `Plot{index}`)
+	local pad = Prefabs.Part(m, {
+		Name = "Pad",
+		Size = Vector3.new(size, 0.3, size),
+		CFrame = cf * CFrame.new(0, 0.15, 0),
+		Color = C.SnowShade,
+	})
+	local half = size / 2
+	local border = 1.6
+	local strips = {
+		{ Vector3.new(size, 0.4, border), CFrame.new(0, 0.2, -half + border / 2) },
+		{ Vector3.new(size, 0.4, border), CFrame.new(0, 0.2, half - border / 2) },
+		{ Vector3.new(border, 0.4, size - border * 2), CFrame.new(-half + border / 2, 0.2, 0) },
+		{ Vector3.new(border, 0.4, size - border * 2), CFrame.new(half - border / 2, 0.2, 0) },
+	}
+	for stripIndex, strip in strips do
+		Prefabs.Part(m, {
+			Name = `Border{stripIndex}`,
+			Size = strip[1],
+			CFrame = cf * strip[2],
+			Color = color,
+			CastShadow = false,
+		})
+	end
+	-- Sign at the front-left corner, facing the ring road (the plot's -Z side).
+	Prefabs.Sign(m, cf * CFrame.new(-half + 7, 0, -half - 1.5) * CFrame.Angles(0, math.pi, 0), `BASE {index}`, color)
+
+	m:SetAttribute("PlotId", index)
+	m:SetAttribute("Owner", 0) -- UserId of the owner; 0 = free (used by a later stage)
+	m:AddTag("BasePlot")
+	m.PrimaryPart = pad
+	return m
+end
+
+function Prefabs.Spawn(parent, cf, index)
+	local spawn = Instance.new("SpawnLocation")
+	spawn.Name = `Spawn{index}`
+	spawn.Anchored = true
+	spawn.Size = Vector3.new(7, 0.4, 7)
+	spawn.CFrame = cf * CFrame.new(0, 0.2, 0)
+	spawn.Color = C.Ice
+	spawn.Material = Enum.Material.SmoothPlastic
+	spawn.TopSurface = Enum.SurfaceType.Smooth
+	spawn.BottomSurface = Enum.SurfaceType.Smooth
+	spawn.Neutral = true
+	spawn.Duration = 0 -- no force field
+	spawn.CanTouch = true -- SpawnLocations need touch to work
+	spawn.Parent = parent
+	count += 1
+	return spawn
+end
+
+-- The Recycling Machine (centerpiece of the plaza). cf = center of its base on the ground,
+-- -Z = front (input slot, chamber, output tray). About 40 anchored parts.
+-- Parts the client animates are named: InputDoor, Gear1/Gear2 (Models whose parts all share
+-- the gear center), PistonHead, Light1..3, ChamberGlow, Screen, OutputPedestal, RewardPoint.
+function Prefabs.RecyclingMachine(parent, cf, machineId)
+	local m = model(parent, "RecyclingMachine")
+	local function p(props)
+		props.CFrame = cf * props.CFrame
+		return Prefabs.Part(m, props)
+	end
+	local Metal = rgb(150, 162, 180)
+	local Dark = rgb(38, 46, 66)
+
+	-- Base, body, roof
+	p({ Name = "Base", Size = Vector3.new(22, 1.2, 16), CFrame = CFrame.new(0, 0.6, 0), Color = C.Blue })
+	p({ Name = "Body", Size = Vector3.new(14, 11, 11), CFrame = CFrame.new(0, 6.7, 1), Color = C.Orange })
+	p({ Name = "BodyStripe", Size = Vector3.new(14.2, 1, 11.2), CFrame = CFrame.new(0, 2.2, 1), Color = C.Yellow, CastShadow = false })
+	p({ Name = "Roof", Size = Vector3.new(15, 1, 12), CFrame = CFrame.new(0, 12.7, 1), Color = Metal, Material = Enum.Material.Metal })
+	p({ Name = "RoofSnow", Size = Vector3.new(14.4, 0.7, 11.4), CFrame = CFrame.new(0, 13.5, 1), Color = C.Snow })
+
+	-- Chimney
+	p({
+		Name = "Chimney",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(6, 2.4, 2.4),
+		CFrame = CFrame.new(4.5, 16, 4) * UPRIGHT,
+		Color = Metal,
+		Material = Enum.Material.Metal,
+	})
+	p({
+		Name = "ChimneySnow",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.6, 2.8, 2.8),
+		CFrame = CFrame.new(4.5, 19.2, 4) * UPRIGHT,
+		Color = C.Snow,
+	})
+
+	-- Input (front-left): hopper frame, dark slot, door that slides up while accepting
+	p({ Name = "Hopper", Size = Vector3.new(6.5, 5, 3.6), CFrame = CFrame.new(-3.5, 6, -6.3), Color = C.Yellow })
+	p({
+		ClassName = "WedgePart",
+		Name = "HopperFunnel",
+		Size = Vector3.new(6.5, 2, 3.6),
+		CFrame = CFrame.new(-3.5, 9.5, -6.3),
+		Color = C.Yellow,
+	})
+	p({ Name = "InputSlot", Size = Vector3.new(4.6, 2.6, 0.2), CFrame = CFrame.new(-3.5, 6, -8.15), Color = Dark, CastShadow = false })
+	p({
+		Name = "InputDoor",
+		Size = Vector3.new(5, 3, 0.3),
+		CFrame = CFrame.new(-3.5, 6, -8.4),
+		Color = C.Yellow:Lerp(C.Ink, 0.25),
+		CastShadow = false,
+	})
+
+	-- Screen above the input (the client draws the progress bar on it)
+	p({ Name = "ScreenFrame", Size = Vector3.new(5.6, 2.8, 0.4), CFrame = CFrame.new(-3.5, 10.6, -4.6), Color = Dark })
+	p({ Name = "Screen", Size = Vector3.new(5, 2.2, 0.2), CFrame = CFrame.new(-3.5, 10.6, -4.85), Color = rgb(20, 30, 50), CastShadow = false })
+
+	-- Processing chamber (front-right): round window with a glow that follows the state
+	p({
+		Name = "ChamberRing",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.6, 5.2, 5.2),
+		CFrame = CFrame.new(3.5, 8.4, -4.6) * CFrame.Angles(0, math.rad(90), 0),
+		Color = Metal,
+		Material = Enum.Material.Metal,
+	})
+	p({
+		Name = "ChamberGlow",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.4, 4.2, 4.2),
+		CFrame = CFrame.new(3.5, 8.4, -4.85) * CFrame.Angles(0, math.rad(90), 0),
+		Color = C.Teal,
+		Material = Enum.Material.Neon,
+		CastShadow = false,
+	})
+
+	-- Output (front-right, low): chute, tray and the pedestal the reward appears on
+	p({ Name = "OutputChute", Size = Vector3.new(4, 1.8, 0.3), CFrame = CFrame.new(3.5, 4.2, -4.65), Color = Dark, CastShadow = false })
+	p({ Name = "OutputTray", Size = Vector3.new(6, 1.2, 4.4), CFrame = CFrame.new(3.5, 1.8, -6.8), Color = C.Blue })
+	p({
+		Name = "OutputPedestal",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.5, 3.2, 3.2),
+		CFrame = CFrame.new(3.5, 2.65, -6.9) * UPRIGHT,
+		Color = Metal,
+		Material = Enum.Material.Metal,
+	})
+	p({
+		Name = "RewardPoint",
+		Size = Vector3.new(0.2, 0.2, 0.2),
+		CFrame = CFrame.new(3.5, 5.2, -6.9),
+		Transparency = 1,
+		CanCollide = false,
+		CanQuery = false,
+		CastShadow = false,
+	})
+
+	-- Gears on the right side (spin while processing). All parts share the gear's center so a
+	-- rotation about the center needs no position change.
+	local function gear(name, center, diameter)
+		local g = model(m, name)
+		local base = cf * CFrame.new(center)
+		Prefabs.Part(g, {
+			Name = "Disk",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(0.7, diameter, diameter),
+			CFrame = base,
+			Color = C.Yellow,
+			Material = Enum.Material.Metal,
+		})
+		Prefabs.Part(g, { Name = "ToothA", Size = Vector3.new(0.9, diameter + 1.2, 0.8), CFrame = base, Color = C.Yellow:Lerp(C.Ink, 0.2) })
+		Prefabs.Part(g, { Name = "ToothB", Size = Vector3.new(0.9, 0.8, diameter + 1.2), CFrame = base, Color = C.Yellow:Lerp(C.Ink, 0.2) })
+		Prefabs.Part(g, {
+			Name = "Hub",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(1.1, 1.2, 1.2),
+			CFrame = base,
+			Color = Dark,
+			Material = Enum.Material.Metal,
+		})
+		return g
+	end
+	gear("Gear1", Vector3.new(7.45, 8.4, -1.2), 4.4)
+	gear("Gear2", Vector3.new(7.45, 4.6, 2.4), 3.2)
+
+	-- Piston on the roof (pumps while processing)
+	p({ Name = "PistonBase", Size = Vector3.new(2.6, 1, 2.6), CFrame = CFrame.new(-4, 14.3, 3), Color = Dark })
+	p({
+		Name = "PistonRod",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(3, 0.9, 0.9),
+		CFrame = CFrame.new(-4, 16.2, 3) * UPRIGHT,
+		Color = Metal,
+		Material = Enum.Material.Metal,
+	})
+	p({ Name = "PistonHead", Size = Vector3.new(2.2, 1, 2.2), CFrame = CFrame.new(-4, 17.9, 3), Color = C.Orange })
+
+	-- Status lights along the front roof edge
+	for index, x in { -5, 0, 5 } do
+		p({
+			Name = `Light{index}`,
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.new(1.2, 1.2, 1.2),
+			CFrame = CFrame.new(x, 13.4, -4.9),
+			Color = C.Green,
+			Material = Enum.Material.Neon,
+			CastShadow = false,
+		})
+	end
+
+	-- Big recycling sign on the roof, readable from both sides of the plaza
+	for _, x in { -3.6, 3.6 } do
+		p({ Name = "SignPost", Size = Vector3.new(0.6, 3.6, 0.6), CFrame = CFrame.new(x, 15.6, -1.5), Color = Dark })
+	end
+	local board = p({ Name = "SignBoard", Size = Vector3.new(10, 5, 0.6), CFrame = CFrame.new(0, 19.6, -1.5), Color = C.Green })
+	p({ Name = "SignSnow", Size = Vector3.new(10.2, 0.6, 1), CFrame = CFrame.new(0, 22.3, -1.5), Color = C.Snow, CastShadow = false })
+	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
+		local gui = Instance.new("SurfaceGui")
+		gui.Face = face
+		gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		gui.PixelsPerStud = 30
+		gui.LightInfluence = 0
+		gui.Parent = board
+		local symbol = Instance.new("TextLabel")
+		symbol.BackgroundTransparency = 1
+		symbol.Size = roblox.UDim2.fromScale(0.34, 0.9)
+		symbol.Position = roblox.UDim2.fromScale(0.02, 0.05)
+		symbol.Text = "♻"
+		symbol.TextScaled = true
+		symbol.Font = Enum.Font.GothamBold
+		symbol.TextColor3 = C.Snow
+		symbol.Parent = gui
+		local label = Instance.new("TextLabel")
+		label.BackgroundTransparency = 1
+		label.Size = roblox.UDim2.fromScale(0.6, 0.62)
+		label.Position = roblox.UDim2.fromScale(0.37, 0.19)
+		label.Text = "RECYCLE"
+		label.TextScaled = true
+		label.Font = Enum.Font.FredokaOne
+		label.TextColor3 = C.Snow
+		label.TextStrokeTransparency = 0.5
+		label.TextStrokeColor3 = C.Ink
+		label.Parent = gui
+	end
+
+	-- Snow piles at the base corners
+	for _, corner in { Vector3.new(-10, 0, -7), Vector3.new(10, 0, 7) } do
+		p({
+			Name = "Snow",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.new(4, 4, 4),
+			CFrame = CFrame.new(corner + Vector3.new(0, 0.2, 0)),
+			Color = C.Snow,
+		})
+	end
+
+	-- Center of the interaction area (MachineService puts the ProximityPrompt here)
+	p({
+		Name = "PromptAnchor",
+		Size = Vector3.new(1, 1, 1),
+		CFrame = CFrame.new(0, 5, 0),
+		Transparency = 1,
+		CanCollide = false,
+		CanQuery = false,
+		CastShadow = false,
+	})
+
+	m:SetAttribute("MachineId", machineId)
+	m:AddTag("RecyclingMachine")
+	-- A ~40-part landmark every client animates: always fully present, never streamed out.
+	m.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
+	return m
+end
+
+-- Invisible box that marks where junk spawns (read by JunkService through the tag).
+function Prefabs.JunkSpawnArea(parent, cf, sizeX, sizeZ, name)
+	local part = Prefabs.Part(parent, {
+		Name = name or "JunkSpawnArea",
+		Size = Vector3.new(sizeX, 2, sizeZ),
+		CFrame = cf * CFrame.new(0, 1, 0),
+		Transparency = 1,
+		CanCollide = false,
+		CanQuery = false,
+		CastShadow = false,
+	})
+	part:AddTag("JunkSpawn")
+	return part
+end
+
+return Prefabs

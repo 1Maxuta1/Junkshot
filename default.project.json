@@ -1,0 +1,141 @@
+{
+  "name": "Junkshot",
+  "tree": {
+    "$className": "DataModel",
+
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "src/shared"
+      }
+    },
+
+    "ServerScriptService": {
+      "Server": {
+        "$path": "src/server"
+      }
+    },
+
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "src/client"
+        }
+      }
+    },
+
+    "Workspace": {
+      "$properties": {
+        "FilteringEnabled": true,
+        "StreamingEnabled": true,
+        "StreamingMinRadius": 128,
+        "StreamingTargetRadius": 512
+      },
+      "Baseplate": {
+        "$className": "Part",
+        "$properties": {
+          "Anchored": true,
+          "Color": [
+            0.96471,
+            0.98039,
+            1
+          ],
+          "Material": "SmoothPlastic",
+          "TopSurface": "Smooth",
+          "Locked": true,
+          "Position": [
+            0,
+            -10,
+            0
+          ],
+          "Size": [
+            512,
+            20,
+            512
+          ]
+        }
+      },
+      "Map": {
+        "$path": "src/map/Map.rbxm"
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "Ambient": [
+          0.47,
+          0.55,
+          0.69
+        ],
+        "OutdoorAmbient": [
+          0.55,
+          0.64,
+          0.8
+        ],
+        "Brightness": 2.6,
+        "ClockTime": 14.5,
+        "GeographicLatitude": 35,
+        "ColorShift_Top": [
+          1,
+          0.95,
+          0.88
+        ],
+        "ColorShift_Bottom": [
+          0.75,
+          0.85,
+          1
+        ],
+        "EnvironmentDiffuseScale": 0.4,
+        "EnvironmentSpecularScale": 0.2,
+        "ExposureCompensation": 0.1,
+        "GlobalShadows": true,
+        "ShadowSoftness": 0.4,
+        "Outlines": false,
+        "Technology": "ShadowMap"
+      },
+      "Atmosphere": {
+        "$className": "Atmosphere",
+        "$properties": {
+          "Density": 0.28,
+          "Offset": 0.2,
+          "Color": [
+            0.8,
+            0.88,
+            0.98
+          ],
+          "Decay": [
+            0.55,
+            0.7,
+            0.9
+          ],
+          "Glare": 0.15,
+          "Haze": 0.6
+        }
+      },
+      "ColorCorrection": {
+        "$className": "ColorCorrectionEffect",
+        "$properties": {
+          "Saturation": 0.15,
+          "Contrast": 0.05,
+          "Brightness": 0.02,
+          "TintColor": [
+            0.98,
+            0.99,
+            1
+          ]
+        }
+      },
+      "Bloom": {
+        "$className": "BloomEffect",
+        "$properties": {
+          "Intensity": 0.35,
+          "Size": 20,
+          "Threshold": 1.4
+        }
+      }
+    },
+    "SoundService": {
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
+    }
+  }
+}
