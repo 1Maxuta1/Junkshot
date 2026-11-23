@@ -80,7 +80,8 @@ function PickupPrompt.Mount(onTriggeredLocally: (prompt: ProximityPrompt) -> ())
 		card.KeyLabel.Text = keyText(prompt, card.InputType)
 		if full and isJunk(prompt) then
 			card.ActionLabel.Text = "Carry full"
-			card.ObjectLabel.Text = `{GameConfig.Carry.MaxJunk}/{GameConfig.Carry.MaxJunk} - throw something first`
+			local capacity = Players.LocalPlayer:GetAttribute("CarryMax") or GameConfig.Carry.MaxJunk
+			card.ObjectLabel.Text = `{capacity}/{capacity} - throw something first`
 			card.Badge.BackgroundColor3 = Theme.Colors.Danger
 			card.Stroke.Color = Theme.Colors.Danger
 		else

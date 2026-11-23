@@ -28,6 +28,7 @@ local CONTROLLER_NAMES = {
 	"UI",
 	"MachineController",
 	"ItemController",
+	"EconomyController",
 }
 
 for _, name in CONTROLLER_NAMES do

@@ -51,6 +51,18 @@ local DetectorBehavior = require(script.Parent.Services.Behaviors.Detector)
 local ItemCapabilities = require(ReplicatedStorage.Shared.Util.ItemCapabilities)
 local PlacementRules = require(ReplicatedStorage.Shared.Util.PlacementRules)
 local CollectionService = game:GetService("CollectionService")
+-- Stage 3
+local EconomyConfig = require(ReplicatedStorage.Shared.Config.EconomyConfig)
+local Progression = require(ReplicatedStorage.Shared.Config.Progression)
+local ShopConfig = require(ReplicatedStorage.Shared.Config.ShopConfig)
+local ItemValue = require(ReplicatedStorage.Shared.Util.ItemValue)
+local EconomyService = require(script.Parent.Services.EconomyService)
+local DealerService = require(script.Parent.Services.DealerService)
+local SellService = require(script.Parent.Services.SellService)
+local ShopService = require(script.Parent.Services.ShopService)
+local StorageService = require(script.Parent.Services.StorageService)
+local PlayerUpgradeService = require(script.Parent.Services.PlayerUpgradeService)
+local ProgressionService = require(script.Parent.Services.ProgressionService)
 
 local DevTests = {}
 
@@ -752,8 +764,10 @@ local function runMachineTests(player: Player)
 		waitForCooldown()
 		check("the thrown reward can be picked up again", (CarryService.TryPickup(player, landed)))
 		teleportNear(player, front)
-		local againOk = MachineService.Recycle(player, reward.Uid)
-		check("the reward can be recycled again", againOk)
+		-- Stage 3: only yard junk can be recycled, so a reward cannot be recycled into money forever.
+		local againOk, againCode = MachineService.Recycle(player, reward.Uid)
+		check("a recycling reward cannot be recycled again (no infinite money)",
+			not againOk and againCode == MachineService.Errors.NotRecyclable, tostring(againCode))
 		finishJob(player)
 		local out = (MachineService.GetData(player) :: any).Output[1]
 		if out ~= nil then
@@ -1194,6 +1208,259 @@ local function runItemTests(player: Player)
 	character:PivotTo(home)
 end
 
+---------------------------------------------------------------------------------------------
+-- Stage 3: economy and progression
+---------------------------------------------------------------------------------------------
+
+local function runEconomyTests(player: Player)
+	local root = waitForLiveRoot(player, 15)
+	local dealerPosition = DealerService.GetPosition()
+	local plot = PlotService.GetPlot(player)
+	if root == nil or dealerPosition == nil or plot == nil then
+		warn("[DevTests] no character, dealer or plot: economy tests skipped")
+		return
+	end
+	local character = player.Character :: Model
+	local humanoid = character:FindFirstChildOfClass("Humanoid") :: Humanoid
+	local home = character:GetPivot()
+	local data = DataService.GetData(player) :: any
+	local savedKlunks = data.Klunks
+	local savedProgress = table.clone(data.Progress)
+	CarryService.Clear(player)
+	local function atDealer()
+		character:PivotTo(CFrame.new(dealerPosition + Vector3.new(0, 0, -6)))
+		task.wait(0.1)
+	end
+	local function atBase()
+		character:PivotTo(PlotService.GetPlotCFrame(plot) * CFrame.new(-10, 3, -10))
+		task.wait(0.1)
+	end
+	local function setBalance(value: number)
+		local current = CurrencyService.GetKlunks(player) :: number
+		if value > current then
+			CurrencyService.AddKlunks(player, value - current)
+		elseif value < current then
+			CurrencyService.RemoveKlunks(player, current - value)
+		end
+	end
+	local function give(itemId: string): string
+		local uid = JunkService.NewUid()
+		CarryService.AddJunk(player, itemId, uid)
+		return uid
+	end
+	local guid = function(): string
+		return JunkService.NewUid()
+	end
+
+	-- Valuation
+	local ranges = { Common = { 5, 15 }, Uncommon = { 15, 45 }, Rare = { 50, 130 }, Epic = { 130, 320 }, Legendary = { 350, 850 }, Mythic = { 1000, 2600 } }
+	local outOfRange: { string } = {}
+	for id, definition in ItemConfig.Items do
+		if definition.IsDebug ~= true and Recipes.Get(id) == nil and EconomyConfig.ItemOverrides[id] == nil then
+			local price = ItemValue.SellPrice(id)
+			local range = (ranges :: any)[definition.Rarity]
+			if price < range[1] or price > range[2] then
+				table.insert(outOfRange, `{id}={price}`)
+			end
+		end
+	end
+	check("natural item prices follow their rarity range", #outOfRange == 0, table.concat(outOfRange, ", "))
+	local profitable: { string } = {}
+	for _, recipe in Recipes.List do
+		if ItemValue.CanSell(recipe.OutputItemId) and ItemValue.SellPrice(recipe.OutputItemId) > ItemValue.IngredientValue(recipe) then
+			table.insert(profitable, recipe.RecipeId)
+		end
+	end
+	check("no crafted item sells for more than its ingredients", #profitable == 0, table.concat(profitable, ", "))
+	local arbitrage: { string } = {}
+	for _, entry in ShopConfig.Entries do
+		if ItemValue.ShopPrice(entry) <= ItemValue.SellPrice(entry.ItemId) then
+			table.insert(arbitrage, entry.Id)
+		end
+	end
+	check("every shop price is above the item's sell price", #arbitrage == 0, table.concat(arbitrage, ", "))
+	check("special items cannot be sold", not ItemValue.CanSell("aurora_reactor") and ItemValue.SellPrice("aurora_reactor") == 0)
+	check("rewards cannot be recycled, yard junk can", not ItemConfig.CanBeRecycled("snow_globe") and not ItemConfig.CanBeRecycled("metal_sheet")
+		and ItemConfig.CanBeRecycled("rusty_can"))
+
+	-- Currency
+	setBalance(1000)
+	check("earning a non-integer amount is rejected", not EconomyService.Earn(player, 1.5, "Test"))
+	check("earning zero is rejected", not EconomyService.Earn(player, 0, "Test"))
+	local spendOk, spendCode = EconomyService.Spend(player, 5000, "Test")
+	check("spending more than the balance is rejected", not spendOk and spendCode == EconomyService.Errors.NotEnough, tostring(spendCode))
+	check("the balance is unchanged after rejected transactions", CurrencyService.GetKlunks(player) == 1000)
+	local before = #EconomyService.GetTransactions(player)
+	EconomyService.Earn(player, 10, "Test", "devtest-earn")
+	local log = EconomyService.GetTransactions(player)
+	local last = log[#log]
+	check("a transaction is logged with type, amount, reason and id",
+		(#log == before + 1 or #log == EconomyConfig.TransactionLog) and last.Type == "Earn" and last.Amount == 10 and last.Reason == "Test" and last.Id == "devtest-earn")
+
+	-- Selling
+	local canUid, tireUid = give("rusty_can"), give("old_tire")
+	local storedUid = InventoryService.AddItem(player, "metal_sheet") :: string
+	atBase()
+	local farOk, farCode = SellService.Sell(player, guid(), { canUid })
+	check("selling away from the dealer is rejected", not farOk and farCode == SellService.Errors.NotAtDealer, tostring(farCode))
+	atDealer()
+	local picks, quote = SellService.Quote(player, { canUid, tireUid, storedUid })
+	local expected = ItemValue.SellPrice("rusty_can") + ItemValue.SellPrice("old_tire") + ItemValue.SellPrice("metal_sheet")
+	check("the quote uses the configured prices", picks ~= nil and quote == expected, `{tostring(quote)} vs {expected}`)
+	local balanceBefore = CurrencyService.GetKlunks(player) :: number
+	local requestId = guid()
+	local sellOk, sellCode, earned = SellService.Sell(player, requestId, { canUid, tireUid, storedUid })
+	check("selling hand and storage items works", sellOk and earned == expected, tostring(sellCode))
+	check("the money is paid exactly once", CurrencyService.GetKlunks(player) == balanceBefore + expected)
+	check("sold items are consumed", not CarryService.HasUid(player, canUid) and not CarryService.HasUid(player, tireUid)
+		and not InventoryService.HasItem(player, storedUid))
+	local dupOk, dupCode = SellService.Sell(player, requestId, { canUid })
+	check("a repeated sale request is ignored", not dupOk and dupCode == SellService.Errors.Duplicate
+		and CurrencyService.GetKlunks(player) == balanceBefore + expected, tostring(dupCode))
+	local againOk, againCode = SellService.Sell(player, guid(), { canUid })
+	check("a sold item cannot be sold again", not againOk and againCode == SellService.Errors.NotOwned, tostring(againCode))
+	local fakeOk, fakeCode = SellService.Sell(player, guid(), { JunkService.NewUid() })
+	check("selling an item the player does not own is rejected", not fakeOk and fakeCode == SellService.Errors.NotOwned, tostring(fakeCode))
+	local keepUid = give("bolt_pack")
+	local twiceOk, twiceCode = SellService.Sell(player, guid(), { keepUid, keepUid })
+	check("the same item twice in one sale is rejected", not twiceOk and twiceCode == SellService.Errors.InvalidArguments
+		and CarryService.HasUid(player, keepUid), tostring(twiceCode))
+	local reactorUid = give("aurora_reactor")
+	local mixOk, mixCode = SellService.Sell(player, guid(), { keepUid, reactorUid })
+	check("one unsellable item cancels the whole sale", not mixOk and mixCode == SellService.Errors.NotSellable
+		and CarryService.HasUid(player, keepUid) and CarryService.HasUid(player, reactorUid), tostring(mixCode))
+	local emptyOk = SellService.Sell(player, guid(), {})
+	check("an empty sale is rejected", not emptyOk)
+	-- An item inside the machine is not the player's to sell.
+	CarryService.Clear(player)
+	local machine = MachineService.GetModel(player)
+	if machine ~= nil then
+		local anchor = machine:FindFirstChild("PromptAnchor", true) :: BasePart
+		character:PivotTo(anchor.CFrame * CFrame.new(0, 0, -8))
+		local busyUid = give("rusty_can")
+		local recycled = MachineService.Recycle(player, busyUid)
+		atDealer()
+		local machineOk, machineCode = SellService.Sell(player, guid(), { busyUid })
+		check("an item being recycled cannot be sold", recycled and not machineOk and machineCode == SellService.Errors.NotOwned, tostring(machineCode))
+		MachineService.InstantFinish(player)
+		local out = (MachineService.GetData(player) :: any).Output[1]
+		if out ~= nil then
+			character:PivotTo(anchor.CFrame * CFrame.new(0, 0, -8))
+			MachineService.Take(player, out.Uid)
+		end
+	end
+	CarryService.Clear(player)
+
+	-- Haggler bonus
+	data.PlayerUpgrades.Haggler = 2
+	local bonusUid = give("crystal_shard")
+	local _, bonusQuote = SellService.Quote(player, { bonusUid })
+	check("the Haggler upgrade adds its bonus", bonusQuote == math.floor(ItemValue.SellPrice("crystal_shard") * 1.03),
+		`{tostring(bonusQuote)}`)
+	data.PlayerUpgrades.Haggler = nil
+	CarryService.Clear(player)
+
+	-- Shop (earlier tests earned discovery / machine XP: start these at level 1)
+	data.Progress.Level = 1
+	data.Progress.XP = 0
+	atDealer()
+	setBalance(10000)
+	local lockedOk, lockedCode = ShopService.Buy(player, guid(), "circuit_board")
+	check("a shop entry above the player's level is locked", not lockedOk and lockedCode == ShopService.Errors.LevelTooLow, tostring(lockedCode))
+	local sheetPrice = ItemValue.ShopPrice({ ItemId = "metal_sheet" })
+	local buyId = guid()
+	local buyOk, buyCode, buyWhere = ShopService.Buy(player, buyId, "metal_sheet")
+	check("buying a shop item works and goes to the hands", buyOk and buyWhere == "Hands" and CarryService.GetCount(player) == 1, tostring(buyCode))
+	check("the shop charges its price once", CurrencyService.GetKlunks(player) == 10000 - sheetPrice)
+	local repeatOk, repeatCode = ShopService.Buy(player, buyId, "metal_sheet")
+	check("a repeated purchase request is ignored", not repeatOk and repeatCode == ShopService.Errors.Duplicate
+		and CarryService.GetCount(player) == 1 and CurrencyService.GetKlunks(player) == 10000 - sheetPrice, tostring(repeatCode))
+	while not CarryService.IsFull(player) do
+		give("rusty_can")
+	end
+	local storedBefore = InventoryService.GetItemCount(player) :: number
+	local fullOk, _, fullWhere = ShopService.Buy(player, guid(), "metal_sheet")
+	check("with full hands the purchase goes to base storage", fullOk and fullWhere == "Storage"
+		and InventoryService.GetItemCount(player) == storedBefore + 1)
+	setBalance(3)
+	local poorOk, poorCode = ShopService.Buy(player, guid(), "metal_sheet")
+	check("buying without enough money is rejected", not poorOk and poorCode == ShopService.Errors.NotEnough
+		and CurrencyService.GetKlunks(player) == 3, tostring(poorCode))
+	CarryService.Clear(player)
+
+	-- Player upgrades
+	setBalance(20000)
+	local upLockedOk, upLockedCode = PlayerUpgradeService.Buy(player, guid(), "CarryCapacity")
+	check("an upgrade above the player's level is locked", not upLockedOk and upLockedCode == PlayerUpgradeService.Errors.LevelTooLow, tostring(upLockedCode))
+	local speedId = guid()
+	local speedOk = PlayerUpgradeService.Buy(player, speedId, "WalkSpeed")
+	check("buying Snow Boots works", speedOk and data.PlayerUpgrades.WalkSpeed == 2)
+	check("Snow Boots cost their price", CurrencyService.GetKlunks(player) == 20000 - 250)
+	check("Snow Boots raise the walk speed", humanoid.WalkSpeed == 17, tostring(humanoid.WalkSpeed))
+	local speedAgainOk = PlayerUpgradeService.Buy(player, speedId, "WalkSpeed")
+	check("a repeated upgrade request is ignored", not speedAgainOk and data.PlayerUpgrades.WalkSpeed == 2)
+	data.Progress.Level = 2
+	local carryOk = PlayerUpgradeService.Buy(player, guid(), "CarryCapacity")
+	check("Bigger Backpack adds a hand slot", carryOk and CarryService.GetCapacity(player) == GameConfig.Carry.MaxJunk + 1
+		and player:GetAttribute("CarryMax") == GameConfig.Carry.MaxJunk + 1)
+	data.PlayerUpgrades.WalkSpeed = 5
+	local maxOk, maxCode = PlayerUpgradeService.Buy(player, guid(), "WalkSpeed")
+	check("an upgrade at its max level cannot be bought", not maxOk and maxCode == PlayerUpgradeService.Errors.MaxLevel, tostring(maxCode))
+	check("upgrade levels are stored in the profile", type(data.PlayerUpgrades) == "table" and data.PlayerUpgrades.CarryCapacity == 2)
+	atBase()
+	local farUpOk, farUpCode = PlayerUpgradeService.Buy(player, guid(), "PickupRange")
+	check("upgrades can only be bought at the dealer", not farUpOk and farUpCode == PlayerUpgradeService.Errors.NotAtDealer, tostring(farUpCode))
+	-- Reset the upgrades the tests bought.
+	data.PlayerUpgrades = {}
+	PlayerUpgradeService.Refresh(player)
+	check("resetting the upgrades restores the default effects", humanoid.WalkSpeed == 16
+		and CarryService.GetCapacity(player) == GameConfig.Carry.MaxJunk and player:GetAttribute("Upgrade_WalkSpeed") == 1)
+
+	-- Storage (hands <-> base)
+	local boxUid = give("wooden_crate")
+	atDealer()
+	local awayOk, awayCode = StorageService.Move(player, "Store", boxUid)
+	check("storing away from the base is rejected", not awayOk and awayCode == StorageService.Errors.NotAtBase, tostring(awayCode))
+	atBase()
+	local storeOk, storeCode = StorageService.Move(player, "Store", boxUid)
+	check("an item moves from the hands into storage", storeOk and not CarryService.HasUid(player, boxUid)
+		and InventoryService.HasItem(player, boxUid), tostring(storeCode))
+	local dupAdd = CarryService.AddJunk(player, "wooden_crate", boxUid)
+	check("a stored uid cannot also be in the hands", not dupAdd)
+	local takeOk, takeCode = StorageService.Move(player, "Take", boxUid)
+	check("it moves back into the hands with the same uid", takeOk and CarryService.HasUid(player, boxUid)
+		and not InventoryService.HasItem(player, boxUid), tostring(takeCode))
+	local storedUid2 = InventoryService.AddItem(player, "bolt_pack") :: string
+	while not CarryService.IsFull(player) do
+		give("rusty_can")
+	end
+	local handsFullOk, handsFullCode = StorageService.Move(player, "Take", storedUid2)
+	check("taking with full hands is rejected", not handsFullOk and handsFullCode == StorageService.Errors.HandsFull
+		and InventoryService.HasItem(player, storedUid2), tostring(handsFullCode))
+	CarryService.Clear(player)
+
+	-- Progression
+	data.Progress.Level = 1
+	data.Progress.XP = 0
+	data.Progress.Discovered = {}
+	give("rusty_can")
+	local afterFirst = data.Progress.XP
+	give("rusty_can")
+	check("discovering an item gives XP once", afterFirst == Progression.Discover.Common and data.Progress.XP == afterFirst,
+		`{afterFirst} / {data.Progress.XP}`)
+	ProgressionService.AddXP(player, Progression.XpToNext(1) * 3, "Test")
+	check("enough XP raises the level", data.Progress.Level >= 2 and player:GetAttribute("Level") == data.Progress.Level)
+
+	-- Cleanup: restore what the tests changed.
+	CarryService.Clear(player)
+	for uid in InventoryService.GetAllItems(player) or {} do
+		InventoryService.RemoveItem(player, uid)
+	end
+	data.Progress = savedProgress
+	setBalance(savedKlunks)
+	character:PivotTo(home)
+end
+
 function DevTests.Run()
 	print("[DevTests] waiting for a player...")
 	local player = waitForPlayer(60)
@@ -1220,6 +1487,7 @@ function DevTests.Run()
 	runRewardTests()
 	runMachineTests(player)
 	runItemTests(player)
+	runEconomyTests(player)
 
 	print(`[DevTests] done: {passed} passed, {failed} failed`)
 end

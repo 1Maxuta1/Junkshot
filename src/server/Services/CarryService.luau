@@ -1,6 +1,7 @@
 --!strict
 --[[
-	CarryService: the server-side carry list (up to GameConfig.Carry.MaxJunk junk per player).
+	CarryService: the server-side carry list (GameConfig.Carry.MaxJunk items per player, more with
+	the Bigger Backpack upgrade: GetCapacity).
 
 	Design
 	  - The list holds Types.CarriedJunk records { Uid, Id } of ANY catalog item (ItemConfig).
@@ -70,9 +71,33 @@ CarryService.Errors = table.freeze({
 })
 
 CarryService.Changed = Signal.new() -- (player: Player)
+CarryService.ItemAdded = Signal.new() -- (player: Player, itemId: string, uid: string) entered the hands
 
 local started = false
 local notifyRemote: RemoteEvent? = nil
+
+-- Upgrades (PlayerUpgradeService) plug in here; without them the GameConfig values apply.
+local capacityBonus: ((Player) -> number)? = nil
+local pickupRange: ((Player) -> number)? = nil
+
+function CarryService.SetCapacityBonusProvider(provider: (Player) -> number)
+	capacityBonus = provider
+end
+
+function CarryService.SetPickupRangeProvider(provider: (Player) -> number)
+	pickupRange = provider
+end
+
+-- How many items this player can carry (GameConfig.Carry.MaxJunk + Bigger Backpack).
+function CarryService.GetCapacity(player: Player): number
+	local bonus = if capacityBonus ~= nil then capacityBonus(player) else 0
+	return GameConfig.Carry.MaxJunk + bonus
+end
+
+-- Studs from which this player may pick things up (Grabber Arm upgrade).
+function CarryService.GetPickupRange(player: Player): number
+	return if pickupRange ~= nil then pickupRange(player) else GameConfig.Junk.PickupMaxDistance
+end
 
 local carried: { [Player]: { CarriedJunk } } = {}
 local ownerByUid: { [string]: Player } = {}
@@ -94,6 +119,7 @@ local function publish(player: Player)
 		value = table.concat(parts, ",")
 	end
 	player:SetAttribute(LIST_ATTRIBUTE, value)
+	player:SetAttribute("CarryMax", CarryService.GetCapacity(player))
 	-- Saved with the profile (ProfileStore auto-saves; the session ends with a final save).
 	local data = DataService.GetData(player)
 	if data ~= nil and list ~= nil then
@@ -110,6 +136,14 @@ local function insertRecord(player: Player, list: { CarriedJunk }, junkId: strin
 	table.insert(list, { Uid = uid, Id = junkId })
 	ownerByUid[uid] = player
 	publish(player)
+	CarryService.ItemAdded:Fire(player, junkId, uid)
+end
+
+-- Re-publishes the list (e.g. after the capacity changed through an upgrade).
+function CarryService.Refresh(player: Player)
+	if carried[player] ~= nil then
+		publish(player)
+	end
 end
 
 local function removeAt(player: Player, list: { CarriedJunk }, index: number): CarriedJunk
@@ -181,7 +215,7 @@ function CarryService.AddJunk(player: Player, junkId: string, uid: string?): (bo
 	if list == nil then
 		return false, CarryService.Errors.NoState
 	end
-	if #list >= GameConfig.Carry.MaxJunk then
+	if #list >= CarryService.GetCapacity(player) then
 		return false, CarryService.Errors.CarryFull
 	end
 
@@ -247,7 +281,7 @@ function CarryService.GetCount(player: Player): number
 end
 
 function CarryService.IsFull(player: Player): boolean
-	return CarryService.GetCount(player) >= GameConfig.Carry.MaxJunk
+	return CarryService.GetCount(player) >= CarryService.GetCapacity(player)
 end
 
 function CarryService.Clear(player: Player)
@@ -318,13 +352,13 @@ function CarryService.TryPickup(player: Player, junk: any): (boolean, string?)
 		return false, CarryService.Errors.Reserved -- waiting on someone else's machine tray
 	end
 
-	local maxDistance = GameConfig.Junk.PickupMaxDistance + GameConfig.Carry.PickupDistanceTolerance
+	local maxDistance = CarryService.GetPickupRange(player) + GameConfig.Carry.PickupDistanceTolerance
 	if (root.Position - junkPosition).Magnitude > maxDistance then
 		return false, CarryService.Errors.TooFar
 	end
 
-	if #list >= GameConfig.Carry.MaxJunk then
-		CarryService.Notify(player, string.format("Carry full (%d/%d)", #list, GameConfig.Carry.MaxJunk))
+	if #list >= CarryService.GetCapacity(player) then
+		CarryService.Notify(player, string.format("Carry full (%d/%d)", #list, CarryService.GetCapacity(player)))
 		return false, CarryService.Errors.CarryFull
 	end
 
@@ -381,7 +415,7 @@ local function restore(player: Player)
 	local saved = data.Carry
 	if type(saved) == "table" then
 		for _, entry in saved do
-			if #list >= GameConfig.Carry.MaxJunk then
+			if #list >= CarryService.GetCapacity(player) then
 				break
 			end
 			local uid = if type(entry) == "table" then entry.Uid else nil

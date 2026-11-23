@@ -8,7 +8,7 @@
 	    CanBeCarried   every catalog item
 	    CanBePlaced    has a "Place" behavior (vehicles, cart, radio ...)
 	    CanBeUsed      has a "Use" behavior (detector ...)
-	    CanBeSold      false until the economy stage
+	    CanBeSold      Util/ItemValue.CanSell (Config/EconomyConfig)
 	    CanBeRecycled  ItemConfig.CanBeRecycled
 	    CanBeCrafted   some recipe produces it
 	    BehaviorId, Behavior   the behavior config (nil for plain items)
@@ -17,6 +17,7 @@
 local Behaviors = require(script.Parent.Parent.Config.Behaviors)
 local ItemConfig = require(script.Parent.Parent.Config.ItemConfig)
 local Recipes = require(script.Parent.Parent.Config.Recipes)
+local ItemValue = require(script.Parent.ItemValue)
 
 export type Capabilities = {
 	CanBeCarried: boolean,
@@ -48,7 +49,7 @@ function ItemCapabilities.Get(itemId: string): Capabilities?
 		CanBeCarried = true,
 		CanBePlaced = behavior ~= nil and behavior.Mode == "Place",
 		CanBeUsed = behavior ~= nil and behavior.Mode == "Use",
-		CanBeSold = false,
+		CanBeSold = ItemValue.CanSell(itemId),
 		CanBeRecycled = ItemConfig.CanBeRecycled(itemId),
 		CanBeCrafted = Recipes.Get(itemId) ~= nil,
 		BehaviorId = if behavior ~= nil then behaviorId else nil,

@@ -12,7 +12,7 @@ local GameConfig = {
 		StoreName = "PlayerData",
 		KeyPrefix = "Player_",
 		-- Bump when the profile shape changes and add a migration in DataService.
-		ProfileVersion = 3, -- 2: Carry, Machine, Purchases (Stage 2A); 3: Deployed (Stage 2B)
+		ProfileVersion = 4, -- 2: Carry, Machine, Purchases (2A); 3: Deployed (2B); 4: economy (Stage 3)
 	},
 
 	Klunks = {
@@ -79,6 +79,9 @@ local GameConfig = {
 			Enum.KeyCode.Four,
 			Enum.KeyCode.Five,
 			Enum.KeyCode.Six,
+			Enum.KeyCode.Seven, -- slots 7-9 exist only with the Bigger Backpack upgrade
+			Enum.KeyCode.Eight,
+			Enum.KeyCode.Nine,
 		},
 		NextSlotKeys = { Enum.KeyCode.ButtonR1 },
 		PrevSlotKeys = { Enum.KeyCode.ButtonL1 },
@@ -90,6 +93,9 @@ local GameConfig = {
 		AimRayLength = 500, -- studs the mouse / screen-center aim ray reaches
 		-- Functional items: Use / Place the item selected in the hotbar.
 		UseKey = Enum.KeyCode.G,
+		-- The bag (carried + base storage).
+		BagKey = Enum.KeyCode.B,
+		BagGamepadKey = Enum.KeyCode.ButtonSelect,
 		UseGamepadKey = Enum.KeyCode.DPadUp,
 		-- While placing: confirm with UseKey / left mouse / ButtonR2 / the PLACE button, cancel here.
 		CancelKey = Enum.KeyCode.Q,
@@ -137,6 +143,10 @@ local GameConfig = {
 		ItemPlace = { MaxRequests = 3, Window = 2 },
 		ItemUse = { MaxRequests = 4, Window = 1 },
 		VehicleInput = { MaxRequests = 30, Window = 1 },
+		SellItems = { MaxRequests = 3, Window = 2 },
+		ShopBuy = { MaxRequests = 4, Window = 2 },
+		PlayerUpgradeBuy = { MaxRequests = 3, Window = 2 },
+		StorageMove = { MaxRequests = 8, Window = 1 },
 	},
 
 	Debug = {

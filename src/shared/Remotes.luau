@@ -37,6 +37,13 @@ local definitions: { [string]: string } = {
 	ItemUse = "RemoteEvent", -- client -> server: (uid) use a carried item (detector scan)
 	ItemFx = "RemoteEvent", -- server -> client: result of a use (e.g. detector signal)
 	VehicleInput = "RemoteEvent", -- client -> server: (throttle, steer) in [-1, 1], driver only
+	-- Economy (Stage 3). Prices, totals and results are always decided on the server; the
+	-- request id (a GUID made by the client) only makes a repeated request a no-op.
+	SellItems = "RemoteEvent", -- client -> server: (requestId, { uid }) sell at the Scrap Dealer
+	ShopBuy = "RemoteEvent", -- client -> server: (requestId, entryId) buy a shop entry
+	PlayerUpgradeBuy = "RemoteEvent", -- client -> server: (requestId, upgradeId) next level
+	StorageMove = "RemoteEvent", -- client -> server: ("Store" | "Take", uid) hands <-> base storage
+	EconomyFx = "RemoteEvent", -- server -> client: { Kind, Amount?, Reason?, Text? } feedback
 }
 
 local Remotes = {}

@@ -24,7 +24,8 @@ export type ItemDefinition = {
 	IsDebug: boolean?,
 }
 
--- One owned item. Stored in the profile under Items[uid] (saved inventory, InventoryService).
+-- One stored item: base storage (InventoryService), saved in the profile under Items[uid].
+-- The uid is the same one the item had in the hands / world (it moves, it is not copied).
 export type ItemRecord = {
 	id: string, -- key into ItemConfig
 	acquiredAt: number, -- os.time()
@@ -80,6 +81,27 @@ export type DeployedRecord = {
 	Contents: { CarriedJunk }?, -- items inside it (Metal Cart)
 }
 
+-- One currency movement (EconomyService). Kept as a short log in ProfileData.Economy.
+export type Transaction = {
+	Id: string, -- unique (the client's request id for sales / purchases)
+	Type: string, -- "Earn" | "Spend"
+	Amount: number,
+	Reason: string, -- "Sell" | "Shop" | "PlayerUpgrade" | "MachineUpgrade" | ...
+	Balance: number, -- balance right after
+	At: number, -- os.time()
+}
+
+export type EconomyData = {
+	Transactions: { Transaction }, -- most recent last, capped (EconomyConfig.TransactionLog)
+	Requests: { string }, -- processed request ids, most recent last (duplicate protection)
+}
+
+export type ProgressData = {
+	Level: number,
+	XP: number, -- progress towards the next level
+	Discovered: { [string]: boolean }, -- item ids seen at least once (first-time XP)
+}
+
 export type ProfileStats = {
 	TotalKlunksEarned: number,
 }
@@ -92,6 +114,9 @@ export type ProfileData = {
 	Carry: { CarriedJunk },
 	Machine: MachineData,
 	Deployed: { DeployedRecord },
+	PlayerUpgrades: { [string]: number }, -- upgrade id -> level (Config/PlayerUpgrades)
+	Progress: ProgressData,
+	Economy: EconomyData,
 	Purchases: { string }, -- processed Robux receipt ids (most recent last)
 	Stats: ProfileStats,
 	Settings: { [string]: any },

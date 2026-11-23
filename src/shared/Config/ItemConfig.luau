@@ -15,7 +15,7 @@
 	  NaturalSpawn + SpawnWeight   may appear in the yard (rarity rolled by DropTables.WorldSpawn,
 	                               SpawnWeight = relative chance within that rarity)
 	  RecyclePool                  may be the result of recycling / mythic crafting
-	  CanBeRecycled                false = the machine refuses it (default true)
+	  CanBeRecycled                recycling input; default: only Category "Junk" (see CanBeRecycled)
 	  ItemType, BehaviorId         what the object does (behaviors arrive in Stage 2B)
 	  IsDebug                      tests only
 
@@ -127,7 +127,22 @@ function ItemConfig.GetDisplayName(itemId: string): string
 	return if definition ~= nil then definition.DisplayName else itemId
 end
 
+-- Recycling (1 item -> a random reward) accepts natural yard junk only. Rewards, materials and
+-- creations cannot go back in, otherwise one item could be recycled into money forever.
+-- An item can opt in or out with CanBeRecycled = true / false.
 function ItemConfig.CanBeRecycled(itemId: string): boolean
+	local definition = items[itemId]
+	if definition == nil or definition.IsDebug == true then
+		return false
+	end
+	if definition.CanBeRecycled ~= nil then
+		return definition.CanBeRecycled
+	end
+	return definition.Category == "Junk"
+end
+
+-- Mythic crafting (3 items -> 1, six hours) accepts any real item.
+function ItemConfig.CanBeMythicInput(itemId: string): boolean
 	local definition = items[itemId]
 	return definition ~= nil and definition.IsDebug ~= true and definition.CanBeRecycled ~= false
 end

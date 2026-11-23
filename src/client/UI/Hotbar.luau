@@ -16,6 +16,7 @@ local TweenService = game:GetService("TweenService")
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local ItemConfig = require(ReplicatedStorage.Shared.Config.ItemConfig)
 local Rarities = require(ReplicatedStorage.Shared.Config.Rarities)
+local PlayerUpgrades = require(ReplicatedStorage.Shared.Config.PlayerUpgrades)
 local Preview = require(script.Parent.Preview)
 local Theme = require(script.Parent.Theme)
 
@@ -29,7 +30,7 @@ type Slot = {
 }
 
 export type Hotbar = {
-	Update: (list: { { Uid: string, Id: string } }, selectedIndex: number) -> (),
+	Update: (list: { { Uid: string, Id: string } }, selectedIndex: number, capacity: number?) -> (),
 	SetInputKind: (kind: string) -> (),
 	PulseFull: () -> (),
 	SlotClicked: BindableEvent,
@@ -38,7 +39,9 @@ export type Hotbar = {
 local Hotbar = {}
 
 function Hotbar.Mount(screenGui: ScreenGui): Hotbar
-	local maxSlots = GameConfig.Carry.MaxJunk
+	-- Slots for the largest possible capacity; only `capacity` of them are shown.
+	local maxSlots = GameConfig.Carry.MaxJunk + PlayerUpgrades.MaxCarryBonus()
+	local capacity = GameConfig.Carry.MaxJunk
 	local slotClicked = Instance.new("BindableEvent")
 
 	local root = Instance.new("Frame")
@@ -199,10 +202,22 @@ function Hotbar.Mount(screenGui: ScreenGui): Hotbar
 			:Play()
 	end
 
-	local function update(list: { { Uid: string, Id: string } }, selectedIndex: number)
+	local function applyCapacity(newCapacity: number)
+		capacity = math.clamp(newCapacity, 1, maxSlots)
+		local width = math.min(0.13, 0.84 / capacity)
+		for index, slot in slots do
+			slot.Frame.Visible = index <= capacity
+			slot.Frame.Size = UDim2.fromScale(width, 1)
+		end
+	end
+
+	local function update(list: { { Uid: string, Id: string } }, selectedIndex: number, newCapacity: number?)
+		if newCapacity ~= nil and newCapacity ~= capacity then
+			applyCapacity(newCapacity)
+		end
 		local count = #list
-		capacityLabel.Text = `{count}/{maxSlots}`
-		local full = count >= maxSlots
+		capacityLabel.Text = `{count}/{capacity}`
+		local full = count >= capacity
 		pill.BackgroundColor3 = if full then Theme.Colors.Danger else Theme.Colors.Ink
 		if full and not wasFull then
 			pulseFull()
@@ -262,6 +277,7 @@ function Hotbar.Mount(screenGui: ScreenGui): Hotbar
 		rightHint.Visible = kind == "Gamepad"
 	end
 
+	applyCapacity(capacity)
 	update({}, 0)
 
 	return {

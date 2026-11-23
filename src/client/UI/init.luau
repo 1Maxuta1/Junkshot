@@ -30,7 +30,8 @@ local ThrowButton = require(script.ThrowButton)
 local UI = {}
 
 local function fullMessage(): string
-	return string.format("Carry full (%d/%d)", GameConfig.Carry.MaxJunk, GameConfig.Carry.MaxJunk)
+	local capacity = CarryController.GetCapacity()
+	return string.format("Carry full (%d/%d)", capacity, capacity)
 end
 
 local function mount()
@@ -54,7 +55,7 @@ local function mount()
 
 	local function refresh()
 		local list = CarryController.GetLocalCarried()
-		hotbar.Update(list, CarryController.GetSelectedIndex())
+		hotbar.Update(list, CarryController.GetSelectedIndex(), CarryController.GetCapacity())
 		throwButton.SetEnabled(#list > 0)
 		pickupPrompt.SetFull(CarryController.IsFull())
 	end
@@ -81,7 +82,7 @@ local function mount()
 		local definition = ItemConfig.Get(last.Id)
 		local name = if definition ~= nil then definition.DisplayName else last.Id
 		local count = #CarryController.GetLocalCarried()
-		NotifyController.Show(`Picked up {name} ({count}/{GameConfig.Carry.MaxJunk})`, "Success")
+		NotifyController.Show(`Picked up {name} ({count}/{CarryController.GetCapacity()})`, "Success")
 	end)
 
 	applyInputKind(InputController.GetInputKind())

@@ -12,6 +12,8 @@
 	  7. MachineService          personal machines (built when a plot is assigned)
 	  8. MonetizationService     optional Robux receipts / passes (placeholders)
 	  8b. PlacementService       functional items: place / store / use (+ Services/Behaviors/*)
+	  8c. Economy (Stage 3)      Progression, Dealer (booth), PlayerUpgrades, Sell, Shop, Storage;
+	                             EconomyService has no Start (it is a library over CurrencyService)
 	  9. DataService.Start()     LAST: begins loading profiles, which fires PlayerLoaded, and
 	                             every listener above must already be connected
 
@@ -42,6 +44,12 @@ local PlotService = require(Services.PlotService)
 local MachineService = require(Services.MachineService)
 local MonetizationService = require(Services.MonetizationService)
 local PlacementService = require(Services.PlacementService)
+local ProgressionService = require(Services.ProgressionService)
+local DealerService = require(Services.DealerService)
+local PlayerUpgradeService = require(Services.PlayerUpgradeService)
+local SellService = require(Services.SellService)
+local ShopService = require(Services.ShopService)
+local StorageService = require(Services.StorageService)
 
 Remotes.Init()
 -- Listeners of DataService.PlayerLoaded must exist before the first profile can load, so the
@@ -54,6 +62,12 @@ PlotService.Start()
 MachineService.Start()
 MonetizationService.Start()
 PlacementService.Start()
+ProgressionService.Start()
+DealerService.Start()
+PlayerUpgradeService.Start()
+SellService.Start()
+ShopService.Start()
+StorageService.Start()
 DataService.Start()
 
 -- DevTests move the test player around (machine, plot, junk) for about a minute, so they only
@@ -70,7 +84,8 @@ end
 -- Studio-only bridge for multi-client tests: external test code cannot share these module
 -- instances and cannot press keys in secondary client windows, so it asks the live services
 -- through this BindableFunction. Server-only (BindableFunctions never cross the network).
-if runDevTests then
+-- Also available without the tests via the ServerScriptService attribute DebugBridge = true.
+if runDevTests or (RunService:IsStudio() and ServerScriptService:GetAttribute("DebugBridge") == true) then
 	local bridge = Instance.new("BindableFunction")
 	bridge.Name = "JunkshotDebugBridge"
 	bridge.OnInvoke = function(action: string, player: Player, arg: any): any

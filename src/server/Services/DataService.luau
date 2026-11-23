@@ -26,6 +26,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
+local EconomyConfig = require(ReplicatedStorage.Shared.Config.EconomyConfig)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Signal = require(ReplicatedStorage.Shared.Util.Signal)
 
@@ -57,7 +58,7 @@ local KICK_SESSION_ENDED = "Your data session ended. Please rejoin."
 -- Keep it minimal: only fields that a shipped system actually uses.
 local TEMPLATE: Types.ProfileData = {
 	Version = GameConfig.Data.ProfileVersion,
-	Klunks = 0,
+	Klunks = EconomyConfig.StartingBalance, -- new players only (existing balances are kept)
 	Items = {},
 	-- Carried items survive leaving the game (CarryService).
 	Carry = {},
@@ -71,6 +72,10 @@ local TEMPLATE: Types.ProfileData = {
 	},
 	-- Functional items placed in the world (PlacementService), restored at the plot on rejoin.
 	Deployed = {},
+	-- Stage 3: permanent player upgrades (level per upgrade id), level/XP, economy log.
+	PlayerUpgrades = {},
+	Progress = { Level = 1, XP = 0, Discovered = {} },
+	Economy = { Transactions = {}, Requests = {} },
 	-- Processed Robux receipt ids (MonetizationService idempotency).
 	Purchases = {},
 	Stats = {
@@ -87,6 +92,10 @@ local MIGRATIONS: { [number]: (data: any) -> () } = {
 	end,
 	[2] = function(_data: any)
 		-- 2 -> 3: Deployed was added; Reconcile() creates it.
+	end,
+	[3] = function(_data: any)
+		-- 3 -> 4: PlayerUpgrades, Progress, Economy were added; Reconcile() creates them.
+		-- Existing Klunks and Items (base storage) keep their format.
 	end,
 }
 

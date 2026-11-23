@@ -142,7 +142,7 @@ function MythicTab.Mount(container: Frame, actions: Widgets.Actions): Widgets.Ta
 			end
 		end
 		for _, entry in view.Carried do
-			if not used[entry.Uid] and ItemConfig.CanBeRecycled(entry.Id) then
+			if not used[entry.Uid] and ItemConfig.CanBeMythicInput(entry.Id) then
 				table.insert(free, entry)
 			end
 		end

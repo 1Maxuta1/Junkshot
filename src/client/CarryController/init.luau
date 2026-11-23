@@ -65,11 +65,21 @@ local localList: { CarriedJunk } = {}
 local selectedUid: string? = nil
 local selectedIndex = 0
 
+-- Hand slots of a player: the server publishes "CarryMax" (base + Bigger Backpack upgrade).
+local function capacityOf(player: Player): number
+	local value = player:GetAttribute("CarryMax")
+	return if type(value) == "number" and value >= 1 then value else GameConfig.Carry.MaxJunk
+end
+
+function CarryController.GetCapacity(): number
+	return capacityOf(Players.LocalPlayer)
+end
+
 ---------------------------------------------------------------------------------------------
 -- Parsing
 ---------------------------------------------------------------------------------------------
 
--- Reads the replicated list; ignores malformed entries and never returns more than MaxJunk.
+-- Reads the replicated list; ignores malformed entries and never returns more than the capacity.
 local function readList(player: Player): { CarriedJunk }
 	local entries: { CarriedJunk } = {}
 	local value = player:GetAttribute(LIST_ATTRIBUTE)
@@ -80,7 +90,7 @@ local function readList(player: Player): { CarriedJunk }
 		local uid, id = string.match(pair, "^([^:]+):(.+)$")
 		if uid ~= nil and id ~= nil and Validate.IsUid(uid) and ItemConfig.Exists(id) then
 			table.insert(entries, { Uid = uid, Id = id })
-			if #entries >= GameConfig.Carry.MaxJunk then
+			if #entries >= capacityOf(player) then
 				break
 			end
 		end
@@ -267,7 +277,7 @@ function CarryController.Cycle(direction: number)
 end
 
 function CarryController.IsFull(): boolean
-	return #localList >= GameConfig.Carry.MaxJunk
+	return #localList >= CarryController.GetCapacity()
 end
 
 ---------------------------------------------------------------------------------------------
@@ -327,6 +337,12 @@ local function track(player: Player)
 			end
 		end)
 	)
+	if player == localPlayer then
+		-- A Bigger Backpack upgrade changes only the capacity: refresh the HUD too.
+		table.insert(connections, player:GetAttributeChangedSignal("CarryMax"):Connect(function()
+			updateLocalState()
+		end))
+	end
 	table.insert(connections, player.CharacterAdded:Connect(watchCharacter))
 	table.insert(
 		connections,

@@ -59,7 +59,7 @@ local Signal = require(ReplicatedStorage.Shared.Util.Signal)
 local Validate = require(ReplicatedStorage.Shared.Util.Validate)
 local CarryService = require(script.Parent.CarryService)
 local CraftingService = require(script.Parent.CraftingService)
-local CurrencyService = require(script.Parent.CurrencyService)
+local EconomyService = require(script.Parent.EconomyService)
 local DataService = require(script.Parent.DataService)
 local JunkService = require(script.Parent.JunkService)
 local PlotService = require(script.Parent.PlotService)
@@ -324,7 +324,7 @@ local function settle(machine: Machine)
 	machine.Token += 1
 	spawnOutputs(machine)
 	publish(machine)
-	MachineService.JobFinished:Fire(machine.Player, { Uid = result.Uid, Id = result.Id })
+	MachineService.JobFinished:Fire(machine.Player, { Uid = result.Uid, Id = result.Id }, job.Kind)
 end
 
 -- One task.delay per running job; re-armed whenever the completion time changes.
@@ -479,7 +479,7 @@ function MachineService.Mythic(player: Player, uidA: any, uidB: any, uidC: any):
 		if itemId == nil then
 			return false, MachineService.Errors.NotCarried
 		end
-		if not ItemConfig.CanBeRecycled(itemId) then
+		if not ItemConfig.CanBeMythicInput(itemId) then
 			return false, MachineService.Errors.NotRecyclable
 		end
 		table.insert(inputIds, itemId)
@@ -589,7 +589,7 @@ function MachineService.BuyUpgrade(player: Player, upgradeId: any): (boolean, st
 	end
 	local price = definition.Levels[current + 1].Price
 	if price > 0 then
-		local paid = CurrencyService.RemoveKlunks(player, price)
+		local paid = EconomyService.Spend(player, price, `MachineUpgrade:{upgradeId}`)
 		if not paid then
 			return false, MachineService.Errors.NotEnoughKlunks
 		end

@@ -38,6 +38,7 @@ InventoryService.Errors = table.freeze({
 	UidGenerationFailed = "UidGenerationFailed",
 	InvalidUid = "InvalidUid",
 	ItemNotFound = "ItemNotFound",
+	UidInUse = "UidInUse",
 })
 
 InventoryService.ItemAdded = Signal.new() -- (player: Player, uid: string, record: ItemRecord)
@@ -78,7 +79,42 @@ local function generateUid(items: { [string]: Types.ItemRecord }): string?
 	return nil
 end
 
-function InventoryService.AddItem(player: Player, itemId: string): (string?, string?)
+-- Optional hooks (set by StorageService / PlayerUpgradeService):
+--   capacity(player) -> number    the player's storage limit (upgrade); MaxItems stays the hard cap
+--   uidInUse(uid) -> boolean      the uid exists elsewhere (hands, world, placed objects)
+local capacityProvider: ((Player) -> number)? = nil
+local uidInUse: ((string) -> boolean)? = nil
+
+function InventoryService.SetCapacityProvider(provider: (Player) -> number)
+	capacityProvider = provider
+end
+
+function InventoryService.SetUidGuard(guard: (string) -> boolean)
+	uidInUse = guard
+end
+
+function InventoryService.GetCapacity(player: Player): number
+	local limit = GameConfig.Inventory.MaxItems
+	if capacityProvider ~= nil then
+		limit = math.min(limit, capacityProvider(player))
+	end
+	return limit
+end
+
+-- True when the uid is in ANY loaded player's storage (one item, one place).
+function InventoryService.IsUidStored(uid: string): boolean
+	for _, other in game:GetService("Players"):GetPlayers() do
+		local data = DataService.GetData(other)
+		if data ~= nil and type(data.Items) == "table" and data.Items[uid] ~= nil then
+			return true
+		end
+	end
+	return false
+end
+
+-- Adds an item to base storage. `uid` keeps the identity of an item that moves in from the
+-- hands; without it a new uid is generated (a brand-new item, e.g. a shop purchase).
+function InventoryService.AddItem(player: Player, itemId: string, uid: string?): (string?, string?)
 	if not Validate.IsItemId(itemId) then
 		return nil, InventoryService.Errors.InvalidItemId
 	end
@@ -94,20 +130,31 @@ function InventoryService.AddItem(player: Player, itemId: string): (string?, str
 	if items == nil then
 		return nil, err
 	end
-	if countItems(items) >= GameConfig.Inventory.MaxItems then
+	if countItems(items) >= InventoryService.GetCapacity(player) then
 		return nil, InventoryService.Errors.InventoryFull
 	end
 
-	local uid = generateUid(items)
-	if uid == nil then
-		return nil, InventoryService.Errors.UidGenerationFailed
+	local finalUid: string? = uid
+	if finalUid ~= nil then
+		if not Validate.IsUid(finalUid) then
+			return nil, InventoryService.Errors.InvalidUid
+		end
+		if items[finalUid] ~= nil or InventoryService.IsUidStored(finalUid) or (uidInUse ~= nil and uidInUse(finalUid)) then
+			return nil, InventoryService.Errors.UidInUse
+		end
+	else
+		finalUid = generateUid(items)
+		if finalUid == nil then
+			return nil, InventoryService.Errors.UidGenerationFailed
+		end
 	end
+	local newUid = finalUid :: string
 
 	local record: Types.ItemRecord = { id = itemId, acquiredAt = os.time() }
-	items[uid] = record
+	items[newUid] = record
 
-	InventoryService.ItemAdded:Fire(player, uid, copyRecord(record))
-	return uid, nil
+	InventoryService.ItemAdded:Fire(player, newUid, copyRecord(record))
+	return newUid, nil
 end
 
 function InventoryService.RemoveItem(player: Player, uid: string): (boolean, string?)
