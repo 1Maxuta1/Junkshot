@@ -32,6 +32,11 @@ local definitions: { [string]: string } = {
 	MachineTake = "RemoteEvent", -- client -> server: (uid) move a finished item into the hands
 	MachineUpgrade = "RemoteEvent", -- client -> server: (upgradeId) buy the next level
 	-- Machine state needs no remote: it is published as attributes on each machine model.
+	-- Functional items (PlacementService). Actions ON placed objects go through their prompts.
+	ItemPlace = "RemoteEvent", -- client -> server: (uid, groundPosition, yaw) place a carried item
+	ItemUse = "RemoteEvent", -- client -> server: (uid) use a carried item (detector scan)
+	ItemFx = "RemoteEvent", -- server -> client: result of a use (e.g. detector signal)
+	VehicleInput = "RemoteEvent", -- client -> server: (throttle, steer) in [-1, 1], driver only
 }
 
 local Remotes = {}

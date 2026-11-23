@@ -12,7 +12,7 @@ local GameConfig = {
 		StoreName = "PlayerData",
 		KeyPrefix = "Player_",
 		-- Bump when the profile shape changes and add a migration in DataService.
-		ProfileVersion = 2, -- 2: Carry, Machine, Purchases added (Stage 2A)
+		ProfileVersion = 3, -- 2: Carry, Machine, Purchases (Stage 2A); 3: Deployed (Stage 2B)
 	},
 
 	Klunks = {
@@ -88,6 +88,36 @@ local GameConfig = {
 		MachineKey = Enum.KeyCode.R,
 		MachineGamepadKey = Enum.KeyCode.ButtonY,
 		AimRayLength = 500, -- studs the mouse / screen-center aim ray reaches
+		-- Functional items: Use / Place the item selected in the hotbar.
+		UseKey = Enum.KeyCode.G,
+		UseGamepadKey = Enum.KeyCode.DPadUp,
+		-- While placing: confirm with UseKey / left mouse / ButtonR2 / the PLACE button, cancel here.
+		CancelKey = Enum.KeyCode.Q,
+		CancelGamepadKey = Enum.KeyCode.ButtonB,
+		ConfirmGamepadKey = Enum.KeyCode.ButtonR2,
+		-- Prompts on placed objects (one key per action, so they never hide each other).
+		Interact = {
+			Primary = { Key = Enum.KeyCode.E, Gamepad = Enum.KeyCode.ButtonX }, -- drive / ride / tow / play
+			Secondary = { Key = Enum.KeyCode.Z, Gamepad = Enum.KeyCode.DPadLeft }, -- load / next track
+			Tertiary = { Key = Enum.KeyCode.X, Gamepad = Enum.KeyCode.DPadRight }, -- unload
+			Store = { Key = Enum.KeyCode.T, Gamepad = Enum.KeyCode.DPadDown }, -- pick it back up
+		},
+	},
+
+	-- Placing functional items in the world (PlacementService). The server checks every rule;
+	-- the client preview uses the same numbers so green/red matches.
+	Placement = {
+		MaxDistance = 18, -- studs from the character to the placed object's center
+		DistanceTolerance = 6, -- extra studs the server accepts (lag)
+		PreviewDistance = 4, -- studs in front of the character to the object's near edge
+		MaxDeployed = 5, -- placed objects per player
+		MaxVehicles = 2, -- of those, vehicles
+		MinGroundNormalY = 0.8, -- flat enough ground only
+		MachineClearance = 10, -- studs to keep from any machine
+		RayHeight = 8, -- the ground search starts this far above the requested point
+		RayLength = 20,
+		InteractDistance = 10, -- ProximityPrompt distance on placed objects
+		FallResetY = -40, -- an object below this height is returned to its owner's plot
 	},
 
 	Inventory = {
@@ -104,10 +134,15 @@ local GameConfig = {
 		MachineUpgrade = { MaxRequests = 3, Window = 2 },
 		-- Clicks above this rate are rejected (not counted): an autoclicker gains nothing extra.
 		MachineAccelerate = { MaxRequests = 10, Window = 1 },
+		ItemPlace = { MaxRequests = 3, Window = 2 },
+		ItemUse = { MaxRequests = 4, Window = 1 },
+		VehicleInput = { MaxRequests = 30, Window = 1 },
 	},
 
 	Debug = {
-		EnableDevTests = true, -- run server/DevTests.luau on startup (Studio only)
+		-- Run server/DevTests.luau on startup (Studio only). Off by default: the tests teleport the
+		-- player for about a minute. Set ServerScriptService attribute RunDevTests = true to run once.
+		EnableDevTests = false,
 		UseMockStore = true, -- use ProfileStore.Mock: nothing is saved (Studio only)
 		SimulateLoadFailure = false, -- pretend profile loading failed (Studio only)
 	},

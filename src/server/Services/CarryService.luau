@@ -236,6 +236,11 @@ function CarryService.HasUid(player: Player, uid: string): boolean
 	return ownerByUid[uid] == player
 end
 
+-- True when anyone on this server carries the uid.
+function CarryService.IsUidCarried(uid: string): boolean
+	return ownerByUid[uid] ~= nil
+end
+
 function CarryService.GetCount(player: Player): number
 	local list = carried[player]
 	return if list ~= nil then #list else 0
@@ -409,6 +414,12 @@ local function onPlayerRemoving(player: Player)
 	carried[player] = nil
 	lastPickupAt[player] = nil
 	lastNotify[player] = nil
+end
+
+-- Restores the hands now if that has not happened yet (Signal handlers run in no fixed order,
+-- so services that depend on the hands call this first). Safe to call any number of times.
+function CarryService.EnsureRestored(player: Player)
+	restore(player)
 end
 
 -- Drops the in-memory list and restores it from the saved profile, exactly like a rejoin.

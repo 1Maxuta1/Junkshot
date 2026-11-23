@@ -10,7 +10,9 @@
 
 	When the local player is already full, junk cards turn red ("Carry full 6/6") so the
 	player sees it before pressing anything. The server still makes the real decision.
-	A prompt's "PromptKind" attribute marks non-junk prompts (e.g. "Machine").
+	A prompt's "PromptKind" attribute marks non-junk prompts (e.g. "Machine", "Deployable").
+	Placed objects can carry several prompts; "CardOffset" (studs) stacks their cards, and
+	prompts with "OwnerOnly" are hidden for everyone but "OwnerUserId".
 ]]
 
 local Players = game:GetService("Players")
@@ -62,7 +64,11 @@ local function isForSomeoneElse(prompt: ProximityPrompt): boolean
 		return true
 	end
 	local owner = prompt:GetAttribute("OwnerUserId")
-	return prompt:GetAttribute("PromptKind") == "Machine" and type(owner) == "number" and owner ~= me
+	if type(owner) ~= "number" or owner == me then
+		return false
+	end
+	-- Other players' machines, and owner-only actions on other players' placed objects.
+	return prompt:GetAttribute("PromptKind") == "Machine" or prompt:GetAttribute("OwnerOnly") == true
 end
 
 function PickupPrompt.Mount(onTriggeredLocally: (prompt: ProximityPrompt) -> ()): PickupPrompt
@@ -90,7 +96,10 @@ function PickupPrompt.Mount(onTriggeredLocally: (prompt: ProximityPrompt) -> ())
 		gui.Name = "JunkshotPrompt"
 		gui.Adornee = prompt.Parent
 		gui.Size = CARD_SIZE
-		gui.StudsOffset = if isJunk(prompt) then JUNK_OFFSET else MACHINE_OFFSET
+		local cardOffset = prompt:GetAttribute("CardOffset")
+		gui.StudsOffset = if type(cardOffset) == "number" then Vector3.new(0, cardOffset, 0)
+			elseif isJunk(prompt) then JUNK_OFFSET
+			else MACHINE_OFFSET
 		gui.AlwaysOnTop = true
 		gui.LightInfluence = 0
 		gui.ResetOnSpawn = false

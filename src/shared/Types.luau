@@ -20,7 +20,7 @@ export type ItemDefinition = {
 	RecyclePool: boolean?, -- may be produced by recycling / mythic crafting
 	CanBeRecycled: boolean?, -- default true
 	ItemType: string?, -- "Component" | "Vehicle" | "Tool" | "Deployable" | "Collectible" ...
-	BehaviorId: string?, -- gameplay behavior attached in Stage 2B (e.g. "Vehicle.Bicycle")
+	BehaviorId: string?, -- key into Config/Behaviors (e.g. "Vehicle.Bicycle"); see Util/ItemCapabilities
 	IsDebug: boolean?,
 }
 
@@ -72,6 +72,14 @@ export type MachineData = {
 	ResultSeq: number, -- increments per finished job (clients reveal each result once)
 }
 
+-- A crafted item placed in the world (PlacementService). Saved in ProfileData.Deployed; while
+-- it is here the same uid is NOT carried and NOT lying in the world as loose junk.
+export type DeployedRecord = {
+	Uid: string,
+	Id: string, -- key into ItemConfig
+	Contents: { CarriedJunk }?, -- items inside it (Metal Cart)
+}
+
 export type ProfileStats = {
 	TotalKlunksEarned: number,
 }
@@ -83,6 +91,7 @@ export type ProfileData = {
 	Items: { [string]: ItemRecord },
 	Carry: { CarriedJunk },
 	Machine: MachineData,
+	Deployed: { DeployedRecord },
 	Purchases: { string }, -- processed Robux receipt ids (most recent last)
 	Stats: ProfileStats,
 	Settings: { [string]: any },

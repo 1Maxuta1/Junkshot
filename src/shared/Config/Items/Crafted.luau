@@ -4,9 +4,9 @@
 
 	Category "Component"  intermediate parts used by bigger recipes (engines, motors, frames).
 	Category "Crafted"    finished creations. ItemType says what kind of object it is and
-	                      BehaviorId names the behavior Stage 2B attaches (vehicle riding, tool
-	                      use, placing). Until then they are carryable/throwable items like any
-	                      other.
+	                      BehaviorId links it to Config/Behaviors (driving, towing, scanning,
+	                      playing music). Items whose BehaviorId has no entry there yet are
+	                      carryable/throwable items like any other.
 
 	Models are simple placeholders built from parts (clearly replaceable later).
 	None of these spawn in the world or drop from recycling.

@@ -29,6 +29,8 @@
 	  CleanupExpired()           -> number           removes expired junk now (also runs on a timer)
 	  GetActiveJunk(), GetActiveCount(), IsActive(junk), IsUidActive(uid), GetByUid(uid),
 	  IsClaimable(junk), GetJunkId(junk), GetUid(junk), GetPosition(junk)
+	  RegisterUidSource(fn)      other holders of uids (placed objects) count as "active"
+	  FindNearest(pos, range, accept, forUserId?) -> (model?, uid?, id?, distance?)
 
 	One uid = at most one world object (createJunk refuses a uid that is already in the world).
 	A thrown object is created at its landing point immediately but stays locked (no prompt,
@@ -101,6 +103,7 @@ local byUid: { [string]: Model } = {}
 local activeCount = 0
 
 local modelPool: { [string]: { Model } } = {}
+local uidSources: { (uid: string) -> boolean } = {}
 
 local lastFailureWarning = -math.huge
 
@@ -546,8 +549,51 @@ function JunkService.IsActive(junk: any): boolean
 	return active[junk] ~= nil
 end
 
+-- True while the uid exists anywhere outside someone's hands: lying in the world, or held by
+-- another system that registered itself with RegisterUidSource (placed objects, cart contents).
+-- CarryService refuses such a uid, so one item can never be in two places.
 function JunkService.IsUidActive(uid: string): boolean
-	return byUid[uid] ~= nil
+	if byUid[uid] ~= nil then
+		return true
+	end
+	for _, source in uidSources do
+		if source(uid) then
+			return true
+		end
+	end
+	return false
+end
+
+-- Lets another service declare uids it currently holds (see IsUidActive).
+function JunkService.RegisterUidSource(source: (uid: string) -> boolean)
+	table.insert(uidSources, source)
+end
+
+-- The nearest claimable world object within `range` of `position` whose item id passes
+-- `accept`, ignoring objects reserved for someone other than `forUserId`.
+-- Returns (model, uid, itemId, distance) or nil.
+function JunkService.FindNearest(
+	position: Vector3,
+	range: number,
+	accept: (itemId: string) -> boolean,
+	forUserId: number?
+): (Model?, string?, string?, number?)
+	local now = os.clock()
+	local bestModel: Model? = nil
+	local bestEntry: ActiveJunk? = nil
+	local bestDistance = range
+	for model, entry in active do
+		if now >= entry.ClaimableAt and (entry.ReservedFor == nil or entry.ReservedFor == forUserId) then
+			local distance = (entry.Position - position).Magnitude
+			if distance <= bestDistance and accept(entry.Id) then
+				bestModel, bestEntry, bestDistance = model, entry, distance
+			end
+		end
+	end
+	if bestModel == nil or bestEntry == nil then
+		return nil, nil, nil, nil
+	end
+	return bestModel, bestEntry.Uid, bestEntry.Id, bestDistance
 end
 
 -- The world object of a uid, or nil when that uid is not lying in the world.

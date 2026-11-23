@@ -62,7 +62,7 @@ local function mount()
 	local function applyInputKind(kind: string)
 		hotbar.SetInputKind(kind)
 		-- No throwing from behind a menu, so the touch button hides while one is open.
-		throwButton.SetVisible(kind == "Touch" and not InputController.IsMenuOpen())
+		throwButton.SetVisible(kind == "Touch" and not InputController.IsThrowBlocked())
 	end
 
 	hotbar.SlotClicked.Event:Connect(function(index: number)

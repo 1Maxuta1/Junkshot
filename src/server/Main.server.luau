@@ -11,6 +11,7 @@
 	  6. PlotService             gives each loaded player a base plot
 	  7. MachineService          personal machines (built when a plot is assigned)
 	  8. MonetizationService     optional Robux receipts / passes (placeholders)
+	  8b. PlacementService       functional items: place / store / use (+ Services/Behaviors/*)
 	  9. DataService.Start()     LAST: begins loading profiles, which fires PlayerLoaded, and
 	                             every listener above must already be connected
 
@@ -40,6 +41,7 @@ local ThrowService = require(Services.ThrowService)
 local PlotService = require(Services.PlotService)
 local MachineService = require(Services.MachineService)
 local MonetizationService = require(Services.MonetizationService)
+local PlacementService = require(Services.PlacementService)
 
 Remotes.Init()
 -- Listeners of DataService.PlayerLoaded must exist before the first profile can load, so the
@@ -51,9 +53,15 @@ ThrowService.Start()
 PlotService.Start()
 MachineService.Start()
 MonetizationService.Start()
+PlacementService.Start()
 DataService.Start()
 
-if GameConfig.Debug.EnableDevTests and RunService:IsStudio() then
+-- DevTests move the test player around (machine, plot, junk) for about a minute, so they only
+-- run when asked: GameConfig.Debug.EnableDevTests, or the attribute RunDevTests = true on
+-- ServerScriptService (set it in Studio's Properties window / command bar before pressing Play).
+local runDevTests = RunService:IsStudio()
+	and (GameConfig.Debug.EnableDevTests or ServerScriptService:GetAttribute("RunDevTests") == true)
+if runDevTests then
 	task.spawn(function()
 		require(script.Parent.DevTests).Run()
 	end)
@@ -62,12 +70,14 @@ end
 -- Studio-only bridge for multi-client tests: external test code cannot share these module
 -- instances and cannot press keys in secondary client windows, so it asks the live services
 -- through this BindableFunction. Server-only (BindableFunctions never cross the network).
-if GameConfig.Debug.EnableDevTests and RunService:IsStudio() then
+if runDevTests then
 	local bridge = Instance.new("BindableFunction")
 	bridge.Name = "JunkshotDebugBridge"
 	bridge.OnInvoke = function(action: string, player: Player, arg: any): any
 		if action == "Pickup" then
 			return CarryService.TryPickup(player, arg)
+		elseif action == "Give" then
+			return CarryService.AddJunk(player, arg)
 		elseif action == "Remaining" then
 			return MachineService.GetRemaining(player)
 		end

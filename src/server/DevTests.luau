@@ -3,7 +3,8 @@
 	DevTests: automated server-side checks (data, currency, inventory, junk, carry, throw).
 	STUDIO ONLY.
 
-	Enabled by GameConfig.Debug.EnableDevTests = true (Main.server also requires
+	Enabled by GameConfig.Debug.EnableDevTests = true or the ServerScriptService attribute
+	RunDevTests = true (Main.server also requires
 	RunService:IsStudio()). It runs once against the first player who joins, prints
 	PASS/FAIL lines and a summary.
 
@@ -42,6 +43,14 @@ local RewardService = require(script.Parent.Services.RewardService)
 local CraftingService = require(script.Parent.Services.CraftingService)
 local PlotService = require(script.Parent.Services.PlotService)
 local MonetizationService = require(script.Parent.Services.MonetizationService)
+local PlacementService = require(script.Parent.Services.PlacementService)
+local VehicleBehavior = require(script.Parent.Services.Behaviors.Vehicle)
+local CartBehavior = require(script.Parent.Services.Behaviors.Cart)
+local RadioBehavior = require(script.Parent.Services.Behaviors.Radio)
+local DetectorBehavior = require(script.Parent.Services.Behaviors.Detector)
+local ItemCapabilities = require(ReplicatedStorage.Shared.Util.ItemCapabilities)
+local PlacementRules = require(ReplicatedStorage.Shared.Util.PlacementRules)
+local CollectionService = game:GetService("CollectionService")
 
 local DevTests = {}
 
@@ -870,6 +879,321 @@ local function runMachineTests(player: Player)
 	character:PivotTo(home)
 end
 
+---------------------------------------------------------------------------------------------
+-- Stage 2B: functional items
+---------------------------------------------------------------------------------------------
+
+local function waitUntil(timeout: number, condition: () -> boolean): boolean
+	local deadline = os.clock() + timeout
+	while os.clock() < deadline do
+		if condition() then
+			return true
+		end
+		task.wait(0.05)
+	end
+	return condition()
+end
+
+local function runItemTests(player: Player)
+	local errors = PlacementService.Errors
+	local root = waitForLiveRoot(player, 15)
+	local plot = PlotService.GetPlot(player)
+	if root == nil or plot == nil then
+		warn("[DevTests] no character or plot: functional item tests skipped")
+		return
+	end
+	local character = player.Character :: Model
+	local humanoid = character:FindFirstChildOfClass("Humanoid") :: Humanoid
+	local home = character:GetPivot()
+	local data = DataService.GetData(player) :: any
+	CarryService.Clear(player)
+
+	local plotTop = PlotService.GetPlotCFrame(plot)
+	local spotA = (plotTop * CFrame.new(-12, 0, -8)).Position
+	local spotB = (plotTop * CFrame.new(12, 0, -8)).Position
+	local spotC = (plotTop * CFrame.new(-12, 0, 8)).Position
+	local function standNear(spot: Vector3)
+		character:PivotTo(CFrame.new(spot + Vector3.new(0, 3, 0) + plotTop.LookVector * -9))
+		task.wait(0.1)
+	end
+	local function give(itemId: string): string
+		local uid = JunkService.NewUid()
+		CarryService.AddJunk(player, itemId, uid)
+		return uid
+	end
+	local function deployedCount(uid: string): number
+		local count = 0
+		for _, model in (workspace:FindFirstChild("Deployed") :: Folder):GetChildren() do
+			if model:GetAttribute("DeployUid") == uid then
+				count += 1
+			end
+		end
+		return count
+	end
+	local function savedRecord(uid: string): any
+		for _, record in data.Deployed do
+			if record.Uid == uid then
+				return record
+			end
+		end
+		return nil
+	end
+
+	-- Capabilities of the first five functional items
+	local function caps(id: string): any
+		return ItemCapabilities.Get(id)
+	end
+	check("bicycle, car, cart and radio can be placed",
+		caps("bicycle").CanBePlaced and caps("homemade_car").CanBePlaced and caps("metal_cart").CanBePlaced and caps("boombox_radio").CanBePlaced)
+	check("the metal detector is used while carried", caps("metal_detector").CanBeUsed and not caps("metal_detector").CanBePlaced)
+	check("plain junk has no action", not caps("rusty_can").CanBePlaced and not caps("rusty_can").CanBeUsed)
+
+	-- Placement rules
+	local bikeUid = give("bicycle")
+	standNear(spotA)
+	local farOk, farCode = PlacementService.Place(player, bikeUid, spotA + plotTop.LookVector * 70, 0)
+	check("placing far away is rejected", not farOk and farCode == "TooFar", tostring(farCode))
+	local ghostOk, ghostCode = PlacementService.Place(player, JunkService.NewUid(), spotA, 0)
+	check("placing an item that is not carried is rejected", not ghostOk and ghostCode == errors.NotCarried, tostring(ghostCode))
+	local canUid = give("rusty_can")
+	local canOk, canCode = PlacementService.Place(player, canUid, spotA, 0)
+	check("placing plain junk is rejected", not canOk and canCode == errors.NotPlaceable, tostring(canCode))
+	CarryService.TakeByUid(player, canUid)
+	local machine = MachineService.GetModel(player)
+	if machine ~= nil then
+		local _, nearCode = PlacementRules.Check({ UserId = player.UserId, ModelName = "Radio", Position = machine:GetPivot().Position + Vector3.new(3, 0, 0), Yaw = 0 })
+		check("placing next to a machine is rejected", nearCode == "NearMachine" or nearCode == "Blocked", tostring(nearCode))
+	end
+	for _, other in CollectionService:GetTagged("BasePlot") do
+		if other ~= plot and other:GetAttribute("Owner") == 0 then
+			other:SetAttribute("Owner", 999999) -- pretend someone owns it
+			local _, foreignCode = PlacementRules.Check({ UserId = player.UserId, ModelName = "Radio", Position = PlotService.GetPlotCFrame(other).Position, Yaw = 0 })
+			other:SetAttribute("Owner", 0)
+			check("placing on another player's plot is rejected", foreignCode == "ForeignPlot", tostring(foreignCode))
+			break
+		end
+	end
+
+	-- Place: hands -> world, exactly once
+	-- Facing the plot's -X edge, so the ride below has to cross the plot's curb.
+	local _, plotYaw = plotTop:ToEulerAnglesYXZ()
+	local placeOk, placeCode = PlacementService.Place(player, bikeUid, spotA, plotYaw + math.pi / 2)
+	check("a carried bicycle can be placed", placeOk, tostring(placeCode))
+	local entry = PlacementService.GetEntry(bikeUid)
+	if entry ~= nil then
+		task.wait(0.5)
+		local lowest = math.huge
+		for _, part in entry.Model:GetChildren() do
+			if part:IsA("BasePart") and part.Name == "Collider" then
+				lowest = math.min(lowest, part.Position.Y - part.Size.Y / 2)
+			end
+		end
+		check("the placed bicycle stands on the ground", math.abs(lowest - plotTop.Position.Y) < 0.3,
+			string.format("bottom %.2f, ground %.2f", lowest, plotTop.Position.Y))
+	end
+	check("the bicycle left the hands", not CarryService.HasUid(player, bikeUid))
+	check("exactly one bicycle object exists", deployedCount(bikeUid) == 1, tostring(deployedCount(bikeUid)))
+	check("the placed bicycle is saved", savedRecord(bikeUid) ~= nil)
+	local againOk, againCode = PlacementService.Place(player, bikeUid, spotB, 0)
+	check("placing the same item twice is rejected", not againOk and againCode == errors.NotCarried and deployedCount(bikeUid) == 1, tostring(againCode))
+	local dupOk, dupCode = CarryService.AddJunk(player, "bicycle", bikeUid)
+	check("a placed uid cannot be added to the hands again", not dupOk and dupCode == "UidInUse", tostring(dupCode))
+
+	-- Riding
+	if entry ~= nil then
+		local seat = entry.Model:FindFirstChild("DriverSeat") :: VehicleSeat
+		local base = entry.Model.PrimaryPart :: BasePart
+		character:PivotTo(CFrame.new(seat.Position + Vector3.new(2, 1, 0)))
+		task.wait(0.2)
+		seat:Sit(humanoid)
+		check("the owner can sit on the bicycle", waitUntil(2, function()
+			return seat.Occupant == humanoid
+		end))
+		check("the owner becomes the driver", VehicleBehavior.GetDriven(player) == entry)
+		local busyOk, busyCode = PlacementService.Store(player, bikeUid)
+		check("an occupied vehicle cannot be picked up", not busyOk and busyCode == "Occupied", tostring(busyCode))
+		check("the vehicle stays server-owned while ridden", base:GetNetworkOwner() == nil)
+
+		local start = base.Position
+		local topSpeed = 0
+		local deadline = os.clock() + 2
+		while os.clock() < deadline do
+			VehicleBehavior.SetInput(player, 1, 0)
+			local velocity = base.AssemblyLinearVelocity
+			topSpeed = math.max(topSpeed, Vector3.new(velocity.X, 0, velocity.Z).Magnitude)
+			task.wait(0.1)
+		end
+		local travelled = (base.Position - start).Magnitude
+		local maxSpeed = entry.Behavior.Vehicle.MaxSpeed
+		check("throttle moves the bicycle forward", travelled > 10, string.format("%.1f studs", travelled))
+		local plotHalf = (plot:FindFirstChild("Pad") :: BasePart).Size.X / 2
+		local localX = plotTop:PointToObjectSpace(base.Position).X
+		check("the bicycle rolls over the plot's curb", localX < -plotHalf, string.format("local x %.1f, edge %.1f", localX, -plotHalf))
+		check("the bicycle never exceeds its max speed", topSpeed <= maxSpeed + 2, string.format("%.1f > %d", topSpeed, maxSpeed))
+		VehicleBehavior.SetInput(player, 99, -99)
+		check("driver input is clamped to [-1, 1]", entry.State.Throttle == 1 and entry.State.Steer == -1)
+		local yawBefore = entry.State.Yaw
+		local steerDeadline = os.clock() + 1
+		while os.clock() < steerDeadline do
+			VehicleBehavior.SetInput(player, 1, 1)
+			task.wait(0.1)
+		end
+		check("steering turns the bicycle", math.abs(entry.State.Yaw - yawBefore) > 0.5, string.format("%.2f rad", entry.State.Yaw - yawBefore))
+		local brakeDeadline = os.clock() + 2.5
+		while os.clock() < brakeDeadline do
+			VehicleBehavior.SetInput(player, -1, 0)
+			task.wait(0.1)
+		end
+		check("braking stops it and reverse is slow", entry.State.Speed <= 0 and entry.State.Speed >= -entry.Behavior.Vehicle.ReverseSpeed, tostring(entry.State.Speed))
+
+		humanoid.Sit = false
+		local weld = seat:FindFirstChild("SeatWeld")
+		if weld ~= nil then
+			weld:Destroy()
+		end
+		check("getting off frees the seat", waitUntil(2, function()
+			return seat.Occupant == nil
+		end))
+		task.wait(0.2)
+		check("the rider is no longer the driver", VehicleBehavior.GetDriven(player) == nil and not VehicleBehavior.SetInput(player, 1, 0))
+		check("the rider is put down beside it", (root.Position - seat.Position).Magnitude > 1.5)
+		check("the rider controls their own character again", root:GetNetworkOwner() == player, tostring(root:GetNetworkOwner()))
+		local idleDeadline = os.clock() + 3
+		waitUntil(3, function()
+			return entry.State.Speed == 0 or os.clock() > idleDeadline
+		end)
+		check("without a driver the bicycle stops", math.abs(entry.State.Speed) < 0.5, tostring(entry.State.Speed))
+	end
+
+	-- Store: world -> hands
+	standNear(spotA)
+	local storeOk, storeCode = PlacementService.Store(player, bikeUid)
+	check("the bicycle can be picked up again", storeOk, tostring(storeCode))
+	check("it is back in the hands with the same uid", CarryService.HasUid(player, bikeUid))
+	check("its world object and save record are gone", deployedCount(bikeUid) == 0 and savedRecord(bikeUid) == nil and PlacementService.GetEntry(bikeUid) == nil)
+	local reStoreOk, reStoreCode = PlacementService.Store(player, bikeUid)
+	check("picking it up twice is rejected", not reStoreOk and reStoreCode == errors.NotFound, tostring(reStoreCode))
+
+	-- Vehicle limit
+	local carUid = give("homemade_car")
+	standNear(spotA)
+	local carOk, carCode = PlacementService.Place(player, carUid, spotA, 0)
+	check("the homemade car can be placed", carOk, tostring(carCode))
+	standNear(spotB)
+	local bikeOk, bikeCode = PlacementService.Place(player, bikeUid, spotB, 0)
+	check("a second vehicle can be placed", bikeOk, tostring(bikeCode))
+	local thirdUid = give("bicycle")
+	standNear(spotC)
+	local thirdOk, thirdCode = PlacementService.Place(player, thirdUid, spotC, 0)
+	check("a third vehicle is over the limit", not thirdOk and thirdCode == errors.VehicleLimit and CarryService.HasUid(player, thirdUid), tostring(thirdCode))
+	local carEntry = PlacementService.GetEntry(carUid)
+	check("the car has a passenger seat and an engine sound", carEntry ~= nil and carEntry.Model:FindFirstChild("PassengerSeat") ~= nil
+		and carEntry.State.Engine ~= nil)
+	standNear(spotA)
+	PlacementService.Store(player, carUid)
+	standNear(spotB)
+	PlacementService.Store(player, bikeUid)
+	CarryService.Clear(player)
+
+	-- Metal cart
+	local cartUid = give("metal_cart")
+	standNear(spotA)
+	local cartOk, cartCode = PlacementService.Place(player, cartUid, spotA, 0)
+	check("the metal cart can be placed", cartOk, tostring(cartCode))
+	local cart = PlacementService.GetEntry(cartUid)
+	if cart ~= nil then
+		local loadA, loadB = give("rusty_can"), give("old_tire")
+		local firstLoad = CartBehavior.Load(cart, player)
+		local secondLoad = CartBehavior.Load(cart, player)
+		check("items can be loaded into the cart", firstLoad and secondLoad and #cart.Record.Contents == 2)
+		check("loaded items leave the hands", not CarryService.HasUid(player, loadA) and not CarryService.HasUid(player, loadB))
+		check("loaded items are saved with the cart", savedRecord(cartUid) ~= nil and #savedRecord(cartUid).Contents == 2)
+		local heldOk = CarryService.AddJunk(player, "rusty_can", loadA)
+		check("a loaded uid cannot appear in the hands too", not heldOk)
+		local emptyLoad, emptyCode = CartBehavior.Load(cart, player)
+		check("loading with empty hands is rejected", not emptyLoad and emptyCode == "NothingToLoad", tostring(emptyCode))
+		local fullOk, fullCode = PlacementService.Store(player, cartUid)
+		check("a loaded cart cannot be picked up", not fullOk and fullCode == "NotEmpty", tostring(fullCode))
+		check("the cart shows its contents", cart.Model:GetAttribute("ContentCount") == 2)
+
+		CartBehavior.ToggleTow(cart)
+		check("the cart can be towed", cart.Model:GetAttribute("Towing") == true)
+		local away = (plotTop * CFrame.new(-12, 0, 6)).Position
+		character:PivotTo(CFrame.new(away + Vector3.new(0, 3, 0)))
+		task.wait(1.5)
+		local gap = (cart.Model:GetPivot().Position - root.Position) * Vector3.new(1, 0, 1)
+		check("a towed cart follows its owner", gap.Magnitude < cart.Behavior.Cart.FollowDistance + 3, string.format("%.1f studs", gap.Magnitude))
+		CartBehavior.ToggleTow(cart)
+		check("towing can be released", cart.Model:GetAttribute("Towing") == false)
+
+		local unloadOk = CartBehavior.Unload(cart, player)
+		-- Load takes the last picked-up item first (old_tire), so the rusty can went in last.
+		check("unloading returns the last loaded item to the hands", unloadOk and CarryService.HasUid(player, loadA) and #cart.Record.Contents == 1)
+		CartBehavior.Unload(cart, player)
+		character:PivotTo(CFrame.new(cart.Model:GetPivot().Position + Vector3.new(0, 3, 5)))
+		local cartStoreOk, cartStoreCode = PlacementService.Store(player, cartUid)
+		check("an empty cart can be picked up", cartStoreOk, tostring(cartStoreCode))
+	end
+	CarryService.Clear(player)
+
+	-- Radio
+	local radioUid = give("boombox_radio")
+	standNear(spotA)
+	local radioOk, radioCode = PlacementService.Place(player, radioUid, spotA, 0)
+	check("the radio can be placed", radioOk, tostring(radioCode))
+	local radio = PlacementService.GetEntry(radioUid)
+	if radio ~= nil then
+		local sound = radio.State.Sound :: Sound
+		RadioBehavior.Toggle(radio)
+		check("the radio plays music", sound.Playing and radio.Model:GetAttribute("Playing") == true and sound.SoundId ~= "")
+		local firstTrack = radio.Model:GetAttribute("TrackName")
+		RadioBehavior.Next(radio)
+		check("the radio switches to the next song", radio.Model:GetAttribute("TrackName") ~= firstTrack and sound.Playing)
+		RadioBehavior.Toggle(radio)
+		check("the radio can be stopped", not sound.Playing and radio.Model:GetAttribute("Playing") == false)
+	end
+
+	-- Persistence: leaving and coming back
+	local saved = #data.Deployed
+	PlacementService.Unload(player)
+	check("leaving removes placed objects from the world", PlacementService.GetEntry(radioUid) == nil and deployedCount(radioUid) == 0)
+	check("leaving keeps them saved", #data.Deployed == saved and savedRecord(radioUid) ~= nil)
+	PlacementService.Load(player)
+	check("rejoining places them again with the same uid", PlacementService.GetEntry(radioUid) ~= nil and deployedCount(radioUid) == 1)
+	local restored = PlacementService.GetEntry(radioUid)
+	if restored ~= nil then
+		character:PivotTo(CFrame.new(restored.Model:GetPivot().Position + Vector3.new(0, 3, 5)))
+		PlacementService.Store(player, radioUid)
+	end
+	check("the radio is back in the hands", CarryService.HasUid(player, radioUid))
+	CarryService.Clear(player)
+
+	-- Metal detector
+	local detectorUid = give("metal_detector")
+	character:PivotTo(home)
+	task.wait(0.1)
+	local findPosition = root.Position + root.CFrame.LookVector * 6
+	local find = JunkService.SpawnAt("dented_trophy", findPosition, {})
+	local findUid = if find ~= nil then JunkService.GetUid(find) else nil
+	local result = DetectorBehavior.Scan(player, detectorUid, ItemCapabilities.GetBehavior("metal_detector").Detector)
+	check("the detector finds a rare item nearby", result ~= nil and result.Found and result.TargetUid == findUid,
+		if result ~= nil then tostring(result.TargetUid) else "nil")
+	check("the detector reports rarity and distance", result ~= nil and result.Rarity == "Rare" and type(result.Distance) == "number")
+	local useOk = PlacementService.Use(player, detectorUid)
+	check("using a carried detector works", useOk)
+	local notCarriedOk, notCarriedCode = PlacementService.Use(player, JunkService.NewUid())
+	check("using a detector that is not carried is rejected", not notCarriedOk and notCarriedCode == errors.NotCarried, tostring(notCarriedCode))
+	local wrongUid = give("rusty_can")
+	local wrongOk, wrongCode = PlacementService.Use(player, wrongUid)
+	check("using plain junk is rejected", not wrongOk and wrongCode == errors.NotUsable, tostring(wrongCode))
+	if findUid ~= nil then
+		JunkService.Despawn(findUid)
+	end
+
+	CarryService.Clear(player)
+	character:PivotTo(home)
+end
+
 function DevTests.Run()
 	print("[DevTests] waiting for a player...")
 	local player = waitForPlayer(60)
@@ -895,6 +1219,7 @@ function DevTests.Run()
 	runThrowTests(player)
 	runRewardTests()
 	runMachineTests(player)
+	runItemTests(player)
 
 	print(`[DevTests] done: {passed} passed, {failed} failed`)
 end

@@ -69,6 +69,8 @@ local TEMPLATE: Types.ProfileData = {
 		InstantCredits = 0,
 		ResultSeq = 0,
 	},
+	-- Functional items placed in the world (PlacementService), restored at the plot on rejoin.
+	Deployed = {},
 	-- Processed Robux receipt ids (MonetizationService idempotency).
 	Purchases = {},
 	Stats = {
@@ -82,6 +84,9 @@ local TEMPLATE: Types.ProfileData = {
 local MIGRATIONS: { [number]: (data: any) -> () } = {
 	[1] = function(_data: any)
 		-- 1 -> 2: Carry, Machine and Purchases were added; Reconcile() creates them.
+	end,
+	[2] = function(_data: any)
+		-- 2 -> 3: Deployed was added; Reconcile() creates it.
 	end,
 }
 

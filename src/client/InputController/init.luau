@@ -46,6 +46,7 @@ InputController.MENU_TAG = "JunkshotMenu"
 
 local menus: { [GuiObject]: RBXScriptConnection } = {}
 local menuOpen = false
+local blockers: { [string]: boolean } = {}
 
 local throwHeld = false
 local throwSource: Enum.KeyCode | Enum.UserInputType | string | nil = nil
@@ -102,7 +103,7 @@ end
 
 -- `source` remembers what started the throw, so only releasing that same input throws.
 local function begin(source: Enum.KeyCode | Enum.UserInputType | string)
-	if throwHeld or menuOpen then
+	if throwHeld or menuOpen or next(blockers) ~= nil then
 		return
 	end
 	throwHeld = true
@@ -173,6 +174,23 @@ end
 
 function InputController.IsMenuOpen(): boolean
 	return menuOpen
+end
+
+-- Throwing is unavailable while a menu is open or any system blocks it (placing an item,
+-- sitting in a vehicle ...). MenuChanged also fires when this changes.
+function InputController.IsThrowBlocked(): boolean
+	return menuOpen or next(blockers) ~= nil
+end
+
+function InputController.SetThrowBlocked(reason: string, blocked: boolean)
+	local was = InputController.IsThrowBlocked()
+	blockers[reason] = if blocked then true else nil
+	if blocked then
+		InputController.CancelThrow()
+	end
+	if InputController.IsThrowBlocked() ~= was then
+		InputController.MenuChanged:Fire(menuOpen)
+	end
 end
 
 local function refreshMenus()
