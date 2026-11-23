@@ -1,6 +1,6 @@
 --!strict
 --[[
-	MythicTab: Mythic Crafting. Exactly three slots; tap a carried item to fill the next empty
+	MythicTab: the Wish Furnace (internally "Mythic Crafting": 3 items in, one surprise out, 6 h). Exactly three slots; tap a carried item to fill the next empty
 	slot, tap a slot to empty it. The odds shown come from the same DropTables row the server
 	uses (better inputs -> better odds); the server rolls the real result. Always 6 hours.
 ]]

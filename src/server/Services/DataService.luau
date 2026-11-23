@@ -78,6 +78,10 @@ local TEMPLATE: Types.ProfileData = {
 	Economy = { Transactions = {}, Requests = {} },
 	-- Stage 4: the personal base (BaseService); its chest contents are Items above.
 	Base = { Level = 1, ChestLevel = 1, Buildings = {} },
+	-- Monetization / cosmetics: unlocks (never inventory items), passes granted, ability cooldowns.
+	Cosmetics = { Owned = {}, Equipped = {} },
+	Entitlements = {},
+	Cooldowns = {},
 	-- Processed Robux receipt ids (MonetizationService idempotency).
 	Purchases = {},
 	Stats = {
@@ -108,6 +112,9 @@ local MIGRATIONS: { [number]: (data: any) -> () } = {
 		if type(data.Base) ~= "table" then
 			data.Base = { Level = 1, ChestLevel = chestLevel, Buildings = {} }
 		end
+	end,
+	[5] = function(_data: any)
+		-- 5 -> 6: Cosmetics, Entitlements and Cooldowns were added; Reconcile() creates them.
 	end,
 }
 

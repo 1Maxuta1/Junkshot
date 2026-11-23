@@ -15,10 +15,13 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
 
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local ItemConfig = require(ReplicatedStorage.Shared.Config.ItemConfig)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local ItemCapabilities = require(ReplicatedStorage.Shared.Util.ItemCapabilities)
 
 local CarryController = require(script.Parent.CarryController)
@@ -27,6 +30,8 @@ local Theme = require(script.Parent.UI.Theme)
 local Placement = require(script.Placement)
 local Vehicles = require(script.Vehicles)
 local Detector = require(script.Detector)
+local Abilities = require(script.Abilities)
+local NotifyController = require(script.Parent.NotifyController)
 
 local ItemController = {}
 
@@ -55,6 +60,17 @@ local function selectedAction(): (any?, any?)
 	return selected, capabilities
 end
 
+local lastAbilityRequest = 0
+
+-- Seconds until an ability effect is ready (server-published Unix time "Cooldown_<Effect>").
+local function abilityTimeLeft(effect: string): number
+	local readyAt = Players.LocalPlayer:GetAttribute(`Cooldown_{effect}`)
+	if type(readyAt) ~= "number" then
+		return 0
+	end
+	return math.max(0, math.ceil(readyAt - Workspace:GetServerTimeNow()))
+end
+
 local function refresh()
 	local selected, capabilities = selectedAction()
 
@@ -78,16 +94,30 @@ local function refresh()
 	end
 	local name = ItemConfig.GetDisplayName(selected.Id)
 	local action: string
+	local key = keyName()
+	local color = if Detector.IsOn() then Theme.Colors.Success else Theme.Colors.Accent
 	if capabilities.CanBePlaced then
 		action = `Place {name}`
 	elseif capabilities.Behavior.Kind == "Detector" then
 		action = if Detector.IsOn() then "Detector: switch off" else "Detector: switch on"
+	elseif capabilities.Behavior.Kind == "Ability" then
+		local ability = capabilities.Behavior.Ability
+		local left = abilityTimeLeft(ability.Effect)
+		if left > 0 then
+			action = string.format("%s  ·  ready in %d:%02d", ability.Name, left // 60, left % 60)
+			color = Theme.Colors.InkSoft
+		else
+			action = ability.Name
+			color = Theme.Colors.Ice
+			if InputController.GetInputKind() == "KeyboardMouse" then
+				key = "Click"
+			end
+		end
 	else
 		action = `Use {name}`
 	end
-	local key = keyName()
 	chipLabel.Text = if key ~= "" then `[{key}]  {action}` else action
-	chip.BackgroundColor3 = if Detector.IsOn() then Theme.Colors.Success else Theme.Colors.Accent
+	chip.BackgroundColor3 = color
 end
 
 local function act()
@@ -106,8 +136,27 @@ local function act()
 		Placement.Start(selected.Uid, selected.Id, capabilities.Behavior)
 	elseif capabilities.Behavior.Kind == "Detector" then
 		Detector.SetOn(not Detector.IsOn(), selected.Uid, capabilities.Behavior)
+	elseif capabilities.Behavior.Kind == "Ability" then
+		local ability = capabilities.Behavior.Ability
+		local left = abilityTimeLeft(ability.Effect)
+		if left > 0 then
+			NotifyController.Show(string.format("%s is recharging: %d:%02d", ability.Name, left // 60, left % 60), "Info")
+		elseif os.clock() - lastAbilityRequest > 1 then
+			lastAbilityRequest = os.clock()
+			Remotes.GetEvent("ItemUse"):FireServer(selected.Uid) -- the server checks and broadcasts
+		end
 	end
 	refresh()
+end
+
+-- Left click with an ability item selected uses the ability instead of throwing it.
+local function onPrimaryClick(): boolean
+	local _, capabilities = selectedAction()
+	if capabilities == nil or capabilities.Behavior.Kind ~= "Ability" or Placement.IsActive() then
+		return false
+	end
+	act()
+	return true
 end
 
 local function mount()
@@ -166,6 +215,21 @@ function ItemController.Start()
 	CarryController.Changed:Connect(refresh)
 	InputController.InputTypeChanged:Connect(refresh)
 	InputController.MenuChanged:Connect(refresh)
+	InputController.SetPrimaryClickHandler(onPrimaryClick)
+	Abilities.Start()
+	-- Ability cooldown countdown on the chip (only while an ability item is selected).
+	local elapsed = 0
+	RunService.Heartbeat:Connect(function(dt: number)
+		elapsed += dt
+		if elapsed < 0.5 then
+			return
+		end
+		elapsed = 0
+		local _, capabilities = selectedAction()
+		if capabilities ~= nil and capabilities.Behavior.Kind == "Ability" then
+			refresh()
+		end
+	end)
 	task.spawn(mount)
 end
 

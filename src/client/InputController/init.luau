@@ -47,6 +47,12 @@ InputController.MENU_TAG = "JunkshotMenu"
 local menus: { [GuiObject]: RBXScriptConnection } = {}
 local menuOpen = false
 local blockers: { [string]: boolean } = {}
+local primaryClickHandler: (() -> boolean)? = nil
+
+-- ItemController: return true from the handler to take a left click for an item ability.
+function InputController.SetPrimaryClickHandler(handler: (() -> boolean)?)
+	primaryClickHandler = handler
+end
 
 local throwHeld = false
 local throwSource: Enum.KeyCode | Enum.UserInputType | string | nil = nil
@@ -129,6 +135,10 @@ local function onInputBegan(input: InputObject, gameProcessed: boolean)
 	if throwKeys[keyCode] then
 		begin(keyCode)
 	elseif GameConfig.Input.ThrowWithMouseButton and input.UserInputType == Enum.UserInputType.MouseButton1 then
+		-- A selected item with a click ability (Comet Shard ...) uses the click instead of throwing.
+		if primaryClickHandler ~= nil and primaryClickHandler() then
+			return
+		end
 		begin(Enum.UserInputType.MouseButton1)
 	elseif slotByKey[keyCode] ~= nil then
 		InputController.SlotRequested:Fire(slotByKey[keyCode])

@@ -1,0 +1,237 @@
+--!strict
+--[[
+	Abilities (client): draws the Mythic item abilities the server broadcasts (AbilityFx).
+	Every client draws them locally (no server parts, no physics, nothing replicated back).
+
+	  Comet     a glowing comet with a long trail falls from the sky onto the given spot,
+	            whooshing; on impact a flash, an expanding shock ring, a burst of sparkles, a
+	            short camera shake for players close by and a glowing mark that fades.
+	  Starfall  shooting stars streak high across the sky above the owner for a few seconds,
+	            with soft chimes.
+	Sounds use the player's effects volume (AudioController).
+]]
+
+local Debris = game:GetService("Debris")
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
+
+local AudioConfig = require(ReplicatedStorage.Shared.Config.AudioConfig)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
+
+local AudioController = require(script.Parent.Parent.AudioController)
+
+local Abilities = {}
+
+local SPARKLE = "rbxasset://textures/particles/sparkles_main.dds"
+local SHAKE_RANGE = 90
+local VIEW_RANGE = 500
+
+local function effectsFolder(): Folder
+	local existing = Workspace:FindFirstChild("ClientEffects")
+	if existing ~= nil and existing:IsA("Folder") then
+		return existing
+	end
+	local folder = Instance.new("Folder")
+	folder.Name = "ClientEffects"
+	folder.Parent = Workspace
+	return folder
+end
+
+local function glowPart(size: Vector3, color: Color3, shape: Enum.PartType?): Part
+	local p = Instance.new("Part")
+	p.Shape = shape or Enum.PartType.Ball
+	p.Size = size
+	p.Color = color
+	p.Material = Enum.Material.Neon
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.CastShadow = false
+	return p
+end
+
+local function addTrail(part: BasePart, from: Color3, to: Color3, width: number, lifetime: number)
+	local a0 = Instance.new("Attachment")
+	a0.Position = Vector3.new(0, width / 2, 0)
+	a0.Parent = part
+	local a1 = Instance.new("Attachment")
+	a1.Position = Vector3.new(0, -width / 2, 0)
+	a1.Parent = part
+	local trail = Instance.new("Trail")
+	trail.Attachment0 = a0
+	trail.Attachment1 = a1
+	trail.Lifetime = lifetime
+	trail.LightEmission = 1
+	trail.FaceCamera = true
+	trail.Color = ColorSequence.new(from, to)
+	trail.Transparency = NumberSequence.new(0, 1)
+	trail.WidthScale = NumberSequence.new(1, 0)
+	trail.Parent = part
+end
+
+local function sparkleBurst(position: Vector3, color: Color3, count: number)
+	local holder = glowPart(Vector3.one, color)
+	holder.Transparency = 1
+	holder.Position = position
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Texture = SPARKLE
+	emitter.Color = ColorSequence.new(color, Color3.new(1, 1, 1))
+	emitter.LightEmission = 1
+	emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1.4), NumberSequenceKeypoint.new(1, 0) })
+	emitter.Lifetime = NumberRange.new(0.8, 1.6)
+	emitter.Speed = NumberRange.new(18, 40)
+	emitter.SpreadAngle = Vector2.new(180, 180)
+	emitter.Acceleration = Vector3.new(0, -25, 0)
+	emitter.Rate = 0
+	emitter.Parent = holder
+	holder.Parent = effectsFolder()
+	emitter:Emit(count)
+	Debris:AddItem(holder, 2.5)
+end
+
+local function shakeCamera(strength: number, duration: number)
+	local name = "JunkshotCometShake"
+	local started = os.clock()
+	RunService:BindToRenderStep(name, Enum.RenderPriority.Camera.Value + 1, function()
+		local t = os.clock() - started
+		if t >= duration then
+			RunService:UnbindFromRenderStep(name)
+			return
+		end
+		local fade = 1 - t / duration
+		local camera = Workspace.CurrentCamera
+		if camera ~= nil then
+			local x = (math.noise(t * 25, 0.3) * 2) * strength * fade
+			local y = (math.noise(0.7, t * 25) * 2) * strength * fade
+			camera.CFrame = camera.CFrame * CFrame.Angles(math.rad(y), math.rad(x), 0)
+		end
+	end)
+end
+
+local function nearLocalPlayer(position: Vector3, range: number): boolean
+	local character = Players.LocalPlayer.Character
+	local root = if character ~= nil then character:FindFirstChild("HumanoidRootPart") else nil
+	return root ~= nil and root:IsA("BasePart") and (root.Position - position).Magnitude <= range
+end
+
+local function comet(target: Vector3, direction: Vector3)
+	local folder = effectsFolder()
+	local start = target - direction * 70 + Vector3.new(25, 170, 0)
+	local head = glowPart(Vector3.one * 4, Color3.fromRGB(190, 230, 255))
+	head.Position = start
+	addTrail(head, Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 120, 220), 4, 0.9)
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(170, 210, 255)
+	light.Range = 40
+	light.Brightness = 3
+	light.Parent = head
+	local sparks = Instance.new("ParticleEmitter")
+	sparks.Texture = SPARKLE
+	sparks.Color = ColorSequence.new(Color3.fromRGB(255, 200, 250), Color3.fromRGB(140, 220, 255))
+	sparks.LightEmission = 1
+	sparks.Size = NumberSequence.new(0.8, 0)
+	sparks.Lifetime = NumberRange.new(0.5, 0.9)
+	sparks.Speed = NumberRange.new(2, 6)
+	sparks.Rate = 60
+	sparks.SpreadAngle = Vector2.new(180, 180)
+	sparks.Parent = head
+	head.Parent = folder
+	AudioController.PlayAt(AudioConfig.Abilities.CometWhoosh, head, false, 300)
+
+	local fall = TweenService:Create(head, TweenInfo.new(1.8, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Position = target })
+	fall.Completed:Connect(function()
+		sparks.Enabled = false
+		head.Transparency = 1
+		light.Enabled = false
+		Debris:AddItem(head, 1)
+
+		-- Flash
+		local flash = glowPart(Vector3.one * 4, Color3.fromRGB(255, 255, 255))
+		flash.Position = target
+		flash.Parent = folder
+		TweenService:Create(flash, TweenInfo.new(0.45), { Size = Vector3.one * 26, Transparency = 1 }):Play()
+		Debris:AddItem(flash, 0.6)
+		-- Shock ring
+		local ring = glowPart(Vector3.new(0.3, 4, 4), Color3.fromRGB(150, 220, 255), Enum.PartType.Cylinder)
+		ring.CFrame = CFrame.new(target + Vector3.new(0, 0.3, 0)) * CFrame.Angles(0, 0, math.rad(90))
+		ring.Parent = folder
+		TweenService:Create(ring, TweenInfo.new(0.9, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+			Size = Vector3.new(0.3, 60, 60),
+			Transparency = 1,
+		}):Play()
+		Debris:AddItem(ring, 1)
+		-- Glowing mark that slowly fades
+		local mark = glowPart(Vector3.new(0.2, 9, 9), Color3.fromRGB(255, 140, 230), Enum.PartType.Cylinder)
+		mark.CFrame = CFrame.new(target + Vector3.new(0, 0.12, 0)) * CFrame.Angles(0, 0, math.rad(90))
+		mark.Transparency = 0.2
+		mark.Parent = folder
+		TweenService:Create(mark, TweenInfo.new(5, Enum.EasingStyle.Sine), { Transparency = 1 }):Play()
+		Debris:AddItem(mark, 5.2)
+
+		sparkleBurst(target + Vector3.new(0, 1, 0), Color3.fromRGB(200, 230, 255), 90)
+		local soundHolder = glowPart(Vector3.one, Color3.new())
+		soundHolder.Transparency = 1
+		soundHolder.Position = target
+		soundHolder.Parent = folder
+		AudioController.PlayAt(AudioConfig.Abilities.CometImpact, soundHolder, false, 300)
+		Debris:AddItem(soundHolder, 4)
+		if nearLocalPlayer(target, SHAKE_RANGE) then
+			shakeCamera(1.6, 0.6)
+		end
+	end)
+	fall:Play()
+end
+
+local function starfall(center: Vector3)
+	local folder = effectsFolder()
+	local random = Random.new()
+	local skyHeight = center.Y + 190
+	for index = 1, 26 do
+		task.delay(index * 0.16 + random:NextNumber() * 0.2, function()
+			local angle = random:NextNumber() * math.pi * 2
+			local radius = random:NextNumber() * 160
+			local from = Vector3.new(center.X + math.cos(angle) * radius, skyHeight + random:NextNumber() * 40, center.Z + math.sin(angle) * radius)
+			local travel = Vector3.new(random:NextNumber(-1, 1), -0.35, random:NextNumber(-1, 1)).Unit * random:NextNumber(90, 140)
+			local colors = { Color3.fromRGB(255, 240, 170), Color3.fromRGB(170, 220, 255), Color3.fromRGB(255, 170, 230) }
+			local color = colors[random:NextInteger(1, #colors)]
+			local star = glowPart(Vector3.one * 1.6, color)
+			star.Position = from
+			addTrail(star, Color3.new(1, 1, 1), color, 1.6, 0.7)
+			star.Parent = folder
+			local fly = TweenService:Create(star, TweenInfo.new(1.1 + random:NextNumber() * 0.5, Enum.EasingStyle.Linear), {
+				Position = from + travel,
+				Size = Vector3.one * 0.2,
+			})
+			fly:Play()
+			Debris:AddItem(star, 2.4)
+			if index % 4 == 0 then
+				local chime = table.clone(AudioConfig.Abilities.StarChime) :: any
+				chime.Pitch = 1.3 + random:NextNumber() * 0.7
+				AudioController.PlayAt(chime, Workspace.CurrentCamera, false)
+			end
+		end)
+	end
+end
+
+function Abilities.Start()
+	Remotes.GetEvent("AbilityFx").OnClientEvent:Connect(function(payload: any)
+		if type(payload) ~= "table" or typeof(payload.Position) ~= "Vector3" then
+			return
+		end
+		if not nearLocalPlayer(payload.Position, VIEW_RANGE) then
+			return -- too far to see it
+		end
+		local direction = if typeof(payload.Direction) == "Vector3" then payload.Direction else Vector3.new(0, 0, -1)
+		if payload.Effect == "Comet" then
+			comet(payload.Position, direction)
+		elseif payload.Effect == "Starfall" then
+			starfall(payload.Position)
+		end
+	end)
+end
+
+return Abilities

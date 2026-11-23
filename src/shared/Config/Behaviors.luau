@@ -9,6 +9,7 @@
 	           client feature that drives it: "Vehicle" | "Cart" | "Radio" | "Detector"
 	  Mode     "Place" = selected in the hotbar, placed in the world (preview -> server checks)
 	           "Use"   = used while carried (no world object)
+	           "Activate" = an ability used while carried (left click too), with a cooldown
 	  Model    Util/DeployModels builder name (Place only)
 	  Storable the owner can pick the placed object back up into their hands (Place only)
 	  FacePlayer  placed facing the player (otherwise facing where the player looks, like a
@@ -85,6 +86,29 @@ local Behaviors = {
 			},
 		},
 	},
+	-- Mythic abilities (Mode "Activate"): select the item, then left click / G / D-pad up / the
+	-- action chip. A big effect everyone nearby sees, then a cooldown (saved, survives a rejoin).
+	-- Purely a show-off: no items, money or advantage.
+	["Ability.Comet"] = {
+		Kind = "Ability",
+		Mode = "Activate",
+		Ability = {
+			Effect = "Comet",
+			Name = "Summon Comet",
+			Cooldown = 300, -- seconds
+			Distance = 22, -- studs in front of the player where it lands
+		},
+	},
+	["Ability.Starfall"] = {
+		Kind = "Ability",
+		Mode = "Activate",
+		Ability = {
+			Effect = "Starfall",
+			Name = "Starfall",
+			Cooldown = 180,
+			Distance = 0,
+		},
+	},
 	["Tool.Detector"] = {
 		Kind = "Detector",
 		Mode = "Use",
@@ -97,11 +121,11 @@ local Behaviors = {
 	},
 }
 
-local VALID_KINDS = { Vehicle = true, Cart = true, Radio = true, Detector = true }
+local VALID_KINDS = { Vehicle = true, Cart = true, Radio = true, Detector = true, Ability = true }
 
 for id, behavior in Behaviors :: { [string]: any } do
 	assert(VALID_KINDS[behavior.Kind], `[Behaviors] "{id}" has unknown Kind "{tostring(behavior.Kind)}"`)
-	assert(behavior.Mode == "Place" or behavior.Mode == "Use", `[Behaviors] "{id}" has unknown Mode`)
+	assert(behavior.Mode == "Place" or behavior.Mode == "Use" or behavior.Mode == "Activate", `[Behaviors] "{id}" has unknown Mode`)
 	if behavior.Mode == "Place" then
 		assert(type(behavior.Model) == "string", `[Behaviors] "{id}" needs a Model`)
 	end

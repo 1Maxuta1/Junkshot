@@ -6,7 +6,7 @@
 	  Status   what the machine is doing, a progress bar with the remaining time and the
 	           SPEED UP button (every tap = minus one second, validated by the server)
 	  Tray     finished items waiting for the player (TAKE moves one into the hands)
-	  Tabs     RECYCLE | CRAFT | MYTHIC | UPGRADES (modules next to this file)
+	  Tabs     RECYCLE | CRAFT | WISH FURNACE | UPGRADES (modules next to this file)
 
 	Render(view) is called on state changes; Tick() once per second while open (time text and
 	progress only). Gamepad: focus starts on the first tab, B closes.
@@ -37,7 +37,7 @@ export type Panel = {
 }
 
 local CLOSE_ACTION = "JunkshotMachinePanelClose"
-local TAB_NAMES = { "RECYCLE", "CRAFT", "MYTHIC", "UPGRADES" }
+local TAB_NAMES = { "RECYCLE", "CRAFT", "WISH FURNACE", "UPGRADES" } -- "WISH FURNACE" = the 3-in-1 mode (internally "Mythic")
 
 local Panel = {}
 
@@ -220,7 +220,7 @@ function Panel.Mount(screenGui: ScreenGui, actions: Widgets.Actions, durationFor
 
 	tabs.RECYCLE = RecycleTab.Mount(tabFrames.RECYCLE, actions, durationFor)
 	tabs.CRAFT = CraftTab.Mount(tabFrames.CRAFT, actions, durationFor)
-	tabs.MYTHIC = MythicTab.Mount(tabFrames.MYTHIC, actions)
+	tabs["WISH FURNACE"] = MythicTab.Mount(tabFrames["WISH FURNACE"], actions)
 	tabs.UPGRADES = UpgradesTab.Mount(tabFrames.UPGRADES, actions)
 
 	speedButton.Activated:Connect(function()

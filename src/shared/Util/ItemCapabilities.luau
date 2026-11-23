@@ -48,7 +48,7 @@ function ItemCapabilities.Get(itemId: string): Capabilities?
 	local capabilities: Capabilities = table.freeze({
 		CanBeCarried = true,
 		CanBePlaced = behavior ~= nil and behavior.Mode == "Place",
-		CanBeUsed = behavior ~= nil and behavior.Mode == "Use",
+		CanBeUsed = behavior ~= nil and (behavior.Mode == "Use" or behavior.Mode == "Activate"),
 		CanBeSold = ItemValue.CanSell(itemId),
 		CanBeRecycled = ItemConfig.CanBeRecycled(itemId),
 		CanBeCrafted = Recipes.Get(itemId) ~= nil,

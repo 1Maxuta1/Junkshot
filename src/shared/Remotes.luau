@@ -48,6 +48,9 @@ local definitions: { [string]: string } = {
 	BaseAction = "RemoteEvent", -- client -> server: (requestId, action, slotId?, buildingId?)
 	SaveSettings = "RemoteEvent", -- client -> server: ({ Music, Sfx, Muted }) audio settings
 	AudioCue = "RemoteEvent", -- server -> client: (cueName) a short sound for that player
+	AbilityFx = "RemoteEvent", -- server -> clients: { Effect, UserId, Position, Direction } comet / starfall
+	-- Cosmetics and monetization (no remote can grant anything; ownership is server-verified).
+	CosmeticEquip = "RemoteEvent", -- client -> server: (category, cosmeticId | "") equip an OWNED cosmetic
 }
 
 local Remotes = {}

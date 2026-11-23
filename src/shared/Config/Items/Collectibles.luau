@@ -14,6 +14,12 @@ local B = require(script.Parent.Builder)
 local Block, Ball, Cylinder, M = B.Block, B.Ball, B.Cylinder, B.M
 local UPRIGHT, V, rgb, part = B.UPRIGHT, B.V, B.rgb, B.part
 
+-- Mythic items with an ability (Config/Behaviors "Ability.*": click to use, then a cooldown).
+local function withBehavior(behaviorId: string, definition: Types.ItemDefinition): Types.ItemDefinition
+	definition.BehaviorId = behaviorId
+	return definition
+end
+
 local function item(id: string, displayName: string, rarity: string, parts: { Types.JunkPartSpec }): Types.ItemDefinition
 	return {
 		Id = id,
@@ -140,23 +146,23 @@ return {
 	}),
 
 	-- Mythic
-	item("starforged_core", "Starforged Core", "Mythic", {
+	withBehavior("Ability.Starfall", item("starforged_core", "Starforged Core", "Mythic", {
 		part(Ball, V(1.6, 1.6, 1.6), rgb(255, 90, 180), M.Neon),
 		part(Block, V(2.4, 0.3, 0.3), rgb(255, 230, 120), M.Neon, nil, V(0, 0, 45)),
 		part(Block, V(2.4, 0.3, 0.3), rgb(255, 230, 120), M.Neon, nil, V(0, 0, -45)),
 		part(Block, V(0.3, 0.3, 2.4), rgb(120, 230, 255), M.Neon, nil, V(45, 0, 0)),
 		part(Cylinder, V(0.15, 2.6, 2.6), rgb(40, 30, 70), M.Metal, nil, V(0, 0, 90)),
-	}),
+	})),
 	item("dragon_egg", "Polar Dragon Egg", "Mythic", {
 		part(Ball, V(1.8, 1.8, 1.8), rgb(110, 220, 255), M.Glass),
 		part(Ball, V(1.3, 1.3, 1.3), rgb(255, 80, 170), M.Neon),
 		part(Ball, V(1.5, 1.5, 1.5), rgb(110, 220, 255), M.Glass, V(0, 0.75, 0)),
 		part(Cylinder, V(0.4, 2, 2), rgb(60, 50, 90), M.Slate, V(0, -0.9, 0), UPRIGHT),
 	}),
-	item("comet_shard", "Comet Shard", "Mythic", {
+	withBehavior("Ability.Comet", item("comet_shard", "Comet Shard", "Mythic", {
 		part(Block, V(0.9, 2.6, 0.9), rgb(255, 120, 220), M.Neon, nil, V(0, 45, 15)),
 		part(Block, V(0.6, 1.6, 0.6), rgb(140, 230, 255), M.Neon, V(0.7, -0.3, 0.2), V(0, 20, -25)),
 		part(Block, V(0.5, 1.2, 0.5), rgb(255, 230, 120), M.Neon, V(-0.6, -0.5, -0.2), V(10, 0, 30)),
 		part(Cylinder, V(0.4, 1.8, 1.8), rgb(50, 40, 80), M.Slate, V(0, -1.3, 0), UPRIGHT),
-	}),
+	})),
 }

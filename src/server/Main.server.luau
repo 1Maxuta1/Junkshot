@@ -15,6 +15,7 @@
 	  8c. Economy (Stage 3)      Progression, Dealer (booth), PlayerUpgrades, Sell, Shop, Storage;
 	                             EconomyService has no Start (it is a library over CurrencyService)
 	  8d. Bases & audio (4)      BaseService (chest, slots, buildings, Bases/Conveyor), AudioService
+	  8e. World & looks          WorldService (day cycle, sky), LeaderboardService, Cosmetics, Companions
 	  9. DataService.Start()     LAST: begins loading profiles, which fires PlayerLoaded, and
 	                             every listener above must already be connected
 
@@ -54,6 +55,10 @@ local ShopService = require(Services.ShopService)
 local StorageService = require(Services.StorageService)
 local BaseService = require(Services.BaseService)
 local AudioService = require(Services.AudioService)
+local WorldService = require(Services.WorldService)
+local LeaderboardService = require(Services.LeaderboardService)
+local CosmeticsService = require(Services.CosmeticsService)
+local CompanionService = require(Services.CompanionService)
 
 Remotes.Init()
 -- Listeners of DataService.PlayerLoaded must exist before the first profile can load, so the
@@ -74,6 +79,10 @@ ShopService.Start()
 StorageService.Start()
 BaseService.Start()
 AudioService.Start()
+WorldService.Start()
+LeaderboardService.Start()
+CosmeticsService.Start()
+CompanionService.Start()
 DataService.Start()
 
 -- DevTests move the test player around (machine, plot, junk) for about a minute, so they only
@@ -97,6 +106,8 @@ if runDevTests or (RunService:IsStudio() and ServerScriptService:GetAttribute("D
 	bridge.OnInvoke = function(action: string, player: Player, arg: any): any
 		if action == "Pickup" then
 			return CarryService.TryPickup(player, arg)
+		elseif action == "GrantPass" then
+			return MonetizationService.ApplyPass(player, arg) -- visual checks only; real ownership is never faked
 		elseif action == "Klunks" then
 			return CurrencyService.AddKlunks(player, arg)
 		elseif action == "Give" then

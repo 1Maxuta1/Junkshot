@@ -27,6 +27,7 @@ local Workspace = game:GetService("Workspace")
 ReplicatedStorage:WaitForChild("Shared")
 local ItemConfig = require(ReplicatedStorage.Shared.Config.ItemConfig)
 local MachineConfig = require(ReplicatedStorage.Shared.Config.MachineConfig)
+local AudioConfig = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local MonetizationConfig = require(ReplicatedStorage.Shared.Config.MonetizationConfig)
 local Rarities = require(ReplicatedStorage.Shared.Config.Rarities)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -36,6 +37,7 @@ local Validate = require(ReplicatedStorage.Shared.Util.Validate)
 local CarryController = require(script.Parent.CarryController)
 local DataController = require(script.Parent.DataController)
 local InputController = require(script.Parent.InputController)
+local AudioController = require(script.Parent.AudioController)
 local Panel = require(script.Parent.UI.Machine.Panel)
 local Widgets = require(script.Parent.UI.Machine.Widgets)
 local RewardReveal = require(script.Parent.UI.RewardReveal)
@@ -57,6 +59,9 @@ type View = {
 	Announcement: TextLabel?,
 	AnnouncementGui: BillboardGui?,
 	Tweens: { Tween },
+	MotionKey: string?, -- the state the running animation belongs to (restarted only when it changes)
+	LoopSound: Sound?, -- the soft working sound while Processing
+	SoundsReady: boolean, -- false until the first state is shown (no "start" sound for jobs already running)
 	ApplyQueued: boolean,
 	SeenSeq: number,
 	AnnouncementToken: number,
@@ -322,9 +327,38 @@ end
 
 local function applyState(view: View)
 	view.ApplyQueued = false
-	resetMotion(view)
 	local state = attr(view, "State")
-	if state == "Processing" then
+	-- Speed-up clicks only move JobCompletesAt: keep the running animation instead of
+	-- restarting it from its rest pose on every click.
+	local motionKey = `{tostring(state)}:{tostring(attr(view, "LastResultRarity"))}`
+	local restart = motionKey ~= view.MotionKey
+	view.MotionKey = motionKey
+	if restart then
+		resetMotion(view)
+		-- Sounds follow the state: item in -> soft ratchet while working -> ding when done.
+		local found = view.Model:FindFirstChild("PromptAnchor", true)
+		local anchor = if found ~= nil and found:IsA("BasePart") then found else nil
+		local wasWorking = view.LoopSound ~= nil
+		if view.LoopSound ~= nil then
+			view.LoopSound:Destroy()
+			view.LoopSound = nil
+		end
+		local sounds = AudioConfig.Machine
+		if anchor ~= nil and view.SoundsReady then
+			if state == "Processing" then
+				AudioController.PlayAt(sounds.Start, anchor, false, sounds.Range)
+				view.LoopSound = AudioController.PlayAt(sounds.Loop, anchor, true, sounds.Range)
+			elseif state == "RewardReady" and wasWorking then
+				AudioController.PlayAt(sounds.Done, anchor, false, sounds.Range)
+			end
+		elseif anchor ~= nil and state == "Processing" then
+			view.LoopSound = AudioController.PlayAt(sounds.Loop, anchor, true, sounds.Range) -- joined mid-job: no "start"
+		end
+		view.SoundsReady = true
+	end
+	if not restart then
+		-- same state as before: lights, gears and piston keep running as they are
+	elseif state == "Processing" then
 		setLights(view, BUSY_LIGHT)
 		for _, light in view.Lights do
 			play(view, light, TweenInfo.new(0.25, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), { Color = FLASH_LIGHT })
@@ -429,6 +463,9 @@ local function track(model: Instance)
 		Lights = {},
 		Glow = findPart(model, "ChamberGlow"),
 		Tweens = {},
+		MotionKey = nil,
+		LoopSound = nil,
+		SoundsReady = false,
 		ApplyQueued = false,
 		SeenSeq = -1,
 		AnnouncementToken = 0,
@@ -519,6 +556,9 @@ local function untrack(model: Instance)
 	local view = views[model :: Model]
 	if view ~= nil then
 		resetMotion(view)
+		if view.LoopSound ~= nil then
+			view.LoopSound:Destroy()
+		end
 		views[model :: Model] = nil
 	end
 end

@@ -609,6 +609,25 @@ function BaseService.Act(player: Player, requestId: any, action: any, slotId: an
 	return false, errors.InvalidArguments
 end
 
+-- Server-only (Game Pass grants): raises the chest to at least `level`. Never lowers it, never
+-- touches stored items. Idempotent. Returns true when the chest is at least that level now.
+function BaseService.EnsureChestLevel(player: Player, level: number): boolean
+	local data = baseData(player)
+	if data == nil then
+		return false
+	end
+	local target = math.clamp(math.floor(level), 1, #BaseConfig.Chest.Levels)
+	if data.ChestLevel < target then
+		data.ChestLevel = target
+		local base = bases[player]
+		if base ~= nil then
+			buildChest(base)
+		end
+		publish(player)
+	end
+	return data.ChestLevel >= target
+end
+
 ---------------------------------------------------------------------------------------------
 -- Startup
 ---------------------------------------------------------------------------------------------

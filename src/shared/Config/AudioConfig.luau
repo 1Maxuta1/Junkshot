@@ -30,6 +30,20 @@ local AudioConfig = {
 		RareReward = { SoundId = "rbxasset://sounds/electronicpingshort.wav", Volume = 0.6, Pitch = 0.85 },
 		Delivery = { SoundId = "rbxasset://sounds/electronicpingshort.wav", Volume = 0.3, Pitch = 0.7 },
 	},
+	-- The machine (heard by everyone near it, positional): item goes in, soft ratchet while it
+	-- works, a ding when it is done.
+	Machine = {
+		Start = { SoundId = "rbxasset://sounds/Kerplunk.wav", Volume = 0.45, Pitch = 0.9 },
+		Loop = { SoundId = "rbxasset://sounds/clickfast.wav", Volume = 0.07, Pitch = 0.45 },
+		Done = { SoundId = "rbxasset://sounds/electronicpingshort.wav", Volume = 0.4, Pitch = 1.3 },
+		Range = 40, -- studs at which the machine falls silent
+	},
+	-- Mythic item abilities (ItemController/Abilities).
+	Abilities = {
+		CometWhoosh = { SoundId = "rbxasset://sounds/Rocket whoosh 01.wav", Volume = 0.5, Pitch = 1.2 },
+		CometImpact = { SoundId = "rbxasset://sounds/impact_explosion_03.mp3", Volume = 0.6, Pitch = 0.85 },
+		StarChime = { SoundId = "rbxasset://sounds/electronicpingshort.wav", Volume = 0.25, Pitch = 1.6 },
+	},
 	CueCooldown = 0.8, -- seconds: the same cue never plays more often than this
 	Defaults = { Music = 0.6, Sfx = 0.8, Muted = false }, -- the player's own settings (0..1)
 }

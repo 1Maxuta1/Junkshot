@@ -12,7 +12,7 @@ local GameConfig = {
 		StoreName = "PlayerData",
 		KeyPrefix = "Player_",
 		-- Bump when the profile shape changes and add a migration in DataService.
-		ProfileVersion = 5, -- 2: Carry, Machine, Purchases (2A); 3: Deployed (2B); 4: economy (3); 5: Base (4)
+		ProfileVersion = 6, -- 2: Carry, Machine (2A); 3: Deployed (2B); 4: economy (3); 5: Base (4); 6: cosmetics
 	},
 
 	Klunks = {

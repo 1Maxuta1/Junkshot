@@ -68,6 +68,9 @@ local BaseConfig = require(ReplicatedStorage.Shared.Config.BaseConfig)
 local BaseService = require(script.Parent.Services.BaseService)
 local ConveyorModule = require(script.Parent.Services.Bases.Conveyor)
 local AudioService = require(script.Parent.Services.AudioService)
+local CosmeticsService = require(script.Parent.Services.CosmeticsService)
+local CompanionService = require(script.Parent.Services.CompanionService)
+local WorldServiceModule = require(script.Parent.Services.WorldService)
 
 local DevTests = {}
 
@@ -1730,6 +1733,126 @@ local function runBaseTests(player: Player)
 	character:PivotTo(home)
 end
 
+---------------------------------------------------------------------------------------------
+-- Abilities, Starter Pack / cosmetics, leaderboards, world
+---------------------------------------------------------------------------------------------
+
+local function runMonetizationTests(player: Player)
+	local root = waitForLiveRoot(player, 15)
+	if root == nil then
+		warn("[DevTests] no character: monetization tests skipped")
+		return
+	end
+	local data = DataService.GetData(player) :: any
+	local saved = {
+		ChestLevel = data.Base.ChestLevel,
+		Cosmetics = data.Cosmetics,
+		Entitlements = data.Entitlements,
+		Cooldowns = data.Cooldowns,
+	}
+	CarryService.Clear(player)
+
+	-- Abilities (Comet Shard / Starforged Core)
+	data.Cooldowns = {}
+	local cometUid = JunkService.NewUid()
+	CarryService.AddJunk(player, "comet_shard", cometUid)
+	check("the Comet Shard has a click ability", ItemCapabilities.Get("comet_shard").CanBeUsed
+		and ItemCapabilities.Get("comet_shard").Behavior.Kind == "Ability")
+	task.wait(0.6) -- the previous test rebuilt the base; PlacementService loads 0.2 s later
+	local cometOk, cometCode = PlacementService.Use(player, cometUid)
+	local readyAt = player:GetAttribute("Cooldown_Comet")
+	check("summoning a comet works", cometOk, tostring(cometCode))
+	check("the comet then recharges for 5 minutes", type(readyAt) == "number" and math.abs(readyAt - (os.time() + 300)) <= 2, tostring(readyAt))
+	check("a second comet during the cooldown is refused", not PlacementService.Use(player, cometUid))
+	check("the cooldown is saved in the profile", type(data.Cooldowns.Comet) == "number")
+	check("the comet is not consumed", CarryService.HasUid(player, cometUid))
+	local coreUid = JunkService.NewUid()
+	CarryService.AddJunk(player, "starforged_core", coreUid)
+	check("the Starforged Core starts a starfall", PlacementService.Use(player, coreUid) and type(player:GetAttribute("Cooldown_Starfall")) == "number")
+	CarryService.TakeByUid(player, cometUid)
+	check("an ability item that is not carried cannot be used", not PlacementService.Use(player, cometUid))
+	CarryService.Clear(player)
+
+	-- Starter Pack (Game Pass) - simulated ownership in Studio only
+	local carryBefore = CarryService.GetCapacity(player)
+	data.Base.ChestLevel = 1
+	data.Cosmetics = { Owned = {}, Equipped = {} }
+	data.Entitlements = {}
+	player:SetAttribute("Pass_StarterPack", nil)
+	local notOwned = MonetizationService.VerifyPassForTest(player, "StarterPack", 123, function()
+		return false
+	end)
+	check("no rewards without ownership", notOwned == false and data.Base.ChestLevel == 1 and next(data.Cosmetics.Owned) == nil)
+	local failed = MonetizationService.VerifyPassForTest(player, "StarterPack", 123, function(): boolean
+		error("HTTP 503 (simulated)")
+	end)
+	check("no rewards when the ownership API fails", failed == nil and data.Base.ChestLevel == 1 and next(data.Cosmetics.Owned) == nil)
+	local owned = MonetizationService.VerifyPassForTest(player, "StarterPack", 123, function()
+		return true
+	end)
+	check("owning the Starter Pack grants it", owned == true and player:GetAttribute("Pass_StarterPack") == true)
+	check("the chest becomes level 3 (35 slots)", data.Base.ChestLevel == 3 and BaseService.GetStorageCapacity(player) == 35)
+	local count = 0
+	for _ in data.Cosmetics.Owned do
+		count += 1
+	end
+	check("all four Starter Pack cosmetics are unlocked", count == 4 and CosmeticsService.IsOwned(player, "companion_snowbot")
+		and CosmeticsService.IsOwned(player, "title_early_scrapper"))
+	check("the entitlement is recorded", type(data.Entitlements.StarterPack) == "table")
+	check("the cosmetic backpack does not change carry capacity", CarryService.GetCapacity(player) == carryBefore and carryBefore == GameConfig.Carry.MaxJunk)
+	task.wait(0.3)
+	local companion = CompanionService.Get(player)
+	check("the robot companion appears", companion ~= nil and companion.Parent ~= nil and companion:GetAttribute("OwnerUserId") == player.UserId)
+	local character = player.Character :: Model
+	check("the backpack, shovel and title are worn", character:FindFirstChild("JunkshotCosmetics") ~= nil
+		and #(character:FindFirstChild("JunkshotCosmetics") :: Instance):GetChildren() >= 3)
+	MonetizationService.ApplyPass(player, "StarterPack")
+	local again = 0
+	for _ in data.Cosmetics.Owned do
+		again += 1
+	end
+	check("granting again changes nothing (idempotent)", again == 4 and data.Base.ChestLevel == 3)
+	data.Base.ChestLevel = 5
+	MonetizationService.ApplyPass(player, "StarterPack")
+	check("a higher chest level is never lowered", data.Base.ChestLevel == 5)
+
+	-- Cosmetics: equip rules
+	local badOk, badCode = CosmeticsService.Equip(player, "Companion", "companion_unknown")
+	check("equipping an unknown cosmetic is refused", not badOk and badCode == "InvalidCosmetic", tostring(badCode))
+	local wrongOk = CosmeticsService.Equip(player, "Title", "companion_snowbot")
+	check("a cosmetic only fits its own category", not wrongOk)
+	data.Cosmetics.Owned.title_early_scrapper = nil
+	local unownedOk, unownedCode = CosmeticsService.Equip(player, "Title", "title_early_scrapper")
+	check("equipping an unowned cosmetic is refused", not unownedOk and unownedCode == "NotOwned", tostring(unownedCode))
+	local offOk = CosmeticsService.Equip(player, "Companion", "")
+	task.wait(0.2)
+	check("unequipping the companion removes it", offOk and CompanionService.Get(player) == nil)
+	CompanionService.Refresh(player)
+	check("without an equipped companion nothing spawns", CompanionService.Get(player) == nil)
+
+	-- Leaderboard and world
+	local stats = player:FindFirstChild("leaderstats")
+	local klunksValue = if stats ~= nil then stats:FindFirstChild(GameConfig.Klunks.Name) else nil
+	check("the player list shows the balance", klunksValue ~= nil and (klunksValue :: IntValue).Value == CurrencyService.GetKlunks(player))
+	check("the leaderboards stand on the plaza", workspace:FindFirstChild("LeaderboardServer") ~= nil and workspace:FindFirstChild("LeaderboardGlobal") ~= nil)
+	local sky = game:GetService("Lighting"):FindFirstChildOfClass("Sky")
+	check("the winter sky has stars", sky ~= nil and sky.StarCount > 0)
+	check("the day cycle includes a night", WorldServiceModule.ClockAt(15 * 60) > 18.5 or WorldServiceModule.ClockAt(15 * 60) < 8.5)
+
+	-- Cleanup
+	data.Base.ChestLevel = saved.ChestLevel
+	data.Cosmetics = saved.Cosmetics
+	data.Entitlements = saved.Entitlements
+	data.Cooldowns = saved.Cooldowns
+	player:SetAttribute("Pass_StarterPack", nil)
+	player:SetAttribute("Cooldown_Comet", nil)
+	player:SetAttribute("Cooldown_Starfall", nil)
+	CosmeticsService.Equip(player, "Backpack", nil)
+	CompanionService.Refresh(player)
+	PlotService.PlotReleased:Fire(player, PlotService.GetPlot(player))
+	PlotService.PlotAssigned:Fire(player, PlotService.GetPlot(player))
+end
+
 function DevTests.Run()
 	print("[DevTests] waiting for a player...")
 	local player = waitForPlayer(60)
@@ -1758,6 +1881,7 @@ function DevTests.Run()
 	runItemTests(player)
 	runEconomyTests(player)
 	runBaseTests(player)
+	runMonetizationTests(player)
 
 	print(`[DevTests] done: {passed} passed, {failed} failed`)
 end

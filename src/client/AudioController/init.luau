@@ -139,6 +139,35 @@ local function playCue(name: string)
 	SoundService:PlayLocalSound(s)
 end
 
+-- The player's effects volume (0 when muted). Other controllers scale their sounds with it.
+function AudioController.GetSfxVolume(): number
+	return if settings.Muted then 0 else settings.Sfx
+end
+
+-- Plays a configured sound at a world position (or on an instance), scaled by the effects
+-- volume. Returns the Sound (already parented; destroyed when it ends unless `keep`).
+function AudioController.PlayAt(spec: any, parent: Instance, looped: boolean?, range: number?): Sound?
+	local volume = AudioController.GetSfxVolume()
+	if spec == nil or (volume <= 0 and not looped) then
+		return nil
+	end
+	local sound = Instance.new("Sound")
+	sound.SoundId = spec.SoundId
+	sound.Volume = spec.Volume * volume
+	sound.PlaybackSpeed = spec.Pitch or 1
+	sound.Looped = looped == true
+	sound.RollOffMaxDistance = range or 120
+	sound.RollOffMinDistance = 8
+	sound.Parent = parent
+	sound:Play()
+	if not looped then
+		sound.Ended:Connect(function()
+			sound:Destroy()
+		end)
+	end
+	return sound
+end
+
 local function scheduleSave()
 	saveToken += 1
 	local token = saveToken

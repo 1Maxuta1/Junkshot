@@ -98,6 +98,9 @@ function UpgradesTab.Mount(container: Frame, actions: Widgets.Actions): Widgets.
 
 	local order = 51
 	for key, product in MonetizationConfig.Products do
+		if not product.ShowInMachine then
+			continue
+		end
 		local entry = row(order, product.DisplayName, Theme.Colors.Success)
 		order += 1
 		local available = product.ProductId ~= 0
@@ -111,6 +114,9 @@ function UpgradesTab.Mount(container: Frame, actions: Widgets.Actions): Widgets.
 		end)
 	end
 	for key, pass in MonetizationConfig.GamePasses do
+		if not pass.ShowInMachine then
+			continue
+		end
 		local entry = row(order, pass.DisplayName, Theme.Colors.Success)
 		order += 1
 		local available = pass.GamePassId ~= 0

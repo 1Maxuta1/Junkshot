@@ -496,7 +496,7 @@ function MachineService.Mythic(player: Player, uidA: any, uidB: any, uidC: any):
 	local resultId = CraftingService.RollMythic(inputIds)
 	startJob(machine, {
 		Kind = "Mythic",
-		Label = "Mythic Crafting",
+		Label = "Wish Furnace", -- player-facing name of Mythic Crafting
 		StartedAt = now(),
 		Duration = MachineConfig.MythicDuration, -- always exactly six hours
 		Accelerated = 0,
