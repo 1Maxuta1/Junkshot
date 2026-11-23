@@ -76,6 +76,8 @@ local TEMPLATE: Types.ProfileData = {
 	PlayerUpgrades = {},
 	Progress = { Level = 1, XP = 0, Discovered = {} },
 	Economy = { Transactions = {}, Requests = {} },
+	-- Stage 4: the personal base (BaseService); its chest contents are Items above.
+	Base = { Level = 1, ChestLevel = 1, Buildings = {} },
 	-- Processed Robux receipt ids (MonetizationService idempotency).
 	Purchases = {},
 	Stats = {
@@ -96,6 +98,16 @@ local MIGRATIONS: { [number]: (data: any) -> () } = {
 	[3] = function(_data: any)
 		-- 3 -> 4: PlayerUpgrades, Progress, Economy were added; Reconcile() creates them.
 		-- Existing Klunks and Items (base storage) keep their format.
+	end,
+	[4] = function(data: any)
+		-- 4 -> 5: the base storage became the base chest (BaseService). A bought "Base Storage"
+		-- player upgrade (30/60/100/160/250 slots) carries over as a chest level so nobody loses
+		-- space they paid for. Items above the new capacity are kept (only new deposits wait).
+		local storage = if type(data.PlayerUpgrades) == "table" then data.PlayerUpgrades.StorageCapacity else nil
+		local chestLevel = ({ 1, 3, 4, 5, 5 } :: { number })[if type(storage) == "number" then math.clamp(math.floor(storage), 1, 5) else 1]
+		if type(data.Base) ~= "table" then
+			data.Base = { Level = 1, ChestLevel = chestLevel, Buildings = {} }
+		end
 	end,
 }
 

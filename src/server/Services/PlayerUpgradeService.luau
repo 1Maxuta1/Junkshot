@@ -13,10 +13,10 @@
 	  CarryCapacity    CarryService capacity bonus (hotbar grows)
 	  WalkSpeed        Humanoid.WalkSpeed, re-applied on every spawn
 	  PickupRange      CarryService pickup distance (the client also widens its prompts)
-	  StorageCapacity  InventoryService capacity
+	  (storage capacity comes from the base chest: BaseService)
 	  Haggler          GetSellBonus(player) -> extra share for SellService
 	Levels are saved in profile.Data.PlayerUpgrades and published as Player attributes
-	"Upgrade_<Id>" (level) plus "PickupRange" and "StorageMax" for the client.
+	"Upgrade_<Id>" (level) plus "PickupRange" for the client (StorageMax comes from BaseService).
 ]]
 
 local Players = game:GetService("Players")
@@ -31,7 +31,6 @@ local CarryService = require(script.Parent.CarryService)
 local DataService = require(script.Parent.DataService)
 local DealerService = require(script.Parent.DealerService)
 local EconomyService = require(script.Parent.EconomyService)
-local InventoryService = require(script.Parent.InventoryService)
 local ProgressionService = require(script.Parent.ProgressionService)
 local RemoteGuard = require(script.Parent.RemoteGuard)
 
@@ -105,7 +104,6 @@ local function publish(player: Player)
 		player:SetAttribute(`Upgrade_{upgrade.Id}`, PlayerUpgradeService.GetLevel(player, upgrade.Id))
 	end
 	player:SetAttribute("PickupRange", PlayerUpgradeService.GetValue(player, "PickupRange"))
-	player:SetAttribute("StorageMax", InventoryService.GetCapacity(player))
 	applyWalkSpeed(player)
 	CarryService.Refresh(player) -- republishes CarryMax
 end
@@ -163,9 +161,6 @@ function PlayerUpgradeService.Start()
 	end)
 	CarryService.SetPickupRangeProvider(function(player: Player): number
 		return PlayerUpgradeService.GetValue(player, "PickupRange")
-	end)
-	InventoryService.SetCapacityProvider(function(player: Player): number
-		return PlayerUpgradeService.GetValue(player, "StorageCapacity")
 	end)
 
 	local function hook(player: Player)

@@ -102,6 +102,14 @@ export type ProgressData = {
 	Discovered: { [string]: boolean }, -- item ids seen at least once (first-time XP)
 }
 
+-- The personal base (BaseService). Chest contents are profile.Items (InventoryService).
+export type BuildingState = { Id: string, Level: number }
+export type BaseData = {
+	Level: number, -- base expansion level (Config/BaseConfig.BaseLevels)
+	ChestLevel: number,
+	Buildings: { [string]: BuildingState }, -- slot id -> building
+}
+
 export type ProfileStats = {
 	TotalKlunksEarned: number,
 }
@@ -117,6 +125,7 @@ export type ProfileData = {
 	PlayerUpgrades: { [string]: number }, -- upgrade id -> level (Config/PlayerUpgrades)
 	Progress: ProgressData,
 	Economy: EconomyData,
+	Base: BaseData,
 	Purchases: { string }, -- processed Robux receipt ids (most recent last)
 	Stats: ProfileStats,
 	Settings: { [string]: any },

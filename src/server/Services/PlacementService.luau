@@ -122,14 +122,14 @@ local MESSAGES: { [string]: string } = {
 -- Spots on a plot where saved objects reappear (relative to the plot's top center; the machine
 -- stands at (0, 0, 6)). Tried in order until a free one is found.
 local PLOT_SPOTS = {
-	Vector3.new(-12, 0, -8),
-	Vector3.new(12, 0, -8),
-	Vector3.new(-12, 0, 8),
-	Vector3.new(12, 0, 8),
-	Vector3.new(0, 0, -12),
-	Vector3.new(-12, 0, 0),
-	Vector3.new(12, 0, 0),
-	Vector3.new(0, 0, 16),
+	-- Stage 4: kept clear of the chest (-15, 14) and the building slots (BaseConfig.Slots).
+	Vector3.new(-12, 0, -9),
+	Vector3.new(-4, 0, -15),
+	Vector3.new(4, 0, -15),
+	Vector3.new(0, 0, -6),
+	Vector3.new(-11, 0, -17),
+	Vector3.new(7, 0, -6),
+	Vector3.new(-5, 0, 16),
 }
 
 local started = false
@@ -507,7 +507,7 @@ end
 -- Places the player's saved objects again (on their plot). Invalid or duplicate records are
 -- dropped; a record without a free spot goes back to the hands, or waits for the next join.
 function PlacementService.Load(player: Player)
-	if loaded[player] then
+	if loaded[player] or player.Parent ~= Players then
 		return
 	end
 	local data = DataService.GetData(player)
@@ -602,7 +602,9 @@ function PlacementService.Start()
 	end)
 
 	PlotService.PlotAssigned:Connect(function(player: Player)
-		PlacementService.Load(player)
+		-- A moment later than BaseService, so the base (chest, slots) exists and saved objects
+		-- are placed around it instead of onto a building slot.
+		task.delay(0.2, PlacementService.Load, player)
 	end)
 	PlotService.PlotReleased:Connect(PlacementService.Unload)
 	Players.PlayerRemoving:Connect(PlacementService.Unload)

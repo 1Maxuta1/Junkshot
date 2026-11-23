@@ -63,6 +63,11 @@ local ShopService = require(script.Parent.Services.ShopService)
 local StorageService = require(script.Parent.Services.StorageService)
 local PlayerUpgradeService = require(script.Parent.Services.PlayerUpgradeService)
 local ProgressionService = require(script.Parent.Services.ProgressionService)
+-- Stage 4
+local BaseConfig = require(ReplicatedStorage.Shared.Config.BaseConfig)
+local BaseService = require(script.Parent.Services.BaseService)
+local ConveyorModule = require(script.Parent.Services.Bases.Conveyor)
+local AudioService = require(script.Parent.Services.AudioService)
 
 local DevTests = {}
 
@@ -185,6 +190,12 @@ local function runInventoryTests(player: Player)
 	local uids: { string } = {}
 	local seen: { [string]: boolean } = {}
 	local duplicates = 0
+	-- Stage 4: storage is the chest (10 slots at level 1); give the test a big chest for a moment.
+	local inventoryData = DataService.GetData(player) :: any
+	local savedChest = if type(inventoryData.Base) == "table" then inventoryData.Base.ChestLevel else nil
+	if type(inventoryData.Base) == "table" then
+		inventoryData.Base.ChestLevel = #BaseConfig.Chest.Levels
+	end
 	for _ = 1, 25 do
 		local newUid = InventoryService.AddItem(player, "debug_golden_toaster")
 		if newUid ~= nil then
@@ -206,6 +217,9 @@ local function runInventoryTests(player: Player)
 		InventoryService.RemoveItem(player, id)
 	end
 	check("inventory restored after cleanup", InventoryService.GetItemCount(player) == startCount)
+	if savedChest ~= nil then
+		inventoryData.Base.ChestLevel = savedChest
+	end
 end
 
 ---------------------------------------------------------------------------------------------
@@ -924,7 +938,7 @@ local function runItemTests(player: Player)
 
 	local plotTop = PlotService.GetPlotCFrame(plot)
 	local spotA = (plotTop * CFrame.new(-12, 0, -8)).Position
-	local spotB = (plotTop * CFrame.new(12, 0, -8)).Position
+	local spotB = (plotTop * CFrame.new(1, 0, -14)).Position -- clear of the Stage 4 building slots
 	local spotC = (plotTop * CFrame.new(-12, 0, 8)).Position
 	local function standNear(spot: Vector3)
 		character:PivotTo(CFrame.new(spot + Vector3.new(0, 3, 0) + plotTop.LookVector * -9))
@@ -1232,7 +1246,7 @@ local function runEconomyTests(player: Player)
 		task.wait(0.1)
 	end
 	local function atBase()
-		character:PivotTo(PlotService.GetPlotCFrame(plot) * CFrame.new(-10, 3, -10))
+		character:PivotTo(PlotService.GetPlotCFrame(plot) * CFrame.new(BaseConfig.Chest.Position + Vector3.new(4, 3, -5))) -- at the chest (Stage 4)
 		task.wait(0.1)
 	end
 	local function setBalance(value: number)
@@ -1395,7 +1409,7 @@ local function runEconomyTests(player: Player)
 	local speedId = guid()
 	local speedOk = PlayerUpgradeService.Buy(player, speedId, "WalkSpeed")
 	check("buying Snow Boots works", speedOk and data.PlayerUpgrades.WalkSpeed == 2)
-	check("Snow Boots cost their price", CurrencyService.GetKlunks(player) == 20000 - 250)
+	check("Snow Boots cost their price", CurrencyService.GetKlunks(player) == 20000 - (require(ReplicatedStorage.Shared.Config.PlayerUpgrades).Get("WalkSpeed") :: any).Levels[2].Price)
 	check("Snow Boots raise the walk speed", humanoid.WalkSpeed == 17, tostring(humanoid.WalkSpeed))
 	local speedAgainOk = PlayerUpgradeService.Buy(player, speedId, "WalkSpeed")
 	check("a repeated upgrade request is ignored", not speedAgainOk and data.PlayerUpgrades.WalkSpeed == 2)
@@ -1461,6 +1475,261 @@ local function runEconomyTests(player: Player)
 	character:PivotTo(home)
 end
 
+---------------------------------------------------------------------------------------------
+-- Stage 4: bases, chest, buildings, conveyor, replenishment, audio settings
+---------------------------------------------------------------------------------------------
+
+local function runBaseTests(player: Player)
+	local root = waitForLiveRoot(player, 15)
+	local plot = PlotService.GetPlot(player)
+	if root == nil or plot == nil then
+		warn("[DevTests] no character or plot: base tests skipped")
+		return
+	end
+	local character = player.Character :: Model
+	local home = character:GetPivot()
+	local data = DataService.GetData(player) :: any
+	local savedBase = data.Base
+	local savedKlunks = data.Klunks
+	local savedLevel = data.Progress.Level
+	data.Base = { Level = 1, ChestLevel = 1, Buildings = {} }
+	-- Rebuild the base from the fresh test state (like a rejoin).
+	PlotService.PlotReleased:Fire(player, plot)
+	PlotService.PlotAssigned:Fire(player, plot)
+	task.wait(0.3)
+	CarryService.Clear(player)
+	for uid in InventoryService.GetAllItems(player) or {} do
+		InventoryService.RemoveItem(player, uid)
+	end
+	local function setBalance(value: number)
+		local current = CurrencyService.GetKlunks(player) :: number
+		if value > current then
+			CurrencyService.AddKlunks(player, value - current)
+		elseif value < current then
+			CurrencyService.RemoveKlunks(player, current - value)
+		end
+	end
+	local function give(itemId: string): string
+		local uid = JunkService.NewUid()
+		CarryService.AddJunk(player, itemId, uid)
+		return uid
+	end
+	local guid = function(): string
+		return JunkService.NewUid()
+	end
+	local top = PlotService.GetPlotCFrame(plot)
+	local function atChest()
+		character:PivotTo(top * CFrame.new(BaseConfig.Chest.Position + Vector3.new(4, 3, -5)))
+		task.wait(0.1)
+	end
+	local function atPlotCenter()
+		character:PivotTo(top * CFrame.new(0, 3, -10))
+		task.wait(0.1)
+	end
+
+	-- The base
+	local folder = plot:FindFirstChild("PlayerBase")
+	local chest = if folder ~= nil then folder:FindFirstChild("Chest") else nil
+	check("the player's base is built on their plot", folder ~= nil and folder:GetAttribute("OwnerUserId") == player.UserId)
+	check("the base has a chest owned by the player", chest ~= nil and chest:GetAttribute("OwnerUserId") == player.UserId)
+	local pads, unlocked = 0, 0
+	for _, child in (folder :: Instance):GetChildren() do
+		if child:GetAttribute("SlotId") ~= nil then
+			pads += 1
+			if child:GetAttribute("Unlocked") then
+				unlocked += 1
+			end
+		end
+	end
+	check("every slot has a pad and base level 1 unlocks one", pads == #BaseConfig.Slots and unlocked == 1, `{pads} / {unlocked}`)
+	check("a level 1 chest holds 10 items", BaseService.GetStorageCapacity(player) == 10 and player:GetAttribute("StorageMax") == 10)
+
+	-- Chest storage
+	local farUid = give("rusty_can")
+	atPlotCenter()
+	character:PivotTo(top * CFrame.new(15, 3, -14))
+	task.wait(0.1)
+	local farOk, farCode = StorageService.Move(player, "Store", farUid)
+	check("storing away from the chest is rejected", not farOk and farCode == StorageService.Errors.NotAtBase, tostring(farCode))
+	atChest()
+	local storedOk = StorageService.Move(player, "Store", farUid)
+	check("storing at the chest works", storedOk and InventoryService.HasItem(player, farUid))
+	for _ = 1, 9 do
+		InventoryService.AddItem(player, "bolt_pack")
+	end
+	local overUid = give("old_boot")
+	local fullOk, fullCode = StorageService.Move(player, "Store", overUid)
+	check("a full chest refuses more items", not fullOk and fullCode == StorageService.Errors.StorageFull
+		and CarryService.HasUid(player, overUid), tostring(fullCode))
+	for _, rarity in { "Rare", "Epic", "Legendary", "Mythic" } do
+		InventoryService.RemoveItem(player, farUid)
+		local pool = ItemConfig.GetRewardPool(rarity)
+		local rareUid = give(pool[1])
+		local ok = StorageService.Move(player, "Store", rareUid)
+		check(`a {rarity} item can be stored`, ok and InventoryService.HasItem(player, rareUid))
+		farUid = rareUid
+	end
+
+	-- Chest upgrade
+	setBalance(100)
+	local poorOk, poorCode = BaseService.Act(player, guid(), "UpgradeChest")
+	check("a chest upgrade without money is rejected", not poorOk and poorCode == BaseService.Errors.NotEnough, tostring(poorCode))
+	setBalance(5000)
+	local chestId = guid()
+	local chestOk = BaseService.Act(player, chestId, "UpgradeChest")
+	local newChest = (plot:FindFirstChild("PlayerBase") :: Instance):FindFirstChild("Chest")
+	check("the chest can be upgraded", chestOk and data.Base.ChestLevel == 2 and BaseService.GetStorageCapacity(player) == 20)
+	check("the chest upgrade costs its price", CurrencyService.GetKlunks(player) == 5000 - BaseConfig.Chest.Levels[2].Price)
+	check("the chest model changes with its level", newChest ~= nil and newChest:GetAttribute("ChestLevel") == 2)
+	local againOk, againCode = BaseService.Act(player, chestId, "UpgradeChest")
+	check("a repeated chest upgrade request is ignored", not againOk and againCode == BaseService.Errors.Duplicate and data.Base.ChestLevel == 2, tostring(againCode))
+	local overOk = StorageService.Move(player, "Store", overUid)
+	check("the bigger chest takes the waiting item", overOk)
+
+	-- Buildings
+	local awayOk, awayCode = (function()
+		character:PivotTo(CFrame.new(DealerService.GetPosition() :: Vector3))
+		task.wait(0.1)
+		return BaseService.Act(player, guid(), "Build", "S1", "Conveyor")
+	end)()
+	check("building away from the base is rejected", not awayOk and awayCode == BaseService.Errors.NotAtBase, tostring(awayCode))
+	atPlotCenter()
+	local lockedOk, lockedCode = BaseService.Act(player, guid(), "Build", "S2", "Lantern")
+	check("a locked slot cannot be built on", not lockedOk and lockedCode == BaseService.Errors.SlotLocked, tostring(lockedCode))
+	local badOk, badCode = BaseService.Act(player, guid(), "Build", "S1", "Castle")
+	check("an unknown building is rejected", not badOk and badCode == BaseService.Errors.UnknownBuilding, tostring(badCode))
+	local rackOk, rackCode = BaseService.Act(player, guid(), "Build", "S1", "StorageRack")
+	check("a building above the base level is rejected", not rackOk and rackCode == BaseService.Errors.BaseLevelTooLow, tostring(rackCode))
+	setBalance(5000)
+	local buildId = guid()
+	local buildOk, buildCode = BaseService.Act(player, buildId, "Build", "S1", "Conveyor")
+	check("a conveyor can be built on slot 1", buildOk and data.Base.Buildings.S1 ~= nil and data.Base.Buildings.S1.Id == "Conveyor", tostring(buildCode))
+	check("building costs its price", CurrencyService.GetKlunks(player) == 5000 - BaseConfig.Buildings.Conveyor.Levels[1].Price)
+	local takenOk, takenCode = BaseService.Act(player, guid(), "Build", "S1", "Lantern")
+	check("an occupied slot cannot be built on again", not takenOk and takenCode == BaseService.Errors.SlotTaken, tostring(takenCode))
+	local repeatOk = BaseService.Act(player, buildId, "Build", "S1", "Conveyor")
+	check("a repeated build request is ignored", not repeatOk)
+	local conveyorModel: Model? = nil
+	for _, child in (plot:FindFirstChild("PlayerBase") :: Instance):GetChildren() do
+		if child:GetAttribute("BuildingId") == "Conveyor" and child:IsA("Model") and child:FindFirstChild("Belt") then
+			conveyorModel = child
+		end
+	end
+	check("the conveyor model stands on the slot", conveyorModel ~= nil)
+	local _, slotCode = PlacementRules.Check({ UserId = player.UserId, ModelName = "Radio",
+		Position = (top * CFrame.new(BaseConfig.Slots[1].Position)).Position, Yaw = 0 })
+	check("nothing can be placed onto a building slot", slotCode == "Blocked", tostring(slotCode))
+
+	-- Conveyor: an item on the belt rolls into the chest with the same uid
+	if conveyorModel ~= nil then
+		local belt = conveyorModel:FindFirstChild("Belt") :: BasePart
+		local start = belt.CFrame * CFrame.new(0, 0.2, -2.5)
+		local junk = JunkService.SpawnAt("pipe_segment", start.Position + Vector3.new(0, 1, 0), {})
+		local junkUid = if junk ~= nil then JunkService.GetUid(junk) else nil
+		check("an item can lie on the conveyor", junkUid ~= nil)
+		if junkUid ~= nil then
+			local startLocal = belt.CFrame:PointToObjectSpace(JunkService.GetPosition(junk :: Model) :: Vector3)
+			for _ = 1, 30 do
+				ConveyorModule.Step(0.15)
+			end
+			if not InventoryService.HasItem(player, junkUid) then
+				local now = JunkService.GetByUid(junkUid)
+				warn(`[DevTests] conveyor: started at {startLocal}, now {if now ~= nil then tostring(belt.CFrame:PointToObjectSpace(JunkService.GetPosition(now) :: Vector3)) else "gone"}`)
+			end
+			check("the conveyor moves the item into the chest with the same uid",
+				InventoryService.HasItem(player, junkUid) and JunkService.GetByUid(junkUid) == nil)
+		end
+	end
+
+	-- Base expansion and more buildings
+	data.Progress.Level = 3
+	setBalance(10000)
+	local expandOk, expandCode = BaseService.Act(player, guid(), "UpgradeBase")
+	local pad2 = (plot:FindFirstChild("PlayerBase") :: Instance):FindFirstChild("SlotS2")
+	check("the base can be expanded", expandOk and data.Base.Level == 2 and pad2 ~= nil and pad2:GetAttribute("Unlocked") == true, tostring(expandCode))
+	local rackLevelOk, rackLevelCode = BaseService.Act(player, guid(), "Build", "S2", "StorageRack")
+	check("a building above the player's level is rejected", not rackLevelOk and rackLevelCode == BaseService.Errors.LevelTooLow, tostring(rackLevelCode))
+	data.Progress.Level = 4
+	local capacityBefore = BaseService.GetStorageCapacity(player)
+	local rack2Ok = BaseService.Act(player, guid(), "Build", "S2", "StorageRack")
+	check("a storage rack adds chest slots", rack2Ok and BaseService.GetStorageCapacity(player) == capacityBefore + 15)
+	local rack3Ok, rack3Code = BaseService.Act(player, guid(), "Build", "S3", "StorageRack")
+	check("building limits are respected", not rack3Ok and rack3Code == BaseService.Errors.LimitReached, tostring(rack3Code))
+	local balanceBefore = CurrencyService.GetKlunks(player) :: number
+	local removeOk = BaseService.Act(player, guid(), "Remove", "S2")
+	check("removing a building refunds half", removeOk and data.Base.Buildings.S2 == nil
+		and CurrencyService.GetKlunks(player) == balanceBefore + math.floor(BaseConfig.Buildings.StorageRack.Levels[1].Price * BaseConfig.RemoveRefund))
+	check("the base state is saved in the profile", type(data.Base) == "table" and data.Base.Buildings.S1 ~= nil)
+
+	-- Replenishment
+	local target = JunkService.GetTarget()
+	check("the yard target scales from the base value", target >= GameConfig.Junk.Replenish.BaseTarget and target <= GameConfig.Junk.Replenish.MaxTarget)
+	local refillAt = workspace:GetAttribute("JunkRefillAt")
+	check("the next scrap delivery time is published", type(refillAt) == "number" and refillAt > workspace:GetServerTimeNow())
+	local before: { [Model]: boolean } = {}
+	for _, model in JunkService.GetActiveJunk() do
+		before[model] = true
+	end
+	-- Take a few natural items away, then deliver.
+	local taken = 0
+	for _, model in JunkService.GetActiveJunk() do
+		if taken < 5 then
+			local id = JunkService.Claim(model, nil)
+			if id ~= nil then
+				taken += 1
+				before[model] = nil
+			end
+		end
+	end
+	local survivors = 0
+	for model in before do
+		if JunkService.IsActive(model) then
+			survivors += 1
+		end
+	end
+	local naturalBefore = JunkService.GetNaturalCount()
+	local spawned = JunkService.Replenish()
+	check("a delivery only fills the gap (the yard is not reset)", JunkService.GetNaturalCount() <= target
+		and spawned <= math.max(0, target - naturalBefore))
+	local stillThere = 0
+	for model in before do
+		if JunkService.IsActive(model) then
+			stillThere += 1
+		end
+	end
+	check("items already lying in the yard stay after a delivery", stillThere == survivors, `{stillThere}/{survivors}`)
+	local tooClose = 0
+	for _, model in JunkService.GetActiveJunk() do
+		if not before[model] and JunkService.GetPosition(model) ~= nil
+			and ((JunkService.GetPosition(model) :: Vector3) - root.Position).Magnitude < GameConfig.Junk.Replenish.MinPlayerDistance
+		then
+			tooClose += 1
+		end
+	end
+	check("delivered items never appear right next to a player", tooClose == 0, tostring(tooClose))
+	check("the world never exceeds MaxActive", JunkService.GetActiveCount() <= GameConfig.Junk.MaxActive)
+
+	-- Audio settings
+	local saved = AudioService.SaveSettings(player, { Music = 0.3, Sfx = 2, Muted = true })
+	local audio = data.Settings.Audio
+	check("audio settings are saved and clamped", saved and audio.Music == 0.3 and audio.Sfx == 1 and audio.Muted == true)
+	local badSave = AudioService.SaveSettings(player, { Music = "loud", Sfx = 0.5, Muted = false })
+	check("invalid audio settings are rejected", not badSave and audio.Music == 0.3)
+	AudioService.SaveSettings(player, { Music = 0.6, Sfx = 0.8, Muted = false })
+
+	-- Cleanup: back to the player's own base and balance.
+	CarryService.Clear(player)
+	for uid in InventoryService.GetAllItems(player) or {} do
+		InventoryService.RemoveItem(player, uid)
+	end
+	data.Base = savedBase
+	data.Progress.Level = savedLevel
+	PlotService.PlotReleased:Fire(player, plot)
+	PlotService.PlotAssigned:Fire(player, plot)
+	setBalance(savedKlunks)
+	character:PivotTo(home)
+end
+
 function DevTests.Run()
 	print("[DevTests] waiting for a player...")
 	local player = waitForPlayer(60)
@@ -1488,6 +1757,7 @@ function DevTests.Run()
 	runMachineTests(player)
 	runItemTests(player)
 	runEconomyTests(player)
+	runBaseTests(player)
 
 	print(`[DevTests] done: {passed} passed, {failed} failed`)
 end

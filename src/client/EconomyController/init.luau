@@ -89,7 +89,7 @@ local function mount()
 		bag.Refresh()
 	end)
 	for _, attribute in { "Level", "StorageMax", "CarryMax", "Upgrade_CarryCapacity", "Upgrade_WalkSpeed",
-		"Upgrade_PickupRange", "Upgrade_StorageCapacity", "Upgrade_Haggler" } do
+		"Upgrade_PickupRange", "Upgrade_Haggler", "ChestLevel", "BaseLevel" } do
 		localPlayer:GetAttributeChangedSignal(attribute):Connect(function()
 			dealer.Refresh()
 			bag.Refresh()
@@ -108,9 +108,16 @@ local function mount()
 	end)
 
 	ProximityPromptService.PromptTriggered:Connect(function(prompt: ProximityPrompt, player: Player)
-		if player == localPlayer and prompt:GetAttribute("PromptKind") == "Dealer" then
+		if player ~= localPlayer then
+			return
+		end
+		local kind = prompt:GetAttribute("PromptKind")
+		if kind == "Dealer" then
 			bag.Close()
 			dealer.Open(gamepad())
+		elseif kind == "Chest" and prompt:GetAttribute("OwnerUserId") == localPlayer.UserId then
+			dealer.Close()
+			bag.Open(gamepad())
 		end
 	end)
 
@@ -137,6 +144,7 @@ local function mount()
 		end
 		accumulated = 0
 		bag.Tick()
+		hud.TickRefill()
 		if not dealer.IsOpen() then
 			return
 		end

@@ -5,12 +5,14 @@
 	    floats out of it when money is earned or spent (EconomyFx from the server).
 	  - Level badge with an XP bar (Player attributes Level / XP / XPNext).
 	  - BAG button (also key B / gamepad View) opens the bag.
+	  - "New scrap in 3:12": countdown to the next yard delivery (Workspace.JunkRefillAt).
 	Updates only when the data changes; the count-up is one short tween, no per-frame work.
 ]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
 
 local KlunksFormat = require(ReplicatedStorage.Shared.Util.KlunksFormat)
 
@@ -20,6 +22,7 @@ export type Hud = {
 	SetBalance: (value: number) -> (),
 	Float: (amount: number) -> (),
 	RefreshLevel: () -> (),
+	TickRefill: () -> (),
 	BagClicked: BindableEvent,
 }
 
@@ -33,7 +36,7 @@ function Hud.Mount(screenGui: ScreenGui): Hud
 	corner.Name = "EconomyCorner"
 	corner.AnchorPoint = Vector2.new(1, 0)
 	corner.Position = UDim2.new(1, -10, 0, 8)
-	corner.Size = UDim2.new(0, 230, 0, 96)
+	corner.Size = UDim2.new(0, 230, 0, 120)
 	corner.BackgroundTransparency = 1
 	corner.Parent = screenGui
 
@@ -141,6 +144,30 @@ function Hud.Mount(screenGui: ScreenGui): Hud
 		bagClicked:Fire()
 	end)
 
+	-- Scrap delivery countdown (Workspace attribute JunkRefillAt, set by the server).
+	local refillLabel = Theme.Label({
+		Name = "Refill",
+		Text = "",
+		Size = UDim2.new(1, 0, 0, 22),
+		Position = UDim2.new(0, 0, 0, 98),
+		Color = Theme.Colors.White,
+		Font = Theme.FontBody,
+		MinTextSize = 11,
+		MaxTextSize = 15,
+		XAlignment = Enum.TextXAlignment.Right,
+		Parent = corner,
+	})
+	Theme.TextStroke(refillLabel, Theme.Colors.Ink, 1.5)
+	local function tickRefill()
+		local at = Workspace:GetAttribute("JunkRefillAt")
+		if type(at) ~= "number" then
+			refillLabel.Text = ""
+			return
+		end
+		local left = math.max(0, math.ceil(at - Workspace:GetServerTimeNow()))
+		refillLabel.Text = if left > 0 then string.format("New scrap in %d:%02d", left // 60, left % 60) else "Scrap delivery arriving!"
+	end
+
 	-- Smooth count: a NumberValue tweened towards the new balance.
 	local shown = Instance.new("NumberValue")
 	shown.Value = 0
@@ -214,6 +241,7 @@ function Hud.Mount(screenGui: ScreenGui): Hud
 		SetBalance = setBalance,
 		Float = float,
 		RefreshLevel = refreshLevel,
+		TickRefill = tickRefill,
 		BagClicked = bagClicked,
 	}
 end

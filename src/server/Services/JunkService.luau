@@ -17,8 +17,12 @@
 	    UI). A trigger does NOT pick anything up by itself: it only fires PickupRequested, and
 	    CarryService decides (distance, capacity, cooldown). Exploiters can fire prompts
 	    remotely, so the decision must never live here.
+	  - Natural items come in "scrap deliveries" every Replenish.Interval seconds (topped up to a
+	    player-scaled target, away from players, at most one per yard cell per CellCooldown),
+	    and expire after NaturalLifetime when nobody is near. The next delivery time is the
+	    Workspace attribute JunkRefillAt (clients show a countdown).
 	  - Dropped and thrown junk expires after GameConfig.Junk.DroppedLifetime seconds if
-	    nobody picks it up. Naturally spawned junk never expires.
+	    nobody picks it up.
 	  - Removed models go back to a small per-type pool and are reused by the next spawn.
 
 	Public API (server only)
@@ -61,11 +65,13 @@ type ActiveJunk = {
 	ClaimableAt: number, -- os.clock() from which it may be claimed (thrown junk is locked while it flies)
 	ReservedFor: number?, -- UserId: only this player may claim it (a machine's output)
 	OnClaimed: ((uid: string) -> ())?, -- called synchronously when it is claimed
+	Natural: boolean?, -- spawned by a yard delivery (counts towards the replenish target)
 }
 
 export type SpawnOptions = {
 	Uid: string?, -- keep an existing identity (drops, throws); a new one is generated otherwise
 	Lifetime: number?, -- seconds before it expires; nil = never
+	Natural: boolean?, -- a yard delivery item (counts towards the replenish target)
 	Yaw: number?, -- radians; random when nil
 	-- Seconds during which the junk exists in the world but cannot be claimed and shows no
 	-- prompt (a throw in flight: clients animate this same object towards its final pivot).
@@ -93,6 +99,7 @@ local FAILURE_WARN_INTERVAL = 30 -- seconds between repeated "cannot spawn" warn
 local JunkService = {}
 
 JunkService.PickupRequested = Signal.new() -- (player: Player, junk: Model)
+JunkService.Delivered = Signal.new() -- (spawned: number) after each scrap delivery
 
 local random = Random.new()
 local started = false
@@ -101,6 +108,8 @@ local container: Folder? = nil
 local active: { [Model]: ActiveJunk } = {}
 local byUid: { [string]: Model } = {}
 local activeCount = 0
+local naturalCount = 0
+local cellLastSpawn: { [string]: number } = {} -- "x:z" cell -> os.clock() of its last natural spawn
 
 local modelPool: { [string]: { Model } } = {}
 local uidSources: { (uid: string) -> boolean } = {}
@@ -141,6 +150,9 @@ local function unregister(model: Model)
 			byUid[entry.Uid] = nil
 		end
 		activeCount -= 1
+		if entry.Natural then
+			naturalCount -= 1
+		end
 	end
 end
 
@@ -338,9 +350,13 @@ local function createJunk(junkId: string, groundPosition: Vector3, options: Spaw
 		ClaimableAt = now + lockedFor,
 		ReservedFor = reservedFor,
 		OnClaimed = if options ~= nil then options.OnClaimed else nil,
+		Natural = if options ~= nil then options.Natural else nil,
 	}
 	byUid[uid] = model
 	activeCount += 1
+	if options ~= nil and options.Natural then
+		naturalCount += 1
+	end
 
 	-- Pooled models keep their prompt, so its state is set on every spawn.
 	local prompt = root:FindFirstChildOfClass("ProximityPrompt")
@@ -366,23 +382,50 @@ local function createJunk(junkId: string, groundPosition: Vector3, options: Spaw
 	return model
 end
 
-local function trySpawn(): boolean
+local function cellKey(position: Vector3): string
+	local size = GameConfig.Junk.Replenish.CellSize
+	return `{math.floor(position.X / size)}:{math.floor(position.Z / size)}`
+end
+
+local function nearAPlayer(position: Vector3, distance: number): boolean
+	for _, player in Players:GetPlayers() do
+		local character = player.Character
+		local root = if character ~= nil then character:FindFirstChild("HumanoidRootPart") else nil
+		if root ~= nil and root:IsA("BasePart") and (root.Position - position).Magnitude < distance then
+			return true
+		end
+	end
+	return false
+end
+
+-- One natural spawn. `strict` (deliveries while players are around) also keeps away from
+-- players and respects the per-cell cooldown; the very first fill of an empty server does not.
+local function trySpawn(strict: boolean?): boolean
+	local config = GameConfig.Junk.Replenish
 	local junkId = pickJunkId()
 	local markers = getMarkers()
 	local excluded = buildExcluded(markers)
+	local now = os.clock()
 
 	for _ = 1, GameConfig.Junk.SpawnAttempts do
 		local ground = findGround(randomOrigin(markers), GameConfig.Junk.RayLength, excluded)
 		if ground ~= nil and isFarEnough(ground) then
-			return createJunk(junkId, ground, nil) ~= nil
+			local key = cellKey(ground)
+			local last = cellLastSpawn[key]
+			local blocked = strict
+				and ((last ~= nil and now - last < config.CellCooldown) or nearAPlayer(ground, config.MinPlayerDistance))
+			if not blocked then
+				cellLastSpawn[key] = now
+				return createJunk(junkId, ground, { Natural = true, Lifetime = config.NaturalLifetime }) ~= nil
+			end
 		end
 	end
 	return false
 end
 
 -- trySpawn wrapped so one unexpected error cannot kill the spawn loops.
-local function safeSpawn(): boolean
-	local ok, result = pcall(trySpawn)
+local function safeSpawn(strict: boolean?): boolean
+	local ok, result = pcall(trySpawn, strict)
 	if not ok then
 		warn(`[JunkService] spawn error: {tostring(result)}`)
 		return false
@@ -401,13 +444,23 @@ local function warnSpawnFailure()
 	end
 end
 
-local function fillToMax()
-	local perStep = math.max(1, GameConfig.Junk.InitialSpawnPerStep)
+-- How many natural items the yard should hold right now (scales with the player count).
+function JunkService.GetTarget(): number
+	local config = GameConfig.Junk.Replenish
+	local players = math.max(1, #Players:GetPlayers())
+	return math.min(config.MaxTarget, config.BaseTarget + (players - 1) * config.PerPlayer)
+end
+
+-- Spawns natural items until `target` is reached (never above MaxActive). Returns how many.
+local function fill(target: number, strict: boolean): number
+	local perStep = math.max(1, if strict then GameConfig.Junk.Replenish.BatchPerStep else GameConfig.Junk.InitialSpawnPerStep)
 	local spawnedThisStep = 0
+	local spawned = 0
 	local failures = 0
 
-	while activeCount < GameConfig.Junk.MaxActive do
-		if safeSpawn() then
+	while naturalCount < target and activeCount < GameConfig.Junk.MaxActive do
+		if safeSpawn(strict) then
+			spawned += 1
 			failures = 0
 			spawnedThisStep += 1
 			if spawnedThisStep >= perStep then
@@ -417,12 +470,26 @@ local function fillToMax()
 		else
 			failures += 1
 			if failures >= MAX_CONSECUTIVE_FAILURES then
-				warnSpawnFailure()
-				return
+				if not strict then
+					warnSpawnFailure()
+				end
+				return spawned -- strict: the remaining cells are on cooldown / near players
 			end
 			task.wait()
 		end
 	end
+	return spawned
+end
+
+-- One scrap delivery: tops the yard back up to the target. Also used by DevTests.
+function JunkService.Replenish(): number
+	local spawned = fill(JunkService.GetTarget(), true)
+	Workspace:SetAttribute("JunkInYard", naturalCount)
+	return spawned
+end
+
+function JunkService.GetNaturalCount(): number
+	return naturalCount
 end
 
 ---------------------------------------------------------------------------------------------
@@ -436,13 +503,15 @@ function JunkService.Start()
 	container = getContainer()
 
 	task.spawn(function()
-		fillToMax()
-		-- Maintenance: top the world back up as players take junk.
+		fill(JunkService.GetTarget(), false) -- the server starts with a full yard
+		Workspace:SetAttribute("JunkInYard", naturalCount)
+		-- Deliveries: one timer for the whole yard; clients count down to JunkRefillAt.
+		local interval = GameConfig.Junk.Replenish.Interval
 		while true do
-			task.wait(GameConfig.Junk.RespawnInterval)
-			if activeCount < GameConfig.Junk.MaxActive and not safeSpawn() then
-				warnSpawnFailure()
-			end
+			Workspace:SetAttribute("JunkRefillAt", Workspace:GetServerTimeNow() + interval)
+			task.wait(interval)
+			local spawned = JunkService.Replenish()
+			JunkService.Delivered:Fire(spawned)
 		end
 	end)
 
@@ -521,7 +590,11 @@ function JunkService.CleanupExpired(): number
 	local expired: { Model } = {}
 	for model, entry in active do
 		if entry.ExpiresAt ~= nil and now >= entry.ExpiresAt then
-			table.insert(expired, model)
+			if entry.Natural and nearAPlayer(entry.Position, GameConfig.Junk.Replenish.MinPlayerDistance) then
+				entry.ExpiresAt = now + 60 -- someone is looking at it: do not vanish in front of them
+			else
+				table.insert(expired, model)
+			end
 		end
 	end
 	for _, model in expired do
@@ -531,6 +604,28 @@ function JunkService.CleanupExpired(): number
 		end
 	end
 	return #expired
+end
+
+-- Moves a lying object (conveyors). Its registered position follows.
+function JunkService.MoveTo(junk: any, position: Vector3): boolean
+	local entry = active[junk]
+	if entry == nil then
+		return false
+	end
+	local offset = position - entry.Position
+	entry.Position = position;
+	(junk :: Model):PivotTo((junk :: Model):GetPivot() + offset)
+	return true
+end
+
+-- Calls fn(model, uid, itemId, position, reservedFor) for every claimable object (no yields).
+function JunkService.ForEachClaimable(fn: (Model, string, string, Vector3, number?) -> ())
+	local now = os.clock()
+	for model, entry in active do
+		if now >= entry.ClaimableAt then
+			fn(model, entry.Uid, entry.Id, entry.Position, entry.ReservedFor)
+		end
+	end
 end
 
 function JunkService.GetActiveJunk(): { Model }

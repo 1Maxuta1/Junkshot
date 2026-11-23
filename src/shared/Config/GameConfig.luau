@@ -12,7 +12,7 @@ local GameConfig = {
 		StoreName = "PlayerData",
 		KeyPrefix = "Player_",
 		-- Bump when the profile shape changes and add a migration in DataService.
-		ProfileVersion = 4, -- 2: Carry, Machine, Purchases (2A); 3: Deployed (2B); 4: economy (Stage 3)
+		ProfileVersion = 5, -- 2: Carry, Machine, Purchases (2A); 3: Deployed (2B); 4: economy (3); 5: Base (4)
 	},
 
 	Klunks = {
@@ -37,7 +37,20 @@ local GameConfig = {
 		ContainerName = "JunkContainer", -- Folder in Workspace, created automatically
 		SpawnTag = "JunkSpawn", -- optional: tag Parts with this to define spawn areas
 		InitialSpawnPerStep = 5, -- objects created per frame during the initial fill
-		RespawnInterval = 1.5, -- seconds between respawns once below MaxActive
+		-- Replenishment (Stage 4): the yard is NOT topped up continuously. Every Interval seconds
+		-- a "scrap delivery" spawns what is missing up to the target, so picked areas stay empty
+		-- for a while and exploring other zones pays off. Clients show a countdown.
+		Replenish = {
+			Interval = 300, -- seconds between deliveries
+			BaseTarget = 50, -- natural items wanted in the yard with one player...
+			PerPlayer = 8, -- ...plus this many per additional player
+			MaxTarget = 130, -- never more natural items than this (MaxActive stays the hard cap)
+			BatchPerStep = 4, -- items created per frame during a delivery
+			MinPlayerDistance = 30, -- studs: nothing pops into existence right next to a player
+			CellSize = 24, -- studs: the yard is split into cells ("spawn points")...
+			CellCooldown = 240, -- ...and a cell that just got an item waits this long for the next
+			NaturalLifetime = 1500, -- seconds an untouched natural item stays (expires only when nobody is near)
+		},
 		MinSpacing = 5, -- minimum studs between two junk objects (150 junk fit the 4 zones comfortably)
 		SpawnAttempts = 12, -- random positions tried before giving up on one spawn
 		PickupMaxDistance = 10, -- ProximityPrompt activation distance in studs
@@ -90,6 +103,9 @@ local GameConfig = {
 		-- The machine has its own key, so junk lying next to it never hides its prompt.
 		MachineKey = Enum.KeyCode.R,
 		MachineGamepadKey = Enum.KeyCode.ButtonY,
+		-- The base chest and building slots (own key: the machine prompt reaches far).
+		BaseKey = Enum.KeyCode.C,
+		BaseGamepadKey = Enum.KeyCode.ButtonL2,
 		AimRayLength = 500, -- studs the mouse / screen-center aim ray reaches
 		-- Functional items: Use / Place the item selected in the hotbar.
 		UseKey = Enum.KeyCode.G,
@@ -147,6 +163,8 @@ local GameConfig = {
 		ShopBuy = { MaxRequests = 4, Window = 2 },
 		PlayerUpgradeBuy = { MaxRequests = 3, Window = 2 },
 		StorageMove = { MaxRequests = 8, Window = 1 },
+		BaseAction = { MaxRequests = 4, Window = 2 },
+		SaveSettings = { MaxRequests = 3, Window = 3 },
 	},
 
 	Debug = {

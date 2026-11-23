@@ -44,6 +44,10 @@ local definitions: { [string]: string } = {
 	PlayerUpgradeBuy = "RemoteEvent", -- client -> server: (requestId, upgradeId) next level
 	StorageMove = "RemoteEvent", -- client -> server: ("Store" | "Take", uid) hands <-> base storage
 	EconomyFx = "RemoteEvent", -- server -> client: { Kind, Amount?, Reason?, Text? } feedback
+	-- Bases (Stage 4). Always the CALLER's own base; no base / plot id is ever accepted.
+	BaseAction = "RemoteEvent", -- client -> server: (requestId, action, slotId?, buildingId?)
+	SaveSettings = "RemoteEvent", -- client -> server: ({ Music, Sfx, Muted }) audio settings
+	AudioCue = "RemoteEvent", -- server -> client: (cueName) a short sound for that player
 }
 
 local Remotes = {}

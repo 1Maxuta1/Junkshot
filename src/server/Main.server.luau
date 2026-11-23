@@ -14,6 +14,7 @@
 	  8b. PlacementService       functional items: place / store / use (+ Services/Behaviors/*)
 	  8c. Economy (Stage 3)      Progression, Dealer (booth), PlayerUpgrades, Sell, Shop, Storage;
 	                             EconomyService has no Start (it is a library over CurrencyService)
+	  8d. Bases & audio (4)      BaseService (chest, slots, buildings, Bases/Conveyor), AudioService
 	  9. DataService.Start()     LAST: begins loading profiles, which fires PlayerLoaded, and
 	                             every listener above must already be connected
 
@@ -39,6 +40,7 @@ local DataService = require(Services.DataService)
 local ReplicationService = require(Services.ReplicationService)
 local JunkService = require(Services.JunkService)
 local CarryService = require(Services.CarryService)
+local CurrencyService = require(Services.CurrencyService)
 local ThrowService = require(Services.ThrowService)
 local PlotService = require(Services.PlotService)
 local MachineService = require(Services.MachineService)
@@ -50,6 +52,8 @@ local PlayerUpgradeService = require(Services.PlayerUpgradeService)
 local SellService = require(Services.SellService)
 local ShopService = require(Services.ShopService)
 local StorageService = require(Services.StorageService)
+local BaseService = require(Services.BaseService)
+local AudioService = require(Services.AudioService)
 
 Remotes.Init()
 -- Listeners of DataService.PlayerLoaded must exist before the first profile can load, so the
@@ -68,6 +72,8 @@ PlayerUpgradeService.Start()
 SellService.Start()
 ShopService.Start()
 StorageService.Start()
+BaseService.Start()
+AudioService.Start()
 DataService.Start()
 
 -- DevTests move the test player around (machine, plot, junk) for about a minute, so they only
@@ -91,6 +97,8 @@ if runDevTests or (RunService:IsStudio() and ServerScriptService:GetAttribute("D
 	bridge.OnInvoke = function(action: string, player: Player, arg: any): any
 		if action == "Pickup" then
 			return CarryService.TryPickup(player, arg)
+		elseif action == "Klunks" then
+			return CurrencyService.AddKlunks(player, arg)
 		elseif action == "Give" then
 			return CarryService.AddJunk(player, arg)
 		elseif action == "Remaining" then

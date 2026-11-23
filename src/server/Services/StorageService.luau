@@ -4,7 +4,7 @@
 	(InventoryService). The item keeps its uid; it is MOVED, never copied.
 
 	  Move(player, "Store" | "Take", uid) -> (ok, code?)
-	    Only while standing on your own base plot (storage lives at your base, so the hand
+	    Only while standing at your own base chest (BaseService; storage lives at your base, so the hand
 	    limit still matters out in the yard). Store needs a free storage slot, Take a free hand.
 	    Remove-then-add happens in one step without yielding; if the second half fails the item
 	    goes straight back where it was.
@@ -24,7 +24,7 @@ local CarryService = require(script.Parent.CarryService)
 local EconomyService = require(script.Parent.EconomyService)
 local InventoryService = require(script.Parent.InventoryService)
 local JunkService = require(script.Parent.JunkService)
-local PlotService = require(script.Parent.PlotService)
+local BaseService = require(script.Parent.BaseService)
 local RemoteGuard = require(script.Parent.RemoteGuard)
 
 local StorageService = {}
@@ -39,26 +39,16 @@ StorageService.Errors = table.freeze({
 })
 
 local MESSAGES: { [string]: string } = {
-	NotAtBase = "Storage is at your base - go there first",
-	StorageFull = "Your base storage is full",
+	NotAtBase = "Use your chest at your base for that",
+	StorageFull = "Your chest is full - upgrade it at your base",
 	HandsFull = "Your hands are full",
 }
 
-local PLOT_MARGIN = 4 -- studs around the plot pad that still count as "at your base"
-
 local started = false
 
+-- Stage 4: the storage is the base chest, so items move in / out standing at YOUR chest.
 function StorageService.IsAtBase(player: Player): boolean
-	local root = CarryService.GetLiveRoot(player)
-	local plot = PlotService.GetPlot(player)
-	local pad = if plot ~= nil then plot:FindFirstChild("Pad") else nil
-	if root == nil or pad == nil or not pad:IsA("BasePart") then
-		return false
-	end
-	local localPoint = pad.CFrame:PointToObjectSpace(root.Position)
-	return math.abs(localPoint.X) <= pad.Size.X / 2 + PLOT_MARGIN
-		and math.abs(localPoint.Z) <= pad.Size.Z / 2 + PLOT_MARGIN
-		and localPoint.Y < 30
+	return BaseService.IsNearChest(player)
 end
 
 function StorageService.Move(player: Player, action: any, uid: any): (boolean, string?)

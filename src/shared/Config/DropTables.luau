@@ -17,13 +17,16 @@ export type Table = { [string]: number }
 
 local DropTables = {}
 
+-- Stage 4 balance (was 55 / 25 / 12 / 6 / 1.8 / 0.2): a recycle was worth ~50 K against ~10 K for
+-- the Common it consumes, and Legendaries came every 15-40 minutes. Now a recycle is worth
+-- ~25 K (still 2.5x selling the junk) and Legendary / Mythic results stay rare. See README.
 DropTables.Recycle = {
-	Common = 55,
-	Uncommon = 25,
-	Rare = 12,
-	Epic = 6,
-	Legendary = 1.8,
-	Mythic = 0.2,
+	Common = 70,
+	Uncommon = 22,
+	Rare = 6,
+	Epic = 1.6,
+	Legendary = 0.35,
+	Mythic = 0.05,
 } :: Table
 
 DropTables.WorldSpawn = {

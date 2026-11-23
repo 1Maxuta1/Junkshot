@@ -14,7 +14,7 @@
 	  CarryCapacity    extra hand slots on top of GameConfig.Carry.MaxJunk
 	  WalkSpeed        Humanoid.WalkSpeed (Roblox default 16)
 	  PickupRange      studs from which loose items can be picked up
-	  StorageCapacity  items the base storage holds
+	  (StorageCapacity moved to the base chest in Stage 4: Config/BaseConfig)
 	  Haggler          extra share paid when selling (0.05 = +5%)
 	Balance: each step is noticeable but small; the last levels are long-term goals.
 ]]
@@ -36,7 +36,7 @@ local list: { Upgrade } = {
 		Unit = "slots",
 		Levels = {
 			{ Price = 0, Value = 0 },
-			{ Price = 400, Value = 1, RequiredLevel = 2 },
+			{ Price = 800, Value = 1, RequiredLevel = 2 },
 			{ Price = 1500, Value = 2, RequiredLevel = 4 },
 			{ Price = 5000, Value = 3, RequiredLevel = 7 },
 		},
@@ -48,7 +48,7 @@ local list: { Upgrade } = {
 		Unit = "speed",
 		Levels = {
 			{ Price = 0, Value = 16 },
-			{ Price = 250, Value = 17 },
+			{ Price = 500, Value = 17 },
 			{ Price = 800, Value = 18, RequiredLevel = 3 },
 			{ Price = 2000, Value = 19, RequiredLevel = 5 },
 			{ Price = 5000, Value = 20, RequiredLevel = 8 },
@@ -61,24 +61,13 @@ local list: { Upgrade } = {
 		Unit = "studs",
 		Levels = {
 			{ Price = 0, Value = 10 },
-			{ Price = 300, Value = 12, RequiredLevel = 2 },
+			{ Price = 600, Value = 12, RequiredLevel = 2 },
 			{ Price = 1200, Value = 14, RequiredLevel = 4 },
 			{ Price = 3500, Value = 16, RequiredLevel = 6 },
 		},
 	},
-	{
-		Id = "StorageCapacity",
-		DisplayName = "Base Storage",
-		Description = "Keep more items safe at your base.",
-		Unit = "items",
-		Levels = {
-			{ Price = 0, Value = 30 },
-			{ Price = 300, Value = 60 },
-			{ Price = 1000, Value = 100, RequiredLevel = 3 },
-			{ Price = 3000, Value = 160, RequiredLevel = 5 },
-			{ Price = 8000, Value = 250, RequiredLevel = 8 },
-		},
-	},
+	-- "StorageCapacity" (Stage 3) moved to the base chest (Config/BaseConfig.Chest); saved levels
+	-- were converted into chest levels by the 4 -> 5 profile migration.
 	{
 		Id = "Haggler",
 		DisplayName = "Haggler",

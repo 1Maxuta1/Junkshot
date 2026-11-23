@@ -29,11 +29,14 @@ local EconomyConfig = require(ReplicatedStorage.Shared.Config.EconomyConfig)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Types = require(ReplicatedStorage.Shared.Types)
 local Validate = require(ReplicatedStorage.Shared.Util.Validate)
+local Signal = require(ReplicatedStorage.Shared.Util.Signal)
 
 local CurrencyService = require(script.Parent.CurrencyService)
 local DataService = require(script.Parent.DataService)
 
 local EconomyService = {}
+
+EconomyService.Spent = Signal.new() -- (player, amount, reason) after a successful Spend
 
 EconomyService.Errors = table.freeze({
 	DataUnavailable = "DataUnavailable",
@@ -138,6 +141,7 @@ function EconomyService.Spend(player: Player, amount: number, reason: string, tx
 	end
 	log(player, "Spend", amount, reason, txId)
 	fx(player, { Kind = "Spend", Amount = amount, Reason = reason })
+	EconomyService.Spent:Fire(player, amount, reason)
 	return true, nil
 end
 

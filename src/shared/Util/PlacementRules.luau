@@ -46,6 +46,7 @@ local PlacementRules = {}
 
 PlacementRules.DEPLOYED_FOLDER = "Deployed"
 PlacementRules.PLOT_TAG = "BasePlot"
+PlacementRules.SLOT_ZONE_TAG = "BaseSlotZone"
 
 local CLEARANCE = 0.35 -- the overlap box starts this far above the ground
 local SHRINK = 0.9 -- footprint fraction tested for overlap (forgives touching edges)
@@ -157,6 +158,16 @@ function PlacementRules.Check(request: Request): (CFrame?, string?)
 	for _, part in parts do
 		if part.CanCollide then
 			return nil, "Blocked"
+		end
+	end
+	-- Base building slots stay free for buildings (BaseService). Their zones are not queryable
+	-- (so nothing lands on top of them), hence this explicit footprint test.
+	for _, zone in CollectionService:GetTagged(PlacementRules.SLOT_ZONE_TAG) do
+		if zone:IsA("BasePart") and zone:IsDescendantOf(Workspace) then
+			local p = zone.CFrame:PointToObjectSpace(ground)
+			if math.abs(p.X) <= (zone.Size.X + size.X * SHRINK) / 2 and math.abs(p.Z) <= (zone.Size.Z + size.Z * SHRINK) / 2 then
+				return nil, "Blocked"
+			end
 		end
 	end
 
