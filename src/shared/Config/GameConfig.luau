@@ -171,7 +171,10 @@ local GameConfig = {
 		-- Run server/DevTests.luau on startup (Studio only). Off by default: the tests teleport the
 		-- player for about a minute. Set ServerScriptService attribute RunDevTests = true to run once.
 		EnableDevTests = false,
-		UseMockStore = true, -- use ProfileStore.Mock: nothing is saved (Studio only)
+		-- true = ProfileStore.Mock in Studio: nothing is saved between Play sessions. Off so Studio
+		-- tests keep progress like the live game (needs Game Settings > Security > Enable Studio
+		-- Access to API Services). DevTests always use the Mock store (they rewrite the profile).
+		UseMockStore = false,
 		SimulateLoadFailure = false, -- pretend profile loading failed (Studio only)
 	},
 }

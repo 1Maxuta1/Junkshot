@@ -284,8 +284,11 @@ function DataService.Start()
 	started = true
 
 	local baseStore = ProfileStore.New(GameConfig.Data.StoreName, TEMPLATE)
-	if GameConfig.Debug.UseMockStore and RunService:IsStudio() then
-		warn("[DataService] Debug.UseMockStore is on: data is NOT saved to the DataStore")
+	-- DevTests reset balances, chests and machines, so they must never touch a real profile.
+	local devTests = RunService:IsStudio()
+		and (GameConfig.Debug.EnableDevTests or game:GetService("ServerScriptService"):GetAttribute("RunDevTests") == true)
+	if (GameConfig.Debug.UseMockStore or devTests) and RunService:IsStudio() then
+		warn("[DataService] Mock store (Debug.UseMockStore or DevTests): data is NOT saved to the DataStore")
 		store = baseStore.Mock
 	else
 		store = baseStore

@@ -363,27 +363,28 @@ function Prefabs.LogPile(parent, cf)
 	return m
 end
 
--- Two posts and a colored board with text on its front (-Z) face.
+-- Two posts and a colored board with text on its front (-Z) face. The posts stand BEHIND the
+-- board (+Z), so they never cover the text (long "<NAME>'S BASE" titles).
 function Prefabs.Sign(parent, cf, text, color)
 	local m = model(parent, "Sign")
-	for _, x in { -4.5, 4.5 } do
+	for _, x in { -5, 5 } do
 		Prefabs.Part(m, {
 			Name = "Post",
-			Size = Vector3.new(0.6, 6, 0.6),
-			CFrame = cf * CFrame.new(x, 3, 0),
+			Size = Vector3.new(0.6, 8, 0.6),
+			CFrame = cf * CFrame.new(x, 4, 0.6),
 			Color = C.Ink,
 		})
 	end
 	local board = Prefabs.Part(m, {
 		Name = "Board",
-		Size = Vector3.new(11, 3.4, 0.6),
-		CFrame = cf * CFrame.new(0, 5.6, 0),
+		Size = Vector3.new(14, 4.6, 0.6),
+		CFrame = cf * CFrame.new(0, 6.6, 0),
 		Color = color,
 	})
 	Prefabs.Part(m, {
 		Name = "Snow",
-		Size = Vector3.new(11.2, 0.5, 0.9),
-		CFrame = cf * CFrame.new(0, 7.5, 0),
+		Size = Vector3.new(14.2, 0.5, 1.4),
+		CFrame = cf * CFrame.new(0, 9.15, 0.3),
 		Color = C.Snow,
 		CastShadow = false,
 	})
