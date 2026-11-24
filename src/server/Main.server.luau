@@ -16,7 +16,7 @@
 	                             EconomyService has no Start (it is a library over CurrencyService)
 	  8d. Bases & audio (4)      BaseService (chest, slots, buildings, Bases/Conveyor), AudioService
 	  8e. World & looks          WorldService (day cycle, sky), LeaderboardService, Cosmetics, Companions
-	  8f. World events         WorldEventService (Rare Creature every 5 min)
+	  8f. World events         WorldEventService (Rare Creature every 5 min), RaceService (hourly), TradeService
 	  9. DataService.Start()     LAST: begins loading profiles, which fires PlayerLoaded, and
 	                             every listener above must already be connected
 
@@ -61,6 +61,8 @@ local LeaderboardService = require(Services.LeaderboardService)
 local CosmeticsService = require(Services.CosmeticsService)
 local CompanionService = require(Services.CompanionService)
 local WorldEventService = require(Services.WorldEventService)
+local RaceService = require(Services.RaceService)
+local TradeService = require(Services.TradeService)
 
 Remotes.Init()
 -- Listeners of DataService.PlayerLoaded must exist before the first profile can load, so the
@@ -86,6 +88,8 @@ LeaderboardService.Start()
 CosmeticsService.Start()
 CompanionService.Start()
 WorldEventService.Start()
+RaceService.Start()
+TradeService.Start()
 DataService.Start()
 
 -- DevTests move the test player around (machine, plot, junk) for about a minute, so they only
@@ -121,6 +125,13 @@ if runDevTests or (RunService:IsStudio() and ServerScriptService:GetAttribute("D
 			return WorldEventService.SpawnNow(nil, arg) -- arg: optional ground position
 		elseif action == "ClaimCreature" then
 			return WorldEventService.TryClaim(player, WorldEventService.GetActive())
+		elseif action == "OpenRace" then
+			task.spawn(RaceService.Open, arg)
+			return true
+		elseif action == "JoinRace" then
+			return RaceService.Join(player)
+		elseif action == "Trade" then
+			return (TradeService :: any)[arg.Fn](player, table.unpack(arg.Args))
 		elseif action == "DespawnCreature" then
 			return WorldEventService.Despawn()
 		end

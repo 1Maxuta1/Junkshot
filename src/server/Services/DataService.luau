@@ -68,6 +68,7 @@ local TEMPLATE: Types.ProfileData = {
 		Upgrades = { Speed = 1, Storage = 1, Level = 1 },
 		BoostUntil = 0,
 		InstantCredits = 0,
+		SkipSeconds = 0,
 		ResultSeq = 0,
 	},
 	-- Functional items placed in the world (PlacementService), restored at the plot on rejoin.
@@ -88,6 +89,7 @@ local TEMPLATE: Types.ProfileData = {
 		TotalKlunksEarned = 0,
 	},
 	Settings = {},
+	Racing = { BestMs = 0, Races = 0, Wins = 0 },
 }
 
 -- MIGRATIONS[n] upgrades data from version n to n + 1 (mutating it in place).
@@ -115,6 +117,9 @@ local MIGRATIONS: { [number]: (data: any) -> () } = {
 	end,
 	[5] = function(_data: any)
 		-- 5 -> 6: Cosmetics, Entitlements and Cooldowns were added; Reconcile() creates them.
+	end,
+	[6] = function(_data: any)
+		-- 6 -> 7: Racing and Machine.SkipSeconds were added; Reconcile() creates them.
 	end,
 }
 

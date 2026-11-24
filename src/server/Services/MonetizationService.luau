@@ -37,6 +37,7 @@ local MonetizationConfig = require(ReplicatedStorage.Shared.Config.MonetizationC
 local BaseService = require(script.Parent.BaseService)
 local CosmeticsService = require(script.Parent.CosmeticsService)
 local DataService = require(script.Parent.DataService)
+local EconomyService = require(script.Parent.EconomyService)
 local MachineService = require(script.Parent.MachineService)
 
 local MonetizationService = {}
@@ -46,8 +47,11 @@ local started = false
 -- ProductId -> grant function. Only configured (non-zero id + implemented handler) products.
 local handlers: { [number]: (player: Player) -> boolean } = {}
 local PRODUCT_HANDLERS: { [string]: (player: Player, product: any) -> boolean } = {
-	InstantFinish = function(player: Player): boolean
-		return MachineService.InstantFinish(player)
+	SkipTime = function(player: Player, product: any): boolean
+		return MachineService.SkipTime(player, product.Hours * 3600)
+	end,
+	Klunks = function(player: Player, product: any): boolean
+		return (EconomyService.Earn(player, product.Amount, `Robux:{product.Key}`))
 	end,
 	SpeedBoost = function(player: Player, product: any): boolean
 		return MachineService.AddBoost(player, product.Minutes * 60)
@@ -212,6 +216,7 @@ function MonetizationService.Start()
 	end)
 end
 
+MonetizationService.ProductHandlers = PRODUCT_HANDLERS
 -- DevTests (Studio only): run the receipt logic with a fake receipt, register a test product,
 -- replace the ownership source to simulate owning / API failures. Never used in a live game.
 MonetizationService.ProcessReceiptForTest = processReceipt

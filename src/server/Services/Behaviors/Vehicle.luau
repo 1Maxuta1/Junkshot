@@ -368,6 +368,65 @@ function Vehicle.GetDriven(player: Player): any?
 end
 
 ---------------------------------------------------------------------------------------------
+-- Races (RaceService)
+---------------------------------------------------------------------------------------------
+
+-- race = { MaxSpeed, Frozen } replaces the vehicle's top speed / ignores its driver; nil = normal.
+function Vehicle.SetRace(entry: any, race: any?)
+	entry.State.Race = race
+end
+
+-- Puts the vehicle (and whoever sits in it) at `pivot`, standing still.
+function Vehicle.MoveTo(entry: any, pivot: CFrame)
+	local base = entry.Model.PrimaryPart
+	if base == nil then
+		return
+	end
+	entry.Model:PivotTo(pivot)
+	base.AssemblyLinearVelocity = Vector3.zero
+	base.AssemblyAngularVelocity = Vector3.zero
+	local _, yaw = pivot:ToEulerAnglesYXZ()
+	local state = entry.State
+	state.Yaw = yaw
+	state.Speed = 0
+	state.Linear.PlaneVelocity = Vector2.zero
+	state.Align.CFrame = CFrame.Angles(0, yaw, 0)
+end
+
+-- Seats the owner in the driver seat, wherever they are. Yields a moment.
+function Vehicle.Seat(entry: any)
+	local player: Player = entry.Owner
+	local seat = entry.Model:FindFirstChild("DriverSeat")
+	local character = player.Character
+	local humanoid = if character ~= nil then character:FindFirstChildOfClass("Humanoid") else nil
+	if seat == nil or not seat:IsA("VehicleSeat") or character == nil or humanoid == nil or humanoid.Health <= 0 then
+		return
+	end
+	for _ = 1, 10 do
+		if seat.Occupant == humanoid or entry.Model.Parent == nil or player.Parent ~= Players then
+			return
+		end
+		if humanoid.SeatPart ~= nil then
+			humanoid.Sit = false
+			task.wait(0.3)
+		end
+		character:PivotTo(seat.CFrame * CFrame.new(0, 3, 0))
+		task.wait(0.15)
+		if seat.Occupant == nil then
+			seat:Sit(humanoid)
+		end
+		task.wait(0.25)
+	end
+end
+
+function Vehicle.Eject(entry: any)
+	local seat = entry.Model:FindFirstChild("DriverSeat")
+	if seat ~= nil and seat:IsA("VehicleSeat") and seat.Occupant ~= nil then
+		exitSafely(entry, seat, seat.Occupant)
+	end
+end
+
+---------------------------------------------------------------------------------------------
 -- Simulation
 ---------------------------------------------------------------------------------------------
 
@@ -391,6 +450,13 @@ local function step(entry: any, dt: number, now: number)
 	if state.Driver ~= nil and now - state.LastInputAt <= INPUT_TIMEOUT then
 		throttle, steer = state.Throttle, state.Steer
 	end
+	local maxSpeed = config.MaxSpeed
+	if state.Race ~= nil then
+		maxSpeed = state.Race.MaxSpeed
+		if state.Race.Frozen then
+			throttle, steer = 0, 0
+		end
+	end
 	if state.Driver == nil and state.Speed == 0 then
 		return -- parked: the LinearVelocity already holds it still
 	end
@@ -400,7 +466,7 @@ local function step(entry: any, dt: number, now: number)
 		if speed < -0.5 then
 			speed = moveToward(speed, 0, config.Braking * dt)
 		else
-			local target = config.MaxSpeed * throttle
+			local target = maxSpeed * throttle
 			speed = moveToward(speed, target, (if speed < target then config.Acceleration else config.Coast) * dt)
 		end
 	elseif throttle < -0.05 then
@@ -417,13 +483,13 @@ local function step(entry: any, dt: number, now: number)
 	local heading = CFrame.Angles(0, state.Yaw, 0)
 	local measured = base.AssemblyLinearVelocity:Dot(heading.LookVector)
 	speed = math.clamp(speed, measured - SPEED_SLACK, measured + SPEED_SLACK)
-	speed = math.clamp(speed, -config.ReverseSpeed, config.MaxSpeed)
+	speed = math.clamp(speed, -config.ReverseSpeed, maxSpeed)
 	if math.abs(speed) < 0.05 and throttle == 0 then
 		speed = 0
 	end
 	state.Speed = speed
 
-	local grip = math.clamp(math.abs(speed) / (config.MaxSpeed * 0.3), 0, 1)
+	local grip = math.clamp(math.abs(speed) / (maxSpeed * 0.3), 0, 1)
 	local direction = if speed >= 0 then 1 else -1
 	state.Yaw -= steer * config.TurnRate * grip * direction * dt
 	heading = CFrame.Angles(0, state.Yaw, 0)

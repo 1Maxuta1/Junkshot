@@ -180,6 +180,9 @@ local function sanitize(player: Player, data: any, carry: any)
 	if not Validate.IsFiniteNumber(data.BoostUntil) then
 		data.BoostUntil = 0
 	end
+	if not Validate.IsFiniteNumber(data.SkipSeconds) or data.SkipSeconds < 0 then
+		data.SkipSeconds = 0
+	end
 	if not Validate.IsInteger(data.InstantCredits, 0) then
 		data.InstantCredits = 0
 	end
@@ -379,10 +382,15 @@ local function carriedId(player: Player, uid: string): string?
 	return nil
 end
 
+local applyStoredSkip: (machine: Machine) -> ()
+
 local function startJob(machine: Machine, job: MachineJob)
 	machine.Data.Job = job
 	schedule(machine)
 	publish(machine)
+	if job.Duration >= 60 then
+		applyStoredSkip(machine)
+	end
 end
 
 function MachineService.Recycle(player: Player, uid: any): (boolean, string?)
@@ -616,6 +624,46 @@ function MachineService.InstantFinish(player: Player): boolean
 			publish(machine)
 		end
 	end
+	return true
+end
+
+-- Applies bought time to the running job; what is left over waits for the next one.
+local function applySkip(machine: Machine)
+	local data = machine.Data
+	local job = data.Job
+	local credit = data.SkipSeconds
+	if job == nil or type(credit) ~= "number" or credit <= 0 then
+		return
+	end
+	local used = math.min(credit, remaining(job))
+	data.SkipSeconds = credit - used
+	job.Accelerated += used
+	if remaining(job) <= 0 then
+		settle(machine)
+	else
+		schedule(machine)
+		publish(machine)
+	end
+end
+
+applyStoredSkip = applySkip
+
+-- Monetization: removes up to `seconds` from the running job. Without a job the time is kept for
+-- the next long one (StartJob), so a purchase is never lost.
+function MachineService.SkipTime(player: Player, seconds: number): boolean
+	local data = DataService.GetData(player)
+	if data == nil then
+		return false
+	end
+	local machine = machines[player]
+	if machine ~= nil and machine.Data.Job ~= nil then
+		local before = machine.Data.SkipSeconds
+		machine.Data.SkipSeconds = seconds
+		applySkip(machine)
+		machine.Data.SkipSeconds = before -- an hourly tier pays for ONE job; its rest is not kept
+		return true
+	end
+	data.Machine.SkipSeconds = math.max(0, data.Machine.SkipSeconds or 0) + seconds
 	return true
 end
 

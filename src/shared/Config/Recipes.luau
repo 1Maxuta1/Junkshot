@@ -67,10 +67,10 @@ local list: { Types.Recipe } = {
 	}),
 	recipe("Components", "small_engine", 1, "Rebuild an engine from salvaged parts.", {
 		ing("engine_part"), ing("gear_wheel"), ing("pipe_segment"), ing("bolt_pack"),
-	}),
+	}, { DurationOverride = 20 * 60 }),
 	recipe("Components", "electric_motor", 1, "Coil copper around a battery-driven gear.", {
 		ing("copper_wire", 2), ing("car_battery"), ing("gear_wheel"),
-	}),
+	}, { DurationOverride = 20 * 60 }),
 	recipe("Components", "control_panel", 2, "A screen, a circuit and power: a brain for machines.", {
 		ing("circuit_board"), ing("cracked_monitor"), ing("copper_wire"), ing("battery_pack"),
 	}),
@@ -78,22 +78,22 @@ local list: { Types.Recipe } = {
 	-- Vehicles
 	recipe("Vehicles", "wooden_sled", 1, "A crate on metal runners.", {
 		ing("wooden_crate"), ing("metal_sheet"), ing("bolt_pack"),
-	}),
+	}, { DurationOverride = 2 * 60 }),
 	recipe("Vehicles", "bicycle", 1, "Two wheels and a pipe.", {
 		ing("bike_wheel", 2), ing("pipe_segment"),
 	}),
 	recipe("Vehicles", "metal_cart", 1, "A metal tub on wheels for hauling scrap.", {
 		ing("bike_wheel", 2), ing("metal_sheet", 2), ing("bolt_pack"),
-	}),
+	}, { DurationOverride = 10 * 60 }),
 	recipe("Vehicles", "scooter", 1, "Wheels, a pipe and a small engine.", {
 		ing("bike_wheel", 2), ing("pipe_segment"), ing("small_engine"),
-	}),
+	}, { DurationOverride = 40 * 60 }),
 	recipe("Vehicles", "homemade_car", 2, "Four tires on a frame, powered by an engine.", {
 		ing("old_tire", 4), ing("metal_frame"), ing("small_engine"),
-	}),
+	}, { DurationOverride = 2 * 60 * 60 }),
 	recipe("Vehicles", "turbo_kart", 3, "Strap a motor and a fuel barrel to your car.", {
 		ing("homemade_car"), ing("electric_motor"), ing("control_panel"), ing("toxic_barrel"),
-	}),
+	}, { DurationOverride = 4 * 60 * 60 }),
 
 	-- Tools
 	recipe("Tools", "flashlight", 1, "A lamp, a battery and a bucket reflector.", {

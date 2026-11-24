@@ -46,6 +46,7 @@ local Signal = require(ReplicatedStorage.Shared.Util.Signal)
 local Validate = require(ReplicatedStorage.Shared.Util.Validate)
 local DataService = require(script.Parent.DataService)
 local JunkService = require(script.Parent.JunkService)
+local RemoteGuard = require(script.Parent.RemoteGuard)
 
 type CarriedJunk = Types.CarriedJunk
 
@@ -469,6 +470,17 @@ function CarryService.Start()
 	started = true
 
 	notifyRemote = Remotes.GetEvent("Notify")
+	-- The selected item, so everybody sees it in the player's hand (cosmetic only).
+	RemoteGuard.ConnectEvent(Remotes.GetEvent("HoldItem"), {
+		Name = "HoldItem",
+		MaxArgs = 1,
+		RateLimit = GameConfig.RateLimits.HoldItem,
+		Validate = function(uid: any): boolean
+			return uid == "" or Validate.IsUid(uid)
+		end,
+	}, function(player: Player, uid: string)
+		player:SetAttribute("HeldUid", if uid ~= "" and CarryService.HasUid(player, uid) then uid else nil)
+	end)
 
 	JunkService.PickupRequested:Connect(function(player: Player, junk: Model)
 		-- The result is not needed here: CarryService reports what the player must know.

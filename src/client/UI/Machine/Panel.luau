@@ -20,6 +20,8 @@ local Workspace = game:GetService("Workspace")
 
 local ItemConfig = require(ReplicatedStorage.Shared.Config.ItemConfig)
 local Rarities = require(ReplicatedStorage.Shared.Config.Rarities)
+local MonetizationConfig = require(ReplicatedStorage.Shared.Config.MonetizationConfig)
+local NotifyController = require(script.Parent.Parent.Parent.NotifyController)
 local Theme = require(script.Parent.Parent.Theme)
 local Widgets = require(script.Parent.Widgets)
 local RecycleTab = require(script.Parent.RecycleTab)
@@ -129,13 +131,33 @@ function Panel.Mount(screenGui: ScreenGui, actions: Widgets.Actions, durationFor
 	local speedButton, speedLabel = Widgets.Button({
 		Name = "SpeedUp",
 		Text = "SPEED UP\n-1s",
-		Size = UDim2.fromScale(0.26, 0.16),
+		Size = UDim2.fromScale(0.13, 0.16),
 		Position = UDim2.fromScale(1, 0.1),
 		AnchorPoint = Vector2.new(1, 0),
 		Color = Theme.Colors.Ice,
-		MinSize = Vector2.new(100, 48),
+		MinSize = Vector2.new(60, 44),
 		Parent = root,
 	})
+	-- Finish for Robux: 10 per started hour (MonetizationConfig Skip1h .. Skip6h).
+	local skipButton, skipLabel = Widgets.Button({
+		Name = "SkipTime",
+		Text = "",
+		Size = UDim2.fromScale(0.13, 0.16),
+		Position = UDim2.fromScale(0.86, 0.1),
+		AnchorPoint = Vector2.new(1, 0),
+		Color = Theme.Colors.Success,
+		MinSize = Vector2.new(60, 44),
+		Parent = root,
+	})
+	local skipKey = "Skip1h"
+	skipButton.Activated:Connect(function()
+		local product = (MonetizationConfig.Products :: any)[skipKey]
+		if product.ProductId == 0 then
+			NotifyController.Show("Coming soon!", "Info")
+		else
+			actions.BuyProduct(skipKey)
+		end
+	end)
 	local speedScale = Instance.new("UIScale")
 	speedScale.Parent = speedButton
 
@@ -240,6 +262,9 @@ function Panel.Mount(screenGui: ScreenGui, actions: Widgets.Actions, durationFor
 			local left = math.max(0, view.CompletesAt - Workspace:GetServerTimeNow())
 			local fraction = if view.Duration > 0 then math.clamp(1 - left / view.Duration, 0, 1) else 1
 			timeLabel.Text = Widgets.FormatTime(left)
+			local hours = math.clamp(math.ceil(left / 3600), 1, 6)
+			skipKey = `Skip{hours}h`
+			skipLabel.Text = `FINISH\nR$ {(MonetizationConfig.Products :: any)[skipKey].PriceRobux}`
 			if barTween ~= nil then
 				barTween:Cancel()
 			end
@@ -316,6 +341,7 @@ function Panel.Mount(screenGui: ScreenGui, actions: Widgets.Actions, durationFor
 			statusLabel.Text = "Ready. Choose what to do below."
 		end
 		speedButton.Visible = view.State == "Processing"
+		skipButton.Visible = speedButton.Visible
 		speedLabel.Text = "SPEED UP\n-1s"
 		renderTray(view)
 		for _, tab in tabs do

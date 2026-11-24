@@ -70,6 +70,7 @@ export type MachineData = {
 	Upgrades: MachineUpgrades,
 	BoostUntil: number, -- server time until which the temporary speed boost applies
 	InstantCredits: number, -- unused "instant finish" purchases
+	SkipSeconds: number, -- bought machine time (Robux) waiting for the next job
 	ResultSeq: number, -- increments per finished job (clients reveal each result once)
 }
 
@@ -129,6 +130,7 @@ export type ProfileData = {
 	Purchases: { string }, -- processed Robux receipt ids (most recent last)
 	Stats: ProfileStats,
 	Settings: { [string]: any },
+	Racing: { BestMs: number, Races: number, Wins: number }, -- RaceService
 }
 
 -- What a client is allowed to see. Intentionally excludes Version, Stats and Settings.

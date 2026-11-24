@@ -166,10 +166,11 @@ local function buildTrack(zone)
 	local barriers = child(track, "Folder", "Barriers")
 	for i = 0, SEGMENTS - 1 do
 		local a, b = nodes[i], nodes[(i + 1) % SEGMENTS]
-		span(road, a.Position, b.Position, {
+		local roadPart = span(road, a.Position, b.Position, {
 			Name = "Road", Width = ROAD_WIDTH, Height = 0.2, Y = if i % 2 == 0 then 0.1 else 0.15,
 			Overlap = 6, Color = ASPHALT, Material = Enum.Material.Asphalt, CastShadow = false,
 		})
+		roadPart:AddTag("NoPlace")
 		if i % 2 == 0 then
 			local middle = (b.Position - a.Position) * 0.25
 			span(road, a.Position + middle, b.Position - middle, {

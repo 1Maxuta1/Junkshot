@@ -49,6 +49,9 @@ local definitions: { [string]: string } = {
 	SaveSettings = "RemoteEvent", -- client -> server: ({ Music, Sfx, Muted }) audio settings
 	AudioCue = "RemoteEvent", -- server -> client: (cueName) a short sound for that player
 	AbilityFx = "RemoteEvent", -- server -> clients: { Effect, UserId, Position, Direction } comet / starfall
+	HoldItem = "RemoteEvent", -- client -> server: (uid | "") the selected carried item, shown in the hand
+	TradeAction = "RemoteEvent", -- client -> server: (action, a?, b?) Trade Station; see TradeService
+	TradeState = "RemoteEvent", -- server -> client: invite / session / closed
 	-- Cosmetics and monetization (no remote can grant anything; ownership is server-verified).
 	CosmeticEquip = "RemoteEvent", -- client -> server: (category, cosmeticId | "") equip an OWNED cosmetic
 }

@@ -2,7 +2,8 @@
 --[[
 	CarryController: client view of carried junk.
 
-	1. Visuals: small copies of the junk each player carries, on their back. Purely cosmetic
+	1. Visuals: small copies of the junk each player carries: the selected item in the right
+	   hand (some glow, Config/HeldLights), the rest on their back. Purely cosmetic
 	   and local to this client. The server only publishes the Player attribute "CarryList"
 	   ("uid:id,uid:id"); this module turns it into non-colliding, massless models welded to
 	   the HumanoidRootPart (no physics simulation of their own).
@@ -30,7 +31,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 ReplicatedStorage:WaitForChild("Shared")
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
+local HeldLights = require(ReplicatedStorage.Shared.Config.HeldLights)
 local ItemConfig = require(ReplicatedStorage.Shared.Config.ItemConfig)
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Types = require(ReplicatedStorage.Shared.Types)
 local JunkFactory = require(ReplicatedStorage.Shared.Util.JunkFactory)
 local Signal = require(ReplicatedStorage.Shared.Util.Signal)
@@ -56,13 +59,20 @@ CarryController.Changed = Signal.new()
 CarryController.ItemsAdded = Signal.new()
 CarryController.ItemsRemoved = Signal.new()
 
-local visuals: { [Player]: Folder } = {}
-local trackers: { [Player]: { RBXScriptConnection } } = {}
-local characterWatchers: { [Player]: RBXScriptConnection } = {}
+local HELD_SIZE = 1.3 -- studs, largest side of the item in the hand
+local HOLD_ANIMATION = "rbxassetid://507768375" -- Roblox's own "tool held" arm pose (R15)
 
 local localList: { CarriedJunk } = {}
 local selectedUid: string? = nil
 local selectedIndex = 0
+
+local visuals: { [Player]: Folder } = {}
+local lastSentHeld = ""
+local holdTrack: AnimationTrack? = nil
+local holdAnimator: Animator? = nil
+local trackers: { [Player]: { RBXScriptConnection } } = {}
+local characterWatchers: { [Player]: RBXScriptConnection } = {}
+
 
 -- Hand slots of a player: the server publishes "CarryMax" (base + Bigger Backpack upgrade).
 local function capacityOf(player: Player): number
@@ -119,6 +129,53 @@ local function clearVisuals(player: Player)
 	end
 end
 
+-- The uid shown in the hand: your own selection at once, other players' as the server publishes it.
+local function heldUidOf(player: Player): string?
+	if player == localPlayer then
+		return selectedUid
+	end
+	local value = player:GetAttribute("HeldUid")
+	return if type(value) == "string" then value else nil
+end
+
+local function addLight(itemId: string, part: BasePart)
+	local config = HeldLights[itemId]
+	if config == nil then
+		return
+	end
+	local light: any = Instance.new(if config.Spot then "SpotLight" else "PointLight")
+	light.Color = config.Color
+	light.Range = config.Range
+	light.Brightness = config.Brightness
+	if config.Spot then
+		light.Angle = 55
+		light.Face = Enum.NormalId.Right -- the flashlight's lens is on its +X end
+	end
+	light.Parent = part
+end
+
+-- Your own arm pose; Roblox replicates the animation to everyone.
+local function playHold(character: Model, on: boolean)
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local animator = if humanoid ~= nil then humanoid:FindFirstChildOfClass("Animator") else nil
+	if holdTrack ~= nil and (not on or holdAnimator ~= animator) then
+		holdTrack:Stop(0.15)
+		holdTrack = nil
+	end
+	if on and holdTrack == nil and animator ~= nil and humanoid ~= nil and humanoid.RigType == Enum.HumanoidRigType.R15 then
+		local animation = Instance.new("Animation")
+		animation.AnimationId = HOLD_ANIMATION
+		local ok, track = pcall(animator.LoadAnimation, animator, animation)
+		if ok and track ~= nil then
+			track.Looped = true
+			track.Priority = Enum.AnimationPriority.Action
+			track:Play(0.15)
+			holdTrack = track
+			holdAnimator = animator
+		end
+	end
+end
+
 local function refreshVisuals(player: Player)
 	clearVisuals(player)
 
@@ -132,6 +189,17 @@ local function refreshVisuals(player: Player)
 	end
 
 	local entries = readList(player)
+	local heldUid = heldUidOf(player)
+	local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+	local holding = false
+	for _, entry in entries do
+		if entry.Uid == heldUid and hand ~= nil then
+			holding = true
+		end
+	end
+	if player == localPlayer then
+		playHold(character, holding)
+	end
 	if #entries == 0 then
 		return
 	end
@@ -139,25 +207,40 @@ local function refreshVisuals(player: Player)
 	local folder = Instance.new("Folder")
 	folder.Name = FOLDER_NAME
 
-	local models: { Model } = {}
-	for index, entry in entries do
-		local model = JunkFactory.Build(entry.Id, "Cosmetic", VISUAL_MAX_SIZE)
-		if model ~= nil then
-			model:PivotTo(root.CFrame * CFrame.new(slotOffset(index)))
-			model.Parent = folder
-			table.insert(models, model)
+	local models: { { Model: Model, To: BasePart } } = {}
+	local slot = 0
+	for _, entry in entries do
+		local inHand = entry.Uid == heldUid and hand ~= nil and hand:IsA("BasePart")
+		local model = JunkFactory.Build(entry.Id, "Cosmetic", if inHand then HELD_SIZE else VISUAL_MAX_SIZE)
+		if model == nil then
+			continue
 		end
+		if inHand then
+			local part = hand :: BasePart
+			local tip = CFrame.new(0, -part.Size.Y / 2 - 0.1, -0.35) * CFrame.Angles(math.rad(-90), 0, 0)
+			model:PivotTo(part.CFrame * tip)
+			local itemRoot = JunkFactory.GetRoot(model)
+			if itemRoot ~= nil then
+				addLight(entry.Id, itemRoot)
+			end
+			table.insert(models, { Model = model, To = part })
+		else
+			slot += 1
+			model:PivotTo(root.CFrame * CFrame.new(slotOffset(slot)))
+			table.insert(models, { Model = model, To = root })
+		end
+		model.Parent = folder
 	end
 
 	folder.Parent = character
 	visuals[player] = folder
 
 	-- Weld after the models are inside the character so the weld offsets are final.
-	for _, model in models do
-		local junkRoot = JunkFactory.GetRoot(model)
+	for _, item in models do
+		local junkRoot = JunkFactory.GetRoot(item.Model)
 		if junkRoot ~= nil then
 			local weld = Instance.new("WeldConstraint")
-			weld.Part0 = root
+			weld.Part0 = item.To
 			weld.Part1 = junkRoot
 			weld.Parent = junkRoot
 		end
@@ -187,6 +270,12 @@ local function setSelection(index: number)
 	else
 		selectedIndex = math.clamp(index, 1, #localList)
 		selectedUid = localList[selectedIndex].Uid
+	end
+	local uid = selectedUid or ""
+	if uid ~= lastSentHeld then
+		lastSentHeld = uid
+		Remotes.GetEvent("HoldItem"):FireServer(uid)
+		refreshVisuals(localPlayer)
 	end
 end
 
@@ -327,12 +416,17 @@ local function track(player: Player)
 	table.insert(
 		connections,
 		player:GetAttributeChangedSignal(LIST_ATTRIBUTE):Connect(function()
-			refreshVisuals(player)
 			if player == localPlayer then
-				updateLocalState()
+				updateLocalState() -- decides what is selected before it is drawn
 			end
+			refreshVisuals(player)
 		end)
 	)
+	table.insert(connections, player:GetAttributeChangedSignal("HeldUid"):Connect(function()
+		if player ~= localPlayer then
+			refreshVisuals(player)
+		end
+	end))
 	if player == localPlayer then
 		-- A Bigger Backpack upgrade changes only the capacity: refresh the HUD too.
 		table.insert(connections, player:GetAttributeChangedSignal("CarryMax"):Connect(function()

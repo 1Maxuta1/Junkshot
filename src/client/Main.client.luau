@@ -35,6 +35,8 @@ local CONTROLLER_NAMES = {
 	"CompanionController",
 	"ShopController",
 	"CreatureController",
+	"RaceController",
+	"TradeController",
 }
 
 for _, name in CONTROLLER_NAMES do

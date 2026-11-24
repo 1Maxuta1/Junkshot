@@ -72,6 +72,9 @@ local CosmeticsService = require(script.Parent.Services.CosmeticsService)
 local CompanionService = require(script.Parent.Services.CompanionService)
 local WorldServiceModule = require(script.Parent.Services.WorldService)
 local WorldEventService = require(script.Parent.Services.WorldEventService)
+local RaceService = require(script.Parent.Services.RaceService)
+local RaceConfig = require(ReplicatedStorage.Shared.Config.RaceConfig)
+local TradeService = require(script.Parent.Services.TradeService)
 local WorldEventConfig = require(ReplicatedStorage.Shared.Config.WorldEventConfig)
 
 local DevTests = {}
@@ -1956,6 +1959,83 @@ local function runFixTests(player: Player)
 	end
 end
 
+-- Race progress and prizes, bought machine time, currency packs, the trade station.
+local function runQueueTests(player: Player)
+	local data = DataService.GetData(player) :: any
+	CarryService.Clear(player)
+
+	-- Race: progress is decided from positions only
+	local points: { [number]: BasePart } = {}
+	for _, part in CollectionService:GetTagged("RaceCheckpoint") do
+		points[part:GetAttribute("Index") :: number] = part :: BasePart
+	end
+	check("the track has 8 checkpoints", #points == 7 and points[0] ~= nil)
+	local function newRacer(): any
+		return { Player = player, Entry = { Model = { PrimaryPart = points[0] } }, Home = CFrame.new(), Lap = 1, Next = 1, Passed = 0, TimeMs = nil, Out = false }
+	end
+	local racer = newRacer()
+	RaceService.Advance(racer, points[5].Position, points, 1000)
+	RaceService.Advance(racer, points[0].Position, points, 1000)
+	check("skipping checkpoints gives nothing", racer.Next == 1 and racer.Passed == 0 and racer.Lap == 1)
+	local finished = false
+	for lap = 1, RaceConfig.Laps do
+		for index = 1, 8 do
+			finished = RaceService.Advance(racer, points[index % 8].Position, points, lap * 10000 + index)
+		end
+	end
+	check("all laps in order finish the race", finished and racer.TimeMs == RaceConfig.Laps * 10000 + 8, tostring(racer.TimeMs))
+	check("a finished racer cannot finish again", not RaceService.Advance(racer, points[1].Position, points, 5))
+	local slower, behind, out = newRacer(), newRacer(), newRacer()
+	slower.TimeMs, out.Out, out.Passed = 99999, true, 9
+	behind.Passed = 3
+	local order = RaceService.Order({ out, behind, slower, racer }, points)
+	check("places: time, then progress, then the ones who are out", order[1] == racer and order[2] == slower and order[3] == behind and order[4] == out)
+	check("prizes need company", RaceService.PrizeFor(1, 1) == RaceConfig.SoloReward and RaceService.PrizeFor(1, 2) == RaceConfig.Prizes[1]
+		and RaceService.PrizeFor(5, 8) == RaceConfig.FinisherReward)
+	check("vehicles are pulled together, better ones stay a bit faster", RaceService.SpeedFor(34) > 34 and RaceService.SpeedFor(56) < 56
+		and RaceService.SpeedFor(56) > RaceService.SpeedFor(34))
+	check("joining is closed outside the window", not RaceService.Join(player))
+	local savedRacing = table.clone(data.Racing)
+	data.Racing = { BestMs = 0, Races = 0, Wins = 0 }
+	check("the first time is a record", RaceService.SaveResult(player, 90000, true))
+	check("a slower time is not", not RaceService.SaveResult(player, 95000, false) and data.Racing.BestMs == 90000 and data.Racing.Races == 2 and data.Racing.Wins == 1)
+	data.Racing = savedRacing
+
+	-- Robux handlers (no purchase is made; ids are 0)
+	local products = (require(ReplicatedStorage.Shared.Config.MonetizationConfig) :: any).Products
+	local unset = true
+	for _, product in products do
+		unset = unset and product.ProductId == 0
+	end
+	check("every product id is still a placeholder", unset)
+	check("time costs 10 Robux per hour", products.Skip1h.PriceRobux == 10 and products.Skip6h.PriceRobux == 60)
+	local handlers = MonetizationService.ProductHandlers
+	local before = CurrencyService.GetKlunks(player) :: number
+	check("a currency pack pays its amount once", handlers.Klunks(player, products.Klunks5k) and CurrencyService.GetKlunks(player) == before + 5000)
+	CurrencyService.RemoveKlunks(player, 5000)
+	local savedSkip = data.Machine.SkipSeconds
+	data.Machine.SkipSeconds = 0
+	if data.Machine.Job == nil then
+		check("time bought without a job is kept", handlers.SkipTime(player, products.Skip1h) and data.Machine.SkipSeconds == 3600)
+	end
+	data.Machine.SkipSeconds = savedSkip
+	check("a car takes much longer than a bicycle", (Recipes.Get("homemade_car") :: any).DurationOverride >= 10 * MachineConfig.CraftDurations.Uncommon)
+
+	-- Trade station (a second live player is needed for a real swap)
+	local post = TradeService.GetPosition()
+	check("the trade station stands on the plaza", post ~= nil)
+	if post ~= nil then
+		teleportNear(player, CFrame.new(post + Vector3.new(0, 3, -6)))
+		task.wait(0.2)
+		check("the player is at the station", TradeService.IsNear(player))
+		check("nobody can trade with themselves", not TradeService.Invite(player, player))
+		check("no session without an invite", not TradeService.Accept(player, player) and TradeService.GetSession(player) == nil)
+		check("no offer without a session", not TradeService.SetOffer(player, {}, 0) and not TradeService.SetReady(player, true))
+	end
+	check("nothing can be placed on the race track", (select(2, PlacementRules.Check({ UserId = player.UserId, ModelName = "Bicycle",
+		Position = Vector3.new(60, 1, -312), Yaw = 0 }))) == "NoPlace")
+end
+
 local function runCreatureTests(player: Player)
 	local root = waitForLiveRoot(player, 15)
 	if root == nil then
@@ -2091,6 +2171,7 @@ function DevTests.Run()
 	runMonetizationTests(player)
 	runCreatureTests(player)
 	runFixTests(player)
+	runQueueTests(player)
 
 	print(`[DevTests] done: {passed} passed, {failed} failed`)
 end

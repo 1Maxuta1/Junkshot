@@ -138,6 +138,9 @@ function PlacementRules.Check(request: Request): (CFrame?, string?)
 	if hit.Normal.Y < config.MinGroundNormalY then
 		return nil, "Steep"
 	end
+	if hit.Instance:HasTag("NoPlace") then
+		return nil, "NoPlace" -- the race track
+	end
 	local ground = hit.Position
 
 	if onForeignPlot(request.UserId, ground) then
@@ -182,6 +185,7 @@ local MESSAGES: { [string]: string } = {
 	ForeignPlot = "That is someone else's base",
 	NearMachine = "Too close to a machine",
 	Blocked = "Something is in the way",
+	NoPlace = "Not on the race track",
 }
 
 function PlacementRules.Describe(code: string?): string

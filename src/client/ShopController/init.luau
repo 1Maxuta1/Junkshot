@@ -30,7 +30,7 @@ local Window = require(script.Parent.EconomyController.Window)
 local ShopController = {}
 
 local localPlayer = Players.LocalPlayer
-local TABS = { "FEATURED", "PACKS", "PASSES", "COSMETICS", "BOOSTS" }
+local TABS = { "FEATURED", "PACKS", "PASSES", "COSMETICS", "KLUNKS", "BOOSTS" }
 local PROMPT_TIMEOUT = 60
 
 local promptOpenUntil = 0
@@ -167,12 +167,21 @@ local function mount()
 					end
 				end
 			end
-		elseif tab == "BOOSTS" then
+		elseif tab == "BOOSTS" or tab == "KLUNKS" then
+			local products = {}
 			for _, product in MonetizationConfig.Products do
+				if product.Category == (if tab == "KLUNKS" then "Currency" else "Boosts") then
+					table.insert(products, product)
+				end
+			end
+			table.sort(products, function(a: any, b: any)
+				return (a.PriceRobux or 0) < (b.PriceRobux or 0)
+			end)
+			for _, product in products :: any do
 				local available = product.ProductId ~= 0 and product.Handler ~= nil
 				local row = Window.Row(list, order, product.DisplayName, product.Description, nil)
 				order += 1
-				local button = Window.SmallButton(row.Right, if available then `BUY  {priceText("product", product.ProductId, nil)}` else "COMING SOON",
+				local button = Window.SmallButton(row.Right, if available then `BUY  {priceText("product", product.ProductId, product.PriceRobux)}` elseif product.PriceRobux ~= nil then `SOON  R$ {product.PriceRobux}` else "COMING SOON",
 					if available then Theme.Colors.Success else Theme.Colors.InkSoft, UDim2.new(0, 160, 0, 40))
 				button.Activated:Connect(function()
 					promptProduct(product)
