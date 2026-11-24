@@ -3,8 +3,9 @@
 	Radio behavior (Boombox Radio): a placed object everybody nearby can enjoy.
 
 	Prompts
-	  E  Play / Stop    anyone
-	  Z  Next song      anyone
+	  E  Play / Stop    anyone (Stop rewinds the song)
+	  X  Pause / Resume anyone (only while a song is on)
+	  Z / V  Previous / Next song, side by side, anyone
 	  T  Pick up        owner only (shared Store prompt; the music stops)
 
 	The Sound lives in the radio's Base on the server, so every player hears the same song
@@ -28,7 +29,8 @@ local function apply(entry: any)
 		sound.SoundId = track.SoundId
 		sound.TimePosition = 0
 	end
-	sound.Playing = state.Playing
+	sound.Playing = state.Playing and not state.Paused
+	entry.Model:SetAttribute("Audible", sound.Playing) -- clients lower the background music
 	entry.Model:SetAttribute("Playing", state.Playing)
 	entry.Model:SetAttribute("TrackName", track.Name)
 	local light = entry.Model:FindFirstChild("Light")
@@ -39,6 +41,12 @@ local function apply(entry: any)
 	if toggle ~= nil then
 		toggle.ActionText = if state.Playing then "Stop" else "Play"
 		toggle.ObjectText = if state.Playing then `♪ {track.Name}` else "Boombox Radio"
+	end
+	local pause: ProximityPrompt? = state.PausePrompt
+	if pause ~= nil then
+		pause.Enabled = state.Playing
+		pause.ActionText = if state.Paused then "Resume" else "Pause"
+		pause.ObjectText = if state.Paused then "Paused" else "Boombox Radio"
 	end
 end
 
@@ -53,15 +61,37 @@ end
 
 -- Also called by DevTests.
 function Radio.Toggle(entry: any)
-	entry.State.Playing = not entry.State.Playing
+	local state = entry.State
+	state.Playing = not state.Playing
+	state.Paused = false
+	apply(entry)
+	if not state.Playing then
+		state.Sound.TimePosition = 0
+	end
+end
+
+function Radio.Pause(entry: any)
+	if not entry.State.Playing then
+		return
+	end
+	entry.State.Paused = not entry.State.Paused
+	apply(entry)
+end
+
+local function change(entry: any, step: number)
+	local count = #entry.Behavior.Radio.Tracks
+	entry.State.Track = (entry.State.Track - 1 + step) % count + 1
+	entry.State.Playing = true
+	entry.State.Paused = false
 	apply(entry)
 end
 
 function Radio.Next(entry: any)
-	local count = #entry.Behavior.Radio.Tracks
-	entry.State.Track = entry.State.Track % count + 1
-	entry.State.Playing = true
-	apply(entry)
+	change(entry, 1)
+end
+
+function Radio.Previous(entry: any)
+	change(entry, -1)
 end
 
 function Radio.Init(placement: any)
@@ -84,21 +114,46 @@ function Radio.Attach(entry: any)
 	state.Sound = sound
 	state.Track = 1
 	state.Playing = false
+	state.Paused = false
 	state.TogglePrompt = api.AddPrompt(entry, base, {
 		Name = "TogglePrompt",
 		Action = "Play",
 		Slot = "Primary",
-		CardOffset = 2.4,
+		Row = 2,
+		Column = -0.5,
 	}, function(_player: Player)
 		if pressed(entry) then
 			Radio.Toggle(entry)
 		end
 	end)
+	state.PausePrompt = api.AddPrompt(entry, base, {
+		Name = "PausePrompt",
+		Action = "Pause",
+		Slot = "Tertiary",
+		Row = 2,
+		Column = 0.5,
+	}, function(_player: Player)
+		if pressed(entry) then
+			Radio.Pause(entry)
+		end
+	end)
+	api.AddPrompt(entry, base, {
+		Name = "PreviousPrompt",
+		Action = "⏮ Previous",
+		Slot = "Secondary",
+		Row = 1,
+		Column = -0.5,
+	}, function(_player: Player)
+		if pressed(entry) then
+			Radio.Previous(entry)
+		end
+	end)
 	api.AddPrompt(entry, base, {
 		Name = "NextPrompt",
-		Action = "Next song",
-		Slot = "Secondary",
-		CardOffset = 0.6,
+		Action = "Next ⏭",
+		Slot = "Quaternary",
+		Row = 1,
+		Column = 0.5,
 	}, function(_player: Player)
 		if pressed(entry) then
 			Radio.Next(entry)

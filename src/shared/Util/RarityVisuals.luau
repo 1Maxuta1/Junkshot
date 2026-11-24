@@ -8,7 +8,7 @@
 	  Epic+      + a thin translucent light beam (visible from far away)
 	  Legendary+ + a few slow sparkles (ParticleEmitter, Rate 2-4)
 	  Mythic     + a second ring in the secondary color
-	Carried items: a SelectionBox outline in the rarity color (Uncommon+).
+	Carried items have no effect (a box around them looked like a hitbox).
 
 	Lightweight on purpose: no lights, no scripts, no per-frame work. The extra parts are
 	anchored, non-colliding and non-queryable, so they never touch physics or raycasts.
@@ -58,11 +58,11 @@ function RarityVisuals.ApplyWorld(model: Model, itemId: string)
 	local pivot = model:GetPivot()
 	local diameter = math.max(bounds.Size.X, bounds.Size.Z) + 1.2
 	local ground = pivot * CFrame.new(0, bounds.Min.Y + 0.08, 0) * CFrame.Angles(0, 0, math.rad(90))
-	local ring = effectPart(model, "RarityRing", Enum.PartType.Cylinder, Vector3.new(0.1, diameter, diameter), ground, info.Color, 0.35)
+	local ring = effectPart(model, "RarityRing", Enum.PartType.Cylinder, Vector3.new(0.1, diameter, diameter), ground, info.Color, 0.6)
 
 	if info.Effect >= 5 then
 		local inner = diameter * 0.65
-		effectPart(model, "RarityRing2", Enum.PartType.Cylinder, Vector3.new(0.12, inner, inner), ground, MYTHIC_SECOND, 0.3)
+		effectPart(model, "RarityRing2", Enum.PartType.Cylinder, Vector3.new(0.12, inner, inner), ground, MYTHIC_SECOND, 0.55)
 	end
 	if info.Effect >= 3 then
 		local height = 7
@@ -73,7 +73,7 @@ function RarityVisuals.ApplyWorld(model: Model, itemId: string)
 			Vector3.new(height, 0.3, 0.3),
 			pivot * CFrame.new(0, bounds.Min.Y + height / 2, 0) * CFrame.Angles(0, 0, math.rad(90)),
 			info.Color,
-			0.65
+			0.85
 		)
 	end
 	if info.Effect >= 4 then
@@ -86,27 +86,12 @@ function RarityVisuals.ApplyWorld(model: Model, itemId: string)
 		emitter.Speed = NumberRange.new(1.5, 3)
 		emitter.SpreadAngle = Vector2.new(25, 25)
 		emitter.EmissionDirection = Enum.NormalId.Right -- the ring's X axis points up
-		emitter.LightEmission = 1
+		emitter.LightEmission = 0.4
 		emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 0) })
 		emitter.Color = if info.Effect >= 5 then ColorSequence.new(info.Color, MYTHIC_SECOND) else ColorSequence.new(info.Color)
 		emitter.Parent = attachment
 	end
 end
 
--- Outline for a carried (cosmetic) copy.
-function RarityVisuals.ApplyCarried(model: Model, itemId: string)
-	local info = Rarities.Get(ItemConfig.GetRarity(itemId) or "Common")
-	if info == nil or info.Effect < 1 then
-		return
-	end
-	local box = Instance.new("SelectionBox")
-	box.Name = "RarityOutline"
-	box.Adornee = model
-	box.Color3 = info.Color
-	box.LineThickness = 0.03
-	box.SurfaceColor3 = info.Color
-	box.SurfaceTransparency = if info.Effect >= 4 then 0.8 else 1
-	box.Parent = model
-end
 
 return RarityVisuals

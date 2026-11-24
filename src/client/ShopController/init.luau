@@ -86,8 +86,8 @@ local function mount()
 	screenGui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
 	screenGui.DisplayOrder = 8
 
-	local open = Window.SmallButton(screenGui, "R$ SHOP", Theme.Colors.Success, UDim2.new(0, 84, 0, 40),
-		UDim2.new(1, -10, 0, 178), Vector2.new(1, 0))
+	local open = Window.HudButton("JunkshotShopButton", "R$ SHOP", Theme.Colors.Success, UDim2.new(0, 66, 0, 38),
+		UDim2.new(1, -154, 0, 46))
 	local window = Window.Mount(screenGui, "ShopWindow", "SHOP", TABS)
 
 	local function passCard(list: Instance, order: number, key: string): number

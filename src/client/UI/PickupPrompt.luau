@@ -11,7 +11,9 @@
 	When the local player is already full, junk cards turn red ("Carry full 6/6") so the
 	player sees it before pressing anything. The server still makes the real decision.
 	A prompt's "PromptKind" attribute marks non-junk prompts (e.g. "Machine", "Deployable").
-	Placed objects can carry several prompts; "CardOffset" (studs) stacks their cards, and
+	Placed objects carry several prompts: "CardRow" / "CardColumn" lay their (smaller) cards out
+	in a pixel grid above the object, so they never overlap at any distance; "CardOffset" (studs)
+	lifts a single card; and
 	prompts with "OwnerOnly" are hidden for everyone but "OwnerUserId".
 ]]
 
@@ -35,9 +37,12 @@ type Card = {
 	ObjectLabel: TextLabel,
 	InputType: Enum.ProximityPromptInputType,
 	Watch: RBXScriptConnection?, -- removes the card if the prompt leaves the world
+	Updates: { RBXScriptConnection }?,
 }
 
-local CARD_SIZE = UDim2.fromOffset(230, 64)
+local CARD_SIZE = Vector2.new(210, 56)
+local GRID_SIZE = Vector2.new(146, 40) -- cards of placed objects
+local SMALL_SCREEN = 500 -- px of screen height: everything is a bit smaller below this
 local JUNK_OFFSET = Vector3.new(0, 2.6, 0)
 local MACHINE_OFFSET = Vector3.new(0, 4, 0)
 
@@ -96,11 +101,28 @@ function PickupPrompt.Mount(onTriggeredLocally: (prompt: ProximityPrompt) -> ())
 		local gui = Instance.new("BillboardGui")
 		gui.Name = "JunkshotPrompt"
 		gui.Adornee = prompt.Parent
-		gui.Size = CARD_SIZE
+		local row = prompt:GetAttribute("CardRow")
+		local inGrid = type(row) == "number"
+		local camera = workspace.CurrentCamera
+		local scale = if camera ~= nil and camera.ViewportSize.Y < SMALL_SCREEN then 0.85 else 1
+		local size = (if inGrid then GRID_SIZE else CARD_SIZE) * scale
+		gui.Size = UDim2.fromOffset(size.X, size.Y)
 		local cardOffset = prompt:GetAttribute("CardOffset")
 		gui.StudsOffset = if type(cardOffset) == "number" then Vector3.new(0, cardOffset, 0)
 			elseif isJunk(prompt) then JUNK_OFFSET
 			else MACHINE_OFFSET
+		if inGrid then
+			local model = prompt:FindFirstAncestorWhichIsA("Model")
+			local base = if model ~= nil then model.PrimaryPart else nil
+			gui.StudsOffset = Vector3.zero
+			if model ~= nil and base ~= nil then
+				local cf, bounds = model:GetBoundingBox()
+				gui.Adornee = base
+				gui.StudsOffsetWorldSpace = Vector3.new(0, cf.Position.Y + bounds.Y / 2 - base.Position.Y + 1.4, 0)
+			end
+			local column = prompt:GetAttribute("CardColumn")
+			gui.SizeOffset = Vector2.new((if type(column) == "number" then column else 0) * 2.06 / 2, 0.5 + row * 1.12)
+		end
 		gui.AlwaysOnTop = true
 		gui.LightInfluence = 0
 		gui.ResetOnSpawn = false
@@ -119,8 +141,9 @@ function PickupPrompt.Mount(onTriggeredLocally: (prompt: ProximityPrompt) -> ())
 		local badge = Instance.new("Frame")
 		badge.Name = "Key"
 		badge.AnchorPoint = Vector2.new(0, 0.5)
-		badge.Position = UDim2.new(0, 8, 0.5, 0)
-		badge.Size = UDim2.new(0, 48, 0, 48)
+		badge.Position = UDim2.new(0, 6, 0.5, 0)
+		local badgeSize = size.Y - 14
+		badge.Size = UDim2.fromOffset(badgeSize, badgeSize)
 		badge.BackgroundColor3 = Theme.Colors.Accent
 		Theme.Corner(badge, UDim.new(0, 12))
 		Theme.Stroke(badge, Theme.Colors.Ink, 2)
@@ -133,8 +156,8 @@ function PickupPrompt.Mount(onTriggeredLocally: (prompt: ProximityPrompt) -> ())
 			Position = UDim2.fromScale(0.5, 0.5),
 			AnchorPoint = Vector2.new(0.5, 0.5),
 			Color = Theme.Colors.White,
-			MinTextSize = 12,
-			MaxTextSize = 26,
+			MinTextSize = 8,
+			MaxTextSize = 24,
 			Parent = badge,
 		})
 		Theme.TextStroke(keyLabel, Theme.Colors.Ink, 1.5)
@@ -142,10 +165,10 @@ function PickupPrompt.Mount(onTriggeredLocally: (prompt: ProximityPrompt) -> ())
 		local actionLabel = Theme.Label({
 			Name = "Action",
 			Text = "",
-			Size = UDim2.new(1, -70, 0.5, -4),
-			Position = UDim2.new(0, 64, 0, 6),
+			Size = UDim2.new(1, -(badgeSize + 20), 0.54, -4),
+			Position = UDim2.new(0, badgeSize + 14, 0, 4),
 			Color = Theme.Colors.Ink,
-			MinTextSize = 14,
+			MinTextSize = 9,
 			MaxTextSize = 24,
 			XAlignment = Enum.TextXAlignment.Left,
 			Parent = button,
@@ -153,12 +176,12 @@ function PickupPrompt.Mount(onTriggeredLocally: (prompt: ProximityPrompt) -> ())
 		local objectLabel = Theme.Label({
 			Name = "Object",
 			Text = "",
-			Size = UDim2.new(1, -70, 0.42, -4),
-			Position = UDim2.new(0, 64, 0.5, 2),
+			Size = UDim2.new(1, -(badgeSize + 20), 0.42, -4),
+			Position = UDim2.new(0, badgeSize + 14, 0.54, 1),
 			Color = Theme.Colors.InkSoft,
 			Font = Theme.FontBody,
-			MinTextSize = 12,
-			MaxTextSize = 18,
+			MinTextSize = 7,
+			MaxTextSize = 17,
 			XAlignment = Enum.TextXAlignment.Left,
 			Parent = button,
 		})
@@ -194,6 +217,9 @@ function PickupPrompt.Mount(onTriggeredLocally: (prompt: ProximityPrompt) -> ())
 			if card.Watch ~= nil then
 				card.Watch:Disconnect()
 			end
+			for _, connection in card.Updates or {} do
+				connection:Disconnect()
+			end
 			card.Gui:Destroy()
 		end
 	end
@@ -220,6 +246,15 @@ function PickupPrompt.Mount(onTriggeredLocally: (prompt: ProximityPrompt) -> ())
 				removeCard(prompt)
 			end
 		end)
+		-- Texts change while the card is open (Play -> Stop, song names, cart contents).
+		card.Updates = {
+			prompt:GetPropertyChangedSignal("ActionText"):Connect(function()
+				render(prompt, card)
+			end),
+			prompt:GetPropertyChangedSignal("ObjectText"):Connect(function()
+				render(prompt, card)
+			end),
+		}
 		render(prompt, card)
 	end)
 

@@ -1,6 +1,6 @@
 --!strict
 --[[
-	DeployModels: the world-size models of placeable items (bicycle, car, cart, radio).
+	DeployModels: the world-size models of placeable items (bicycle, scooter, car, cart, sled, radio).
 	PLACEHOLDERS built from simple Parts; swap a builder for a real model later without touching
 	any behavior code, as long as the named parts below stay.
 
@@ -125,6 +125,45 @@ local builders: { [string]: Builder } = {
 		local crank = addPart(model, "Crank", Cylinder, V(0.2, 0.9, 0.9), rgb(200, 206, 214), M.Metal, V(0, 1.25, 0.35))
 		crank:SetAttribute("Spin", 2.6) -- turns at half the wheel speed
 		addSeat(model, "DriverSeat", true, V(0.8, 0.3, 1.1), V(0, 2.95, 0.7), rgb(40, 42, 50), real)
+	end,
+
+	-- Motor scooter: low deck, small wheels, seat box and a front shield.
+	Scooter = function(model: Model, real: boolean)
+		local paint = rgb(60, 150, 255)
+		local base = addPart(model, "Base", Block, V(1.5, 1.1, 4.4), paint, M.SmoothPlastic, V(0, 1.3, 0))
+		base.Transparency = 1
+		for index, z in { -1.6, 1.6 } do
+			local wheel = addPart(model, "Wheel", Cylinder, V(0.45, 1.5, 1.5), rgb(36, 38, 46), M.Slate, V(0, 0.75, z))
+			wheel:SetAttribute("Spin", 0.75)
+			addPart(model, "Hub" .. index, Cylinder, V(0.5, 0.6, 0.6), rgb(200, 206, 214), M.Metal, V(0, 0.75, z))
+			addCollider(model, 0.75, V(0, 0.75, z))
+		end
+		addPart(model, "Deck", Block, V(1.2, 0.3, 2.4), paint, M.SmoothPlastic, V(0, 0.95, -0.2))
+		addPart(model, "Tail", Block, V(1.3, 1.2, 1.7), paint, M.SmoothPlastic, V(0, 1.65, 1.3))
+		addPart(model, "Shield", Block, V(1.3, 1.7, 0.25), paint, M.SmoothPlastic, V(0, 1.9, -1.25), V(12, 0, 0))
+		addPart(model, "Column", Cylinder, V(2.2, 0.26, 0.26), rgb(200, 206, 214), M.Metal, V(0, 2.2, -1.5), V(0, 0, 90))
+		addPart(model, "Handlebar", Cylinder, V(1.9, 0.22, 0.22), rgb(40, 42, 50), M.Metal, V(0, 3.2, -1.45))
+		addPart(model, "Headlight", Cylinder, V(0.25, 0.6, 0.6), rgb(255, 240, 180), M.Neon, V(0, 2.5, -1.65), V(0, 90, 0))
+		addPart(model, "Exhaust", Cylinder, V(1.1, 0.3, 0.3), rgb(120, 124, 132), M.Metal, V(0.75, 0.9, 1.7), V(0, 90, 0))
+		addSeat(model, "DriverSeat", true, V(1, 0.3, 1.4), V(0, 2.4, 1.1), rgb(40, 42, 50), real)
+	end,
+
+	-- Wooden sled: planks on two metal runners, with a rope bar at the front.
+	WoodenSled = function(model: Model, _real: boolean)
+		local wood = rgb(176, 124, 74)
+		local base = addPart(model, "Base", Block, V(2.1, 0.3, 3.4), wood, M.WoodPlanks, V(0, 0.65, 0))
+		base.CanCollide = true
+		for _, x in { -0.8, 0.8 } do
+			addPart(model, "Runner", Block, V(0.2, 0.2, 4.1), rgb(70, 76, 90), M.Metal, V(x, 0.1, -0.1))
+			for _, z in { -1.1, 1.1 } do
+				addPart(model, "Leg", Block, V(0.2, 0.35, 0.3), rgb(124, 82, 52), M.Wood, V(x, 0.35, z))
+			end
+			addPart(model, "Rail", Block, V(0.15, 0.35, 3.2), rgb(124, 82, 52), M.Wood, V(x * 1.25, 0.95, 0))
+		end
+		addPart(model, "Back", Block, V(2.1, 0.7, 0.2), rgb(124, 82, 52), M.WoodPlanks, V(0, 1.1, 1.55))
+		addPart(model, "Front", Block, V(2.1, 0.4, 0.2), rgb(124, 82, 52), M.WoodPlanks, V(0, 0.95, -1.6))
+		addPart(model, "Rope", Cylinder, V(1.6, 0.12, 0.12), rgb(230, 210, 170), M.Fabric, V(0, 1.2, -2.3), V(0, 90, -30))
+		addPart(model, "Grip", Cylinder, V(1.1, 0.18, 0.18), rgb(236, 74, 70), M.SmoothPlastic, V(0, 1.6, -3))
 	end,
 
 	-- Homemade car: open-top body, 4 tires, roll bar, driver + passenger seat.

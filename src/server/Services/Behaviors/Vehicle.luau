@@ -299,7 +299,7 @@ function Vehicle.Attach(entry: any)
 			Action = if isBike then "Ride" else "Drive",
 			Slot = "Primary",
 			OwnerOnly = true,
-			CardOffset = 2,
+			Row = 1,
 		}, function(player: Player)
 			sitIn(entry, driverSeat, player)
 		end)
@@ -311,7 +311,7 @@ function Vehicle.Attach(entry: any)
 			Name = "RidePrompt",
 			Action = "Ride along",
 			Slot = "Primary",
-			CardOffset = 2,
+			Row = 1,
 		}, function(player: Player)
 			sitIn(entry, passengerSeat, player)
 		end)

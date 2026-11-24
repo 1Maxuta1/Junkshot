@@ -196,7 +196,9 @@ function Vehicles.Exit()
 	local character = localPlayer.Character
 	local humanoid = if character ~= nil then character:FindFirstChildOfClass("Humanoid") else nil
 	if humanoid ~= nil and humanoid.SeatPart ~= nil then
-		humanoid.Jump = true
+		-- Roblox's control script resets Humanoid.Jump every frame, so leave the seat directly.
+		humanoid.Sit = false
+		humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
 	end
 end
 

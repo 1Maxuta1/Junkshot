@@ -33,7 +33,6 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local ItemConfig = require(ReplicatedStorage.Shared.Config.ItemConfig)
 local Types = require(ReplicatedStorage.Shared.Types)
 local JunkFactory = require(ReplicatedStorage.Shared.Util.JunkFactory)
-local RarityVisuals = require(ReplicatedStorage.Shared.Util.RarityVisuals)
 local Signal = require(ReplicatedStorage.Shared.Util.Signal)
 local Validate = require(ReplicatedStorage.Shared.Util.Validate)
 
@@ -143,9 +142,6 @@ local function refreshVisuals(player: Player)
 	local models: { Model } = {}
 	for index, entry in entries do
 		local model = JunkFactory.Build(entry.Id, "Cosmetic", VISUAL_MAX_SIZE)
-		if model ~= nil then
-			RarityVisuals.ApplyCarried(model, entry.Id)
-		end
 		if model ~= nil then
 			model:PivotTo(root.CFrame * CFrame.new(slotOffset(index)))
 			model.Parent = folder

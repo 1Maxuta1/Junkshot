@@ -64,7 +64,7 @@ local function text(part, face, title, color, subtitle)
 	local gui = child(part, "SurfaceGui", "Gui")
 	gui.Face = face
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.PixelsPerStud = 30
+	gui.PixelsPerStud = 14 -- TextScaled stops at 100 px, so few pixels = big text
 	gui.LightInfluence = 0
 	local function line(name, value, y, height, textColor)
 		local label = child(gui, "TextLabel", name)
@@ -167,19 +167,20 @@ local function buildTrack(zone)
 	for i = 0, SEGMENTS - 1 do
 		local a, b = nodes[i], nodes[(i + 1) % SEGMENTS]
 		span(road, a.Position, b.Position, {
-			Name = "Road", Width = ROAD_WIDTH, Height = 0.2, Y = if i % 2 == 0 then 0.1 else 0.11,
+			Name = "Road", Width = ROAD_WIDTH, Height = 0.2, Y = if i % 2 == 0 then 0.1 else 0.15,
 			Overlap = 6, Color = ASPHALT, Material = Enum.Material.Asphalt, CastShadow = false,
 		})
 		if i % 2 == 0 then
 			local middle = (b.Position - a.Position) * 0.25
 			span(road, a.Position + middle, b.Position - middle, {
-				Name = "Dash", Width = 0.6, Height = 0.06, Y = 0.25, Color = WHITE,
+				Name = "Dash", Width = 0.6, Height = 0.1, Y = 0.28, Color = WHITE,
 				CanCollide = false, CanQuery = false, CastShadow = false,
 			})
 		end
 		for _, side in { -1, 1 } do
 			span(barriers, a.Position + a.Side * (BARRIER_OFFSET * side), b.Position + b.Side * (BARRIER_OFFSET * side), {
-				Name = "Barrier", Width = 1.6, Height = 2.6, Y = 1.3, Overlap = 0.5,
+				Name = "Barrier", Width = if i % 2 == 0 then 1.6 else 1.3, Height = if i % 2 == 0 then 2.7 else 2.4,
+				Y = if i % 2 == 0 then 1.35 else 1.2, Overlap = if i % 2 == 0 then 0.8 else 0,
 				Color = if i % 2 == 0 then C.Red else WHITE, CastShadow = false,
 			})
 		end
@@ -215,18 +216,17 @@ local function buildTrack(zone)
 		local x = if slot % 2 == 1 then -5.5 else 5.5
 		local cf = frameAt(startDistance - 10 - row * 14 - (if slot % 2 == 0 then 4 else 0))
 		local pad = Part(grid, {
-			Name = `Slot{slot}`, Size = Vector3.new(6, 0.06, 9), CFrame = cf * CFrame.new(x, 0.23, 0),
+			Name = `Slot{slot}`, Size = Vector3.new(6, 0.1, 9), CFrame = cf * CFrame.new(x, 0.3, 0),
 			Color = if slot == 1 then C.Yellow else C.Ice, CanCollide = false, CanQuery = false, CastShadow = false,
 		})
 		pad:SetAttribute("Slot", slot)
 		pad:AddTag("RaceGrid")
-		text(pad, Enum.NormalId.Top, tostring(slot), WHITE)
 	end
 
 	-- Start / finish: checkered line and the arch above it.
 	local finish = child(track, "Model", "FinishArch")
 	local line = frameAt(startDistance)
-	checker(finish, line * CFrame.new(0, 0.25, 0), ROAD_WIDTH, 2, 2, 0.06, true)
+	checker(finish, line * CFrame.new(0, 0.32, 0), ROAD_WIDTH, 2, 2, 0.1, true)
 	for _, side in { -1, 1 } do
 		local x = side * 17
 		Part(finish, { Name = "Pillar", Size = Vector3.new(2.6, 19, 2.6), CFrame = line * CFrame.new(x, 9.5, 0), Color = C.Ink })
@@ -235,7 +235,7 @@ local function buildTrack(zone)
 		Part(finish, { Name = "Lamp", Shape = Enum.PartType.Ball, Size = Vector3.new(2, 2, 2), CFrame = line * CFrame.new(x, 24, 0), Color = C.Warm, Material = Enum.Material.Neon, CastShadow = false })
 	end
 	local banner = Part(finish, { Name = "Banner", Size = Vector3.new(37, 6, 1.6), CFrame = line * CFrame.new(0, 17.5, 0), Color = C.Red })
-	text(banner, Enum.NormalId.Back, "FINISH", WHITE) -- what drivers see when they arrive
+	text(banner, Enum.NormalId.Back, "START", WHITE)
 	text(banner, Enum.NormalId.Front, "START", WHITE)
 	checker(finish, line * CFrame.new(0, 21.5, 0), 36, 2, 1, 1.4, false)
 	checker(finish, line * CFrame.new(0, 13.5, 0), 36, 2, 1, 1.4, false)
@@ -255,25 +255,25 @@ local function buildEntrance(zone)
 	local gate = child(zone, "Model", "Entrance")
 	local cf = CFrame.new(RaceZone.GateX, 0, -219) -- yard side of the wall; +Z = towards the yard
 	for _, side in { -1, 1 } do
-		local x = side * 14.5
+		local x = side * 22
 		Part(gate, { Name = "Foot", Size = Vector3.new(5, 2, 5), CFrame = cf * CFrame.new(x, 1, 0), Color = C.Red })
 		Part(gate, { Name = "Pillar", Size = Vector3.new(3, 22, 3), CFrame = cf * CFrame.new(x, 11, 0), Color = C.Ink })
 		for stripe = 0, 3 do
 			Part(gate, { Name = "Stripe", Size = Vector3.new(3.1, 1.4, 3.1), CFrame = cf * CFrame.new(x, 4 + stripe * 3.2, 0), Color = if stripe % 2 == 0 then C.Yellow else WHITE, CastShadow = false })
 		end
 		Part(gate, { Name = "Lamp", Shape = Enum.PartType.Ball, Size = Vector3.new(2.6, 2.6, 2.6), CFrame = cf * CFrame.new(x, 25.4, 0), Color = C.Warm, Material = Enum.Material.Neon, CastShadow = false })
-		Prefabs.TireStack(gate, cf * CFrame.new(side * 19.5, 0, 1), 4)
+		Prefabs.TireStack(gate, cf * CFrame.new(side * 27, 0, 1), 4)
 	end
-	local board = Part(gate, { Name = "Board", Size = Vector3.new(34, 8, 1.6), CFrame = cf * CFrame.new(0, 19, 0), Color = C.Blue })
+	local board = Part(gate, { Name = "Board", Size = Vector3.new(40, 8, 1.6), CFrame = cf * CFrame.new(0, 19, 0), Color = C.Blue })
 	text(board, Enum.NormalId.Back, "JUNKSHOT RACEWAY", C.Yellow, "Grab a kart - race for Klunks!") -- +Z, seen from the yard
 	text(board, Enum.NormalId.Front, "BACK TO THE YARD", WHITE)
-	checker(gate, cf * CFrame.new(0, 24, 0), 34, 2, 1, 1.4, false)
-	checker(gate, cf * CFrame.new(0, 14, 0), 34, 2, 1, 1.4, false)
-	Part(gate, { Name = "Snow", Size = Vector3.new(34.6, 0.8, 2.6), CFrame = cf * CFrame.new(0, 25.4, 0), Color = C.Snow, CastShadow = false })
+	checker(gate, cf * CFrame.new(0, 24, 0), 40, 2, 1, 1.4, false)
+	checker(gate, cf * CFrame.new(0, 14, 0), 40, 2, 1, 1.4, false)
+	Part(gate, { Name = "Snow", Size = Vector3.new(40.6, 0.8, 2.6), CFrame = cf * CFrame.new(0, 25.4, 0), Color = C.Snow, CastShadow = false })
 	-- A row of bulbs under the board.
 	for i = 0, 10 do
 		Part(gate, {
-			Name = "Bulb", Shape = Enum.PartType.Ball, Size = Vector3.new(0.9, 0.9, 0.9), CFrame = cf * CFrame.new((i - 5) * 2.4, 12.4, 0),
+			Name = "Bulb", Shape = Enum.PartType.Ball, Size = Vector3.new(0.9, 0.9, 0.9), CFrame = cf * CFrame.new((i - 5) * 3.4, 12.4, 0),
 			Color = Prefabs.Accents[i % #Prefabs.Accents + 1], Material = Enum.Material.Neon, CanCollide = false, CastShadow = false,
 		})
 	end

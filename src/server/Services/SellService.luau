@@ -7,9 +7,9 @@
 	    1. request id not processed before (a repeated / doubled request does nothing)
 	    2. the player stands at the dealer
 	    3. 1..MaxItemsPerSale distinct, well-formed uids
-	    4. every uid is the player's own, in their hands or base storage. Items placed in the
-	       world, inside a machine, on a machine tray, in a cart or lying in the yard are not
-	       there, so they can never be sold.
+	    4. every uid is in the player's own hands. Chest items must be carried to the dealer;
+	       items placed in the world, in a machine, on a tray, in a cart or lying in the yard
+	       can never be sold.
 	    5. every item can be sold (ItemValue.CanSell); price = ItemValue.SellPrice (+ Haggler)
 	    6. the payout fits under the balance cap
 	  Only when ALL checks pass are the items removed and the money paid, in one step without
@@ -29,7 +29,6 @@ local Validate = require(ReplicatedStorage.Shared.Util.Validate)
 local CarryService = require(script.Parent.CarryService)
 local DealerService = require(script.Parent.DealerService)
 local EconomyService = require(script.Parent.EconomyService)
-local InventoryService = require(script.Parent.InventoryService)
 local PlayerUpgradeService = require(script.Parent.PlayerUpgradeService)
 local ProgressionService = require(script.Parent.ProgressionService)
 local RemoteGuard = require(script.Parent.RemoteGuard)
@@ -47,14 +46,14 @@ SellService.Errors = table.freeze({
 
 local MESSAGES: { [string]: string } = {
 	NotAtDealer = "Visit the Scrap Dealer to sell",
-	NotOwned = "One of those items is no longer yours",
+	NotOwned = "You can only sell what you carry",
 	NotSellable = "The dealer does not buy that",
 	BalanceCap = "Your wallet is full",
 }
 
 local started = false
 
-type Pick = { Uid: string, Id: string, Source: "Carry" | "Storage", Price: number }
+type Pick = { Uid: string, Id: string, Price: number }
 
 -- Price list for a set of uids (also used by DevTests). nil + code when anything is invalid.
 function SellService.Quote(player: Player, uids: any): ({ Pick }?, number?, string?)
@@ -75,14 +74,6 @@ function SellService.Quote(player: Player, uids: any): ({ Pick }?, number?, stri
 		end
 		seen[uid] = true
 		local itemId: string? = carriedById[uid]
-		local source: "Carry" | "Storage" = "Carry"
-		if itemId == nil then
-			local record = InventoryService.GetItem(player, uid)
-			if record ~= nil then
-				itemId = record.id
-				source = "Storage"
-			end
-		end
 		if itemId == nil then
 			return nil, nil, SellService.Errors.NotOwned
 		end
@@ -90,7 +81,7 @@ function SellService.Quote(player: Player, uids: any): ({ Pick }?, number?, stri
 		if price <= 0 then
 			return nil, nil, SellService.Errors.NotSellable
 		end
-		table.insert(picks, { Uid = uid, Id = itemId, Source = source, Price = price })
+		table.insert(picks, { Uid = uid, Id = itemId, Price = price })
 		total += price
 	end
 	local bonus = math.floor(total * PlayerUpgradeService.GetSellBonus(player))
@@ -118,11 +109,7 @@ function SellService.Sell(player: Player, requestId: any, uids: any): (boolean, 
 
 	-- Commit (no yields): remove every item, then pay once.
 	for _, pick in picks do
-		if pick.Source == "Carry" then
-			CarryService.TakeByUid(player, pick.Uid)
-		else
-			InventoryService.RemoveItem(player, pick.Uid)
-		end
+		CarryService.TakeByUid(player, pick.Uid)
 	end
 	EconomyService.Earn(player, payout, "Sell", requestId)
 	EconomyService.MarkProcessed(player, requestId)

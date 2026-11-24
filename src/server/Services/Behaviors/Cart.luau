@@ -1,6 +1,6 @@
 --!strict
 --[[
-	Cart behavior (Metal Cart): a transport tool for MORE junk than the hands hold.
+	Cart behavior (Metal Cart, Wooden Sled): a transport tool for MORE junk than the hands hold.
 
 	Prompts (owner only)
 	  E  Tow / Release   the cart follows behind the owner like it is on a rope
@@ -72,8 +72,8 @@ local function render(entry: any)
 	newFolder.Name = "Contents"
 	local pivot = model:GetPivot()
 	for index, item in contentsOf(entry) do
-		local slot = CONTENT_SLOTS[index]
-		local copy = if slot ~= nil then JunkFactory.Build(item.Id, "Cosmetic", CONTENT_SIZE) else nil
+		local slot = (entry.Behavior.Cart.Slots or CONTENT_SLOTS)[index]
+		local copy = if slot ~= nil then JunkFactory.Build(item.Id, "Cosmetic", entry.Behavior.Cart.ContentSize or CONTENT_SIZE) else nil
 		if copy ~= nil and slot ~= nil then
 			for _, part in copy:GetDescendants() do
 				if part:IsA("BasePart") then
@@ -185,7 +185,7 @@ function Cart.Attach(entry: any)
 		Action = "Tow",
 		Slot = "Primary",
 		OwnerOnly = true,
-		CardOffset = 3.2,
+		Row = 2,
 	}, function(_player: Player)
 		Cart.ToggleTow(entry)
 	end)
@@ -194,7 +194,8 @@ function Cart.Attach(entry: any)
 		Action = "Load",
 		Slot = "Secondary",
 		OwnerOnly = true,
-		CardOffset = 1.6,
+		Row = 1,
+		Column = -0.5,
 	}, function(player: Player)
 		local ok, code = Cart.Load(entry, player)
 		if not ok and code ~= nil then
@@ -206,7 +207,8 @@ function Cart.Attach(entry: any)
 		Action = "Unload",
 		Slot = "Tertiary",
 		OwnerOnly = true,
-		CardOffset = 0,
+		Row = 1,
+		Column = 0.5,
 	}, function(player: Player)
 		local ok, code = Cart.Unload(entry, player)
 		if not ok and code ~= nil then

@@ -16,6 +16,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
 
 local AudioConfig = require(ReplicatedStorage.Shared.Config.AudioConfig)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
@@ -27,6 +28,10 @@ local AudioController = {}
 
 local localPlayer = Players.LocalPlayer
 local SAVE_DELAY = 1.5
+local DUCK_DISTANCE = 60 -- studs to a playing boombox
+local DUCK_VOLUME = 0.12 -- share of the music volume left next to it
+
+local duck = 1
 
 local settings = { Music = AudioConfig.Defaults.Music, Sfx = AudioConfig.Defaults.Sfx, Muted = AudioConfig.Defaults.Muted }
 local music: { Sound } = {}
@@ -39,7 +44,38 @@ local saveToken = 0
 local onSettingsChanged: (() -> ())? = nil
 
 local function musicVolume(): number
-	return if settings.Muted then 0 else AudioConfig.Music.Volume * settings.Music
+	return if settings.Muted then 0 else AudioConfig.Music.Volume * settings.Music * duck
+end
+
+-- Background music fades down next to a playing boombox (attribute Audible on placed radios).
+local function nearPlayingRadio(): boolean
+	local deployed = Workspace:FindFirstChild("Deployed")
+	local camera = Workspace.CurrentCamera
+	if deployed == nil or camera == nil then
+		return false
+	end
+	for _, model in deployed:GetChildren() do
+		if model:GetAttribute("Audible") == true and model:IsA("Model")
+			and (model:GetPivot().Position - camera.CFrame.Position).Magnitude <= DUCK_DISTANCE
+		then
+			return true
+		end
+	end
+	return false
+end
+
+local function watchRadios()
+	while true do
+		task.wait(0.5)
+		local target = if nearPlayingRadio() then DUCK_VOLUME else 1
+		if target ~= duck then
+			duck = target
+			local sound = music[current]
+			if sound ~= nil then
+				TweenService:Create(sound, TweenInfo.new(1.2), { Volume = musicVolume() }):Play()
+			end
+		end
+	end
 end
 
 local function applyVolumes()
@@ -205,8 +241,8 @@ local function mountSettings()
 	screenGui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
 	screenGui.DisplayOrder = 8
 
-	local button = Window.SmallButton(screenGui, "SOUND", Theme.Colors.Ice, UDim2.new(0, 84, 0, 40),
-		UDim2.new(1, -10, 0, 132), Vector2.new(1, 0))
+	local button = Window.HudButton("JunkshotSoundButton", "SOUND", Theme.Colors.Ice, UDim2.new(0, 66, 0, 38),
+		UDim2.new(1, -81, 0, 46))
 	local window = Window.Mount(screenGui, "SoundWindow", "SOUND", { "SOUND" })
 	window.Root.Size = UDim2.fromScale(0.42, 0.55)
 
@@ -268,6 +304,7 @@ function AudioController.Start()
 		mountSettings()
 		readSaved()
 		startMusic()
+		watchRadios()
 	end)
 end
 

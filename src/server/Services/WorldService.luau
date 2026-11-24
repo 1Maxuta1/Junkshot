@@ -16,6 +16,28 @@ local WorldService = {}
 
 local started = false
 
+-- Exactly one of each post effect. The place template brings its own (Bloom 1, DepthOfField) and
+-- a second Rojo connection can duplicate ours; stacked together everything glows far too much.
+local function setupEffects()
+	for _, className in { "BloomEffect", "Atmosphere", "ColorCorrectionEffect", "DepthOfFieldEffect" } do
+		local kept = className == "DepthOfFieldEffect" -- none of these
+		for _, child in Lighting:GetChildren() do
+			if child.ClassName == className then
+				if kept then
+					child:Destroy()
+				end
+				kept = true
+			end
+		end
+	end
+	local bloom = Lighting:FindFirstChildOfClass("BloomEffect")
+	if bloom ~= nil then
+		bloom.Intensity = WorldConfig.Bloom.Intensity
+		bloom.Size = WorldConfig.Bloom.Size
+		bloom.Threshold = WorldConfig.Bloom.Threshold
+	end
+end
+
 local function setupSky()
 	local config = WorldConfig.Sky
 	local sky = Lighting:FindFirstChildOfClass("Sky")
@@ -79,6 +101,7 @@ end
 function WorldService.Start()
 	assert(not started, "[WorldService] Start() called twice")
 	started = true
+	setupEffects()
 	setupSky()
 	if not WorldConfig.DayCycle.Enabled then
 		return

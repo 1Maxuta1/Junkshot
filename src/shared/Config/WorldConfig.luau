@@ -25,6 +25,7 @@ local WorldConfig = {
 		DayBrightness = 2.6,
 		NightBrightness = 1.4,
 	},
+	Bloom = { Intensity = 0.15, Size = 20, Threshold = 1.9 }, -- the glow of neon and bright parts
 	Sky = {
 		StarCount = 4000,
 		SunAngularSize = 14,

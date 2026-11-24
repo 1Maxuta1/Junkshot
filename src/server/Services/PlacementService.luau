@@ -86,6 +86,8 @@ export type PromptOptions = {
 	Slot: string, -- key in GameConfig.Input.Interact
 	OwnerOnly: boolean?,
 	CardOffset: number?, -- studs above the parent for the prompt card
+	Row: number?, -- the cards of one object form a grid above it: row 0 = lowest
+	Column: number?, -- -0.5 / 0.5 = left / right half of a row, 0 = centered
 }
 
 local PlacementService = {}
@@ -246,6 +248,8 @@ function PlacementService.AddPrompt(
 	if options.CardOffset ~= nil then
 		prompt:SetAttribute("CardOffset", options.CardOffset)
 	end
+	prompt:SetAttribute("CardRow", options.Row or 1)
+	prompt:SetAttribute("CardColumn", options.Column or 0)
 	prompt.Parent = parent
 	table.insert(entry.Prompts, prompt)
 	table.insert(entry.Connections, prompt.Triggered:Connect(function(player: Player)
@@ -268,6 +272,33 @@ end
 -- Spawning / removing world objects
 ---------------------------------------------------------------------------------------------
 
+-- "Alex's Bicycle" above every placed object.
+local function addOwnerTag(model: Model, owner: Player, itemId: string)
+	local base = model.PrimaryPart
+	if base == nil then
+		return
+	end
+	local top = DeployModels.GetSize(model:GetAttribute("DeployModel") :: string).Y
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "OwnerTag"
+	gui.Size = UDim2.fromOffset(150, 20)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, top - base.Position.Y + model:GetPivot().Position.Y + 0.6, 0)
+	gui.MaxDistance = 45
+	gui.LightInfluence = 0
+	gui.Adornee = base
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.FredokaOne
+	label.Text = `{owner.DisplayName}'s {ItemConfig.GetDisplayName(itemId)}`
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	label.TextStrokeColor3 = Color3.fromRGB(24, 44, 86)
+	label.TextStrokeTransparency = 0.1
+	label.TextScaled = true
+	label.Parent = gui
+	gui.Parent = base
+end
+
 local function spawnEntry(owner: Player, record: DeployedRecord, pivot: CFrame): Entry?
 	local behavior = ItemCapabilities.GetBehavior(record.Id)
 	local module = if behavior ~= nil then modules[behavior.Kind] else nil
@@ -278,6 +309,7 @@ local function spawnEntry(owner: Player, record: DeployedRecord, pivot: CFrame):
 	model.Name = record.Id
 	model:SetAttribute("DeployUid", record.Uid)
 	model:SetAttribute("ItemId", record.Id)
+	model:SetAttribute("DeployModel", behavior.Model)
 	model:SetAttribute("BehaviorKind", behavior.Kind)
 	model:SetAttribute("BehaviorId", ItemConfig.Get(record.Id).BehaviorId)
 	model:SetAttribute("OwnerUserId", owner.UserId)
@@ -298,6 +330,7 @@ local function spawnEntry(owner: Player, record: DeployedRecord, pivot: CFrame):
 		State = {},
 	}
 	entries[record.Uid] = entry
+	addOwnerTag(model, owner, record.Id)
 	model.Parent = getFolder()
 
 	local ok, err = xpcall(module.Attach, debug.traceback, entry)
@@ -312,7 +345,7 @@ local function spawnEntry(owner: Player, record: DeployedRecord, pivot: CFrame):
 			Action = "Pick up",
 			Slot = "Store",
 			OwnerOnly = true,
-			CardOffset = -1.5,
+			Row = 0,
 		}, function(player: Player)
 			local stored, code = PlacementService.Store(player, entry.Uid)
 			if not stored then

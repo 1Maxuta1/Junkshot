@@ -86,6 +86,40 @@ local function buildBooth(ground: CFrame): Model
 		coin.CFrame = coin.CFrame * CFrame.Angles(0, 0, math.rad(90))
 	end
 
+	-- Scrappy Sam, the dealer: stands behind the counter, looking at the customers (-Z).
+	local npc = Instance.new("Model")
+	npc.Name = "ScrappySam"
+	local skin, coat, apron = rgb(255, 204, 153), rgb(58, 138, 236), rgb(255, 150, 30)
+	for _, x in { -0.5, 0.5 } do
+		part(npc, "Leg", Vector3.new(0.9, 2, 0.9), at(x, 1.4, 0.2), rgb(44, 56, 82))
+		part(npc, "Eye", Vector3.new(0.2, 0.3, 0.1), at(x * 0.56, 5.15, -0.42), rgb(30, 34, 48))
+	end
+	part(npc, "Torso", Vector3.new(2, 2, 1), at(0, 3.4, 0.2), coat)
+	part(npc, "Apron", Vector3.new(1.5, 1.8, 0.15), at(0, 3.2, -0.35), apron)
+	part(npc, "ArmL", Vector3.new(0.8, 0.8, 2), at(-1.4, 3.7, -0.5), coat)
+	part(npc, "ArmR", Vector3.new(0.8, 0.8, 2), at(1.4, 3.7, -0.5), coat)
+	part(npc, "HandL", Vector3.new(0.75, 0.75, 0.5), at(-1.4, 3.7, -1.7), skin)
+	part(npc, "HandR", Vector3.new(0.75, 0.75, 0.5), at(1.4, 3.7, -1.7), skin)
+	local head = part(npc, "Head", Vector3.new(1.3, 1.3, 1.2), at(0, 5.05, 0.2), skin)
+	part(npc, "Smile", Vector3.new(0.6, 0.14, 0.1), at(0, 4.75, -0.42), rgb(150, 60, 50))
+	part(npc, "Beard", Vector3.new(1.35, 0.4, 0.5), at(0, 4.5, -0.1), rgb(240, 244, 250))
+	part(npc, "Hat", Vector3.new(1.5, 0.6, 1.4), at(0, 5.9, 0.2), rgb(236, 74, 70))
+	part(npc, "HatRim", Vector3.new(1.6, 0.3, 1.5), at(0, 5.55, 0.2), rgb(246, 250, 255))
+	local pompom = part(npc, "Pompom", Vector3.new(0.6, 0.6, 0.6), at(0, 6.4, 0.2), rgb(246, 250, 255))
+	pompom.Shape = Enum.PartType.Ball
+	local tag = Instance.new("BillboardGui")
+	tag.Name = "NameTag"
+	tag.Size = UDim2.fromOffset(150, 22)
+	tag.StudsOffsetWorldSpace = Vector3.new(0, 2.1, 0)
+	tag.MaxDistance = 60
+	tag.LightInfluence = 0
+	local tagLabel = label:Clone()
+	tagLabel.Text = "Scrappy Sam"
+	tagLabel.TextStrokeTransparency = 0.2
+	tagLabel.Parent = tag
+	tag.Parent = head
+	npc.Parent = model
+
 	local promptAnchor = part(model, "PromptAnchor", Vector3.new(1, 1, 1), at(0, 4.5, -4), rgb(255, 255, 255))
 	promptAnchor.Transparency = 1
 	promptAnchor.CanCollide = false
@@ -134,6 +168,19 @@ function DealerService.Start()
 		ground = CFrame.new(site.Position.X, site.Position.Y - site.Size.Y / 2, site.Position.Z)
 	end
 	buildBooth(ground)
+	-- The place file's own default SpawnLocation sits on this counter; players use Map.Spawns.
+	for _, child in Workspace:GetChildren() do
+		if child:IsA("SpawnLocation") then
+			child.Enabled = false
+			child.CanCollide = false
+			child.CanTouch = false
+			child.Transparency = 1
+			local decal = child:FindFirstChildWhichIsA("Decal")
+			if decal ~= nil then
+				decal.Transparency = 1
+			end
+		end
+	end
 end
 
 return DealerService

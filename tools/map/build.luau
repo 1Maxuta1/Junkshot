@@ -172,10 +172,9 @@ for _, corner in { Vector3.new(-1, 0, -1), Vector3.new(1, 0, -1), Vector3.new(-1
 end
 
 local spawns = folder(map, "Spawns")
-for index, degrees in { 45, 135, 225, 315 } do
-	local position = polar(25, degrees) + Vector3.new(0, 0.4, 0)
-	-- Face outwards, towards this direction's collection zone.
-	Prefabs.Spawn(spawns, facing(position, position * 2), index)
+-- In front of the Scrap Dealer's counter (-Z side of the plaza), looking at it (+Z).
+for index, x in { -18, -6, 6, 18 } do
+	Prefabs.Spawn(spawns, CFrame.new(x, 0.4, -27) * yaw(180), index)
 end
 
 for index = 0, 7 do

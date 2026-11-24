@@ -14,6 +14,7 @@ local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local StarterGui = game:GetService("StarterGui")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
@@ -55,6 +56,32 @@ local function watchPickupRange()
 	end
 	localPlayer:GetAttributeChangedSignal("PickupRange"):Connect(all)
 	all()
+end
+
+-- Roblox UI that gets in the way: the player list covers the balance (the boards at the dealer
+-- show the richest players) and the touch thumbstick flashes a grey box when you spawn.
+local function tidyCoreUi()
+	for _ = 1, 10 do
+		if pcall(StarterGui.SetCoreGuiEnabled, StarterGui, Enum.CoreGuiType.PlayerList, false) then
+			break
+		end
+		task.wait(0.5)
+	end
+	local playerGui = localPlayer:WaitForChild("PlayerGui")
+	local function clear(instance: Instance)
+		if instance.Name == "DynamicThumbstickFrame" and instance:IsA("Frame") then
+			instance.BackgroundTransparency = 1
+			instance:GetPropertyChangedSignal("BackgroundTransparency"):Connect(function()
+				if instance.BackgroundTransparency ~= 1 then
+					instance.BackgroundTransparency = 1
+				end
+			end)
+		end
+	end
+	playerGui.DescendantAdded:Connect(clear)
+	for _, descendant in playerGui:GetDescendants() do
+		clear(descendant)
+	end
 end
 
 local function mount()
@@ -157,12 +184,23 @@ local function mount()
 		end
 	end)
 
+	-- The timer restarting means a delivery just landed.
+	local ready = false
+	Workspace:GetAttributeChangedSignal("JunkRefillAt"):Connect(function()
+		if ready then
+			NotifyController.Show("New scrap arrived! 🔩", "Success")
+		end
+		ready = true
+	end)
+	ready = Workspace:GetAttribute("JunkRefillAt") ~= nil
+
 	screenGui.Parent = localPlayer:WaitForChild("PlayerGui")
 	refreshAll()
 end
 
 function EconomyController.Start()
 	task.spawn(mount)
+	task.spawn(tidyCoreUi)
 	task.spawn(watchPickupRange)
 end
 

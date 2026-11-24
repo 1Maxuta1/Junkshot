@@ -220,8 +220,14 @@ end
 
 local function refreshStands(base: Base)
 	base.StandsDirty = false
-	local itemId = rarestStored(base.Player)
-	for _, view in base.Slots do
+	local rarest = rarestStored(base.Player)
+	local data = baseData(base.Player)
+	for slotId, view in base.Slots do
+		-- The owner's choice (a chest item); the rarest chest item when none is chosen or it left.
+		local state = if data ~= nil then data.Buildings[slotId] else nil
+		local chosen = if state ~= nil and type(state.Shown) == "string" then InventoryService.GetItem(base.Player, state.Shown) else nil
+		local itemId = if chosen ~= nil then chosen.id else rarest
+		view.Pad:SetAttribute("ShownUid", if chosen ~= nil then (state :: any).Shown else nil)
 		local building = view.Building
 		local plinth = if building ~= nil then building:FindFirstChild("Plinth") else nil
 		if building ~= nil and plinth ~= nil and plinth:IsA("BasePart") then
@@ -591,6 +597,18 @@ function BaseService.Act(player: Player, requestId: any, action: any, slotId: an
 		publish(player)
 		EconomyService.Message(player, `{definition.DisplayName} upgraded to level {current.Level}!`, "Success")
 		return true, nil
+	elseif action == "SetTrophy" then
+		-- buildingId carries the uid of the chest item to show; the item itself stays in the chest.
+		if current.Id ~= "DisplayStand" then
+			return false, errors.InvalidArguments
+		end
+		if not Validate.IsUid(buildingId) or InventoryService.GetItem(player, buildingId) == nil then
+			return false, errors.InvalidArguments
+		end
+		current.Shown = buildingId
+		EconomyService.MarkProcessed(player, requestId)
+		refreshStands(base)
+		return true, nil
 	elseif action == "Remove" then
 		local spent = 0
 		for step = 1, current.Level do
@@ -660,7 +678,7 @@ function BaseService.Start()
 		Validate = function(requestId: any, action: any, slotId: any, buildingId: any): boolean
 			return Validate.IsUid(requestId) and Validate.IsString(action, 1, 24)
 				and (slotId == nil or Validate.IsString(slotId, 1, 8))
-				and (buildingId == nil or Validate.IsString(buildingId, 1, 32))
+				and (buildingId == nil or Validate.IsString(buildingId, 1, 64))
 		end,
 	}, function(player: Player, requestId: string, action: string, slotId: string?, buildingId: string?)
 		local ok, code = BaseService.Act(player, requestId, action, slotId, buildingId)

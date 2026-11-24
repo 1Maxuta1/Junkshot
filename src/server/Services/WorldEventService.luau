@@ -287,7 +287,7 @@ function WorldEventService.SpawnNow(key: string?, position: Vector3?): Model?
 
 	CollectionService:AddTag(model, WorldEventConfig.Tag)
 	model.Parent = folder()
-	announce(`A {creature.DisplayName} appeared! Catch it for a {creature.RewardRarity} item!`, "Info")
+	announce(`🦊 A {creature.DisplayName} appeared! Catch it for a {creature.RewardRarity} item!`, "Info")
 
 	task.delay(creature.Duration, function()
 		if active == event and not event.Claimed then

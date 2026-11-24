@@ -11,6 +11,7 @@
 
 local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ItemConfig = require(ReplicatedStorage.Shared.Config.ItemConfig)
@@ -45,7 +46,7 @@ function Window.SmallButton(parent: Instance, text: string, color: Color3, size:
 	Theme.Corner(button, UDim.new(0, 10))
 	Theme.Stroke(button, Theme.Colors.Ink, 2)
 	local limit = Instance.new("UISizeConstraint")
-	limit.MinSize = Vector2.new(44, 36)
+	limit.MinSize = Vector2.new(40, 32)
 	limit.Parent = button
 	local label = Theme.Label({
 		Name = "Label",
@@ -59,8 +60,25 @@ function Window.SmallButton(parent: Instance, text: string, color: Color3, size:
 		Parent = button,
 	})
 	Theme.TextStroke(label, Theme.Colors.Ink, 1.2)
+	if parent.Name == "Right" then
+		local flex = Instance.new("UIFlexItem") -- several buttons in one row shrink to fit
+		flex.FlexMode = Enum.UIFlexMode.Shrink
+		flex.Parent = button
+	end
 	button.Parent = parent
 	return button, label
+end
+
+-- A HUD button under every window (its own ScreenGui below them all).
+function Window.HudButton(name: string, text: string, color: Color3, size: UDim2, position: UDim2): TextButton
+	local gui = Instance.new("ScreenGui")
+	gui.Name = name
+	gui.ResetOnSpawn = false
+	gui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
+	gui.DisplayOrder = 4
+	local button = Window.SmallButton(gui, text, color, size, position, Vector2.new(1, 0))
+	gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+	return button
 end
 
 -- One list row: rarity strip, title, subtitle, and room on the right for buttons.
@@ -162,7 +180,7 @@ function Window.Mount(screenGui: ScreenGui, name: string, title: string, tabs: {
 	Theme.Corner(root, UDim.new(0, 20))
 	Theme.Stroke(root, Theme.Colors.Ink, 3)
 	local limit = Instance.new("UISizeConstraint")
-	limit.MinSize = Vector2.new(420, 290)
+	limit.MinSize = Vector2.new(300, 220)
 	limit.MaxSize = Vector2.new(820, 580)
 	limit.Parent = root
 	local padding = Instance.new("UIPadding")
@@ -172,6 +190,13 @@ function Window.Mount(screenGui: ScreenGui, name: string, title: string, tabs: {
 	padding.PaddingRight = UDim.new(0, 12)
 	padding.Parent = root
 	root.Parent = screenGui
+	local function fit() -- phones: use almost the whole screen
+		local small = screenGui.AbsoluteSize.Y < 500
+		root.Size = if small then UDim2.fromScale(0.94, 0.98) else UDim2.fromScale(0.66, 0.8)
+		root.Position = UDim2.fromScale(0.5, if small then 0.5 else 0.47)
+	end
+	screenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
+	fit()
 
 	local titleLabel = Theme.Label({
 		Name = "Title",
@@ -203,7 +228,7 @@ function Window.Mount(screenGui: ScreenGui, name: string, title: string, tabs: {
 	footer.Name = "Footer"
 	footer.AnchorPoint = Vector2.new(0, 1)
 	footer.Position = UDim2.fromScale(0, 1)
-	footer.Size = UDim2.new(1, 0, 0, 50)
+	footer.Size = UDim2.new(1, 0, 0, 46)
 	footer.BackgroundTransparency = 1
 	footer.Parent = root
 
@@ -230,7 +255,7 @@ function Window.Mount(screenGui: ScreenGui, name: string, title: string, tabs: {
 		local list = Instance.new("ScrollingFrame")
 		list.Name = tab
 		list.Position = UDim2.new(0, 0, 0, contentTop)
-		list.Size = UDim2.new(1, 0, 1, -(contentTop + 56))
+		list.Size = UDim2.new(1, 0, 1, -(contentTop + 52))
 		list.BackgroundColor3 = Theme.Colors.Panel
 		list.BorderSizePixel = 0
 		list.ScrollBarThickness = 8

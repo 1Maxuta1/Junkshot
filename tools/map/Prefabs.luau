@@ -363,15 +363,15 @@ function Prefabs.LogPile(parent, cf)
 	return m
 end
 
--- Two posts and a colored board with text on its front (-Z) face. The posts stand BEHIND the
--- board (+Z), so they never cover the text (long "<NAME>'S BASE" titles).
+-- Two posts and a colored board with text on its front (-Z) face. The posts end at
+-- the board's lower edge, so they never cover the text on either side.
 function Prefabs.Sign(parent, cf, text, color)
 	local m = model(parent, "Sign")
 	for _, x in { -5, 5 } do
 		Prefabs.Part(m, {
 			Name = "Post",
-			Size = Vector3.new(0.6, 8, 0.6),
-			CFrame = cf * CFrame.new(x, 4, 0.6),
+			Size = Vector3.new(0.6, 4.3, 0.6),
+			CFrame = cf * CFrame.new(x, 2.15, 0),
 			Color = C.Ink,
 		})
 	end
@@ -383,8 +383,8 @@ function Prefabs.Sign(parent, cf, text, color)
 	})
 	Prefabs.Part(m, {
 		Name = "Snow",
-		Size = Vector3.new(14.2, 0.5, 1.4),
-		CFrame = cf * CFrame.new(0, 9.15, 0.3),
+		Size = Vector3.new(14.2, 0.5, 1.2),
+		CFrame = cf * CFrame.new(0, 9.15, 0),
 		Color = C.Snow,
 		CastShadow = false,
 	})
@@ -392,7 +392,7 @@ function Prefabs.Sign(parent, cf, text, color)
 	local gui = Instance.new("SurfaceGui")
 	gui.Face = Enum.NormalId.Front
 	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	gui.PixelsPerStud = 40
+	gui.PixelsPerStud = 20
 	gui.LightInfluence = 0
 	gui.Parent = board
 	local label = Instance.new("TextLabel")
@@ -406,6 +406,14 @@ function Prefabs.Sign(parent, cf, text, color)
 	label.TextStrokeTransparency = 0.4
 	label.TextStrokeColor3 = C.Ink
 	label.Parent = gui
+	local back = Instance.new("SurfaceGui")
+	back.Face = Enum.NormalId.Back
+	back.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	back.PixelsPerStud = 20
+	back.LightInfluence = 0
+	back.Parent = board
+	local backLabel = label:Clone()
+	backLabel.Parent = back
 	return m
 end
 
@@ -449,11 +457,13 @@ function Prefabs.BasePlot(parent, cf, index, color, size)
 	})
 	local half = size / 2
 	local border = 1.6
+	-- Higher than the pad and 0.3 wider on every side, so no two faces share a plane.
+	local out = 0.3
 	local strips = {
-		{ Vector3.new(size, 0.4, border), CFrame.new(0, 0.2, -half + border / 2) },
-		{ Vector3.new(size, 0.4, border), CFrame.new(0, 0.2, half - border / 2) },
-		{ Vector3.new(border, 0.4, size - border * 2), CFrame.new(-half + border / 2, 0.2, 0) },
-		{ Vector3.new(border, 0.4, size - border * 2), CFrame.new(half - border / 2, 0.2, 0) },
+		{ Vector3.new(size + out * 2, 0.9, border), CFrame.new(0, 0.15, -half - out + border / 2) },
+		{ Vector3.new(size + out * 2, 0.9, border), CFrame.new(0, 0.15, half + out - border / 2) },
+		{ Vector3.new(border, 0.9, size + (out - border) * 2), CFrame.new(-half - out + border / 2, 0.15, 0) },
+		{ Vector3.new(border, 0.9, size + (out - border) * 2), CFrame.new(half + out - border / 2, 0.15, 0) },
 	}
 	for stripIndex, strip in strips do
 		Prefabs.Part(m, {
@@ -464,8 +474,13 @@ function Prefabs.BasePlot(parent, cf, index, color, size)
 			CastShadow = false,
 		})
 	end
-	-- Sign at the front-left corner, facing the ring road (the plot's -Z side).
-	Prefabs.Sign(m, cf * CFrame.new(-half + 7, 0, -half - 1.5) * CFrame.Angles(0, math.pi, 0), `BASE {index}`, color)
+	-- Sign outside the edge nearest to the map's center (the ring road), facing outwards from the
+	-- base, text on both sides. Placed in world space: it does not depend on the plot's rotation.
+	local center = Vector3.new(cf.Position.X, 0, cf.Position.Z)
+	local toCenter = -center.Unit
+	local sideways = Vector3.new(-toCenter.Z, 0, toCenter.X)
+	local at = center + toCenter * (half + 2.5) + sideways * (half - 8)
+	Prefabs.Sign(m, CFrame.new(at) * CFrame.Angles(0, math.atan2(-toCenter.X, -toCenter.Z), 0), `BASE {index}`, color)
 
 	m:SetAttribute("PlotId", index)
 	m:SetAttribute("Owner", 0) -- UserId of the owner; 0 = free (used by a later stage)

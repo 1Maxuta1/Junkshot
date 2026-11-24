@@ -23,6 +23,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Signal = require(ReplicatedStorage.Shared.Util.Signal)
 local DataService = require(script.Parent.DataService)
+local JunkService = require(script.Parent.JunkService)
 
 local PLOT_TAG = "BasePlot"
 
@@ -48,16 +49,13 @@ local function getPlots(): { Model }
 	return plots
 end
 
-local function signLabel(plot: Model): TextLabel?
-	local sign = plot:FindFirstChild("Sign")
-	local label = if sign ~= nil then sign:FindFirstChildWhichIsA("TextLabel", true) else nil
-	return label
-end
 
 local function setSign(plot: Model, text: string)
-	local label = signLabel(plot)
-	if label ~= nil then
-		label.Text = text
+	local sign = plot:FindFirstChild("Sign")
+	for _, label in if sign ~= nil then sign:GetDescendants() else {} do
+		if label:IsA("TextLabel") then
+			label.Text = text -- both sides of the board
+		end
 	end
 end
 
@@ -71,6 +69,20 @@ function PlotService.GetPlotCFrame(plot: Model): CFrame
 		return pad.CFrame * CFrame.new(0, pad.Size.Y / 2, 0)
 	end
 	return plot:GetPivot()
+end
+
+-- The UserId whose base plot contains this position, or nil (free plot / outside).
+function PlotService.OwnerAt(position: Vector3): number?
+	for plot, owner in ownerOf do
+		local pad = plot:FindFirstChild("Pad")
+		if pad ~= nil and pad:IsA("BasePart") then
+			local p = pad.CFrame:PointToObjectSpace(position)
+			if math.abs(p.X) <= pad.Size.X / 2 and math.abs(p.Z) <= pad.Size.Z / 2 and p.Y > -4 and p.Y < 30 then
+				return owner.UserId
+			end
+		end
+	end
+	return nil
 end
 
 local function assign(player: Player)
@@ -111,6 +123,7 @@ function PlotService.Start()
 	if #getPlots() == 0 then
 		warn(`[PlotService] no plots found (Models tagged "{PLOT_TAG}")`)
 	end
+	JunkService.SetZoneOwner(PlotService.OwnerAt) -- items lying on a base belong to its owner
 	DataService.PlayerLoaded:Connect(assign)
 	Players.PlayerRemoving:Connect(release)
 	for _, player in Players:GetPlayers() do

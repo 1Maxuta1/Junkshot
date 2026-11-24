@@ -1,7 +1,7 @@
 --!strict
 --[[
-	Hud: the always-visible economy corner (top right, under Roblox's top bar).
-	  - Balance pill: the currency, counting up/down smoothly on change; a short "+120" / "-500"
+	Hud: the always-visible economy corner (top right).
+	  - Balance pill in the very corner, level with Roblox's top bar (own ScreenGui): the currency, counting up/down smoothly on change; a short "+120" / "-500"
 	    floats out of it when money is earned or spent (EconomyFx from the server).
 	  - Level badge with an XP bar (Player attributes Level / XP / XPNext).
 	  - BAG button (also key B / gamepad View) opens the bag.
@@ -35,8 +35,8 @@ function Hud.Mount(screenGui: ScreenGui): Hud
 	local corner = Instance.new("Frame")
 	corner.Name = "EconomyCorner"
 	corner.AnchorPoint = Vector2.new(1, 0)
-	corner.Position = UDim2.new(1, -10, 0, 8)
-	corner.Size = UDim2.new(0, 230, 0, 120)
+	corner.Position = UDim2.new(1, -8, 0, 2)
+	corner.Size = UDim2.new(0, 212, 0, 110)
 	corner.BackgroundTransparency = 1
 	corner.Parent = screenGui
 
@@ -44,19 +44,25 @@ function Hud.Mount(screenGui: ScreenGui): Hud
 	local pill = Instance.new("Frame")
 	pill.Name = "Balance"
 	pill.AnchorPoint = Vector2.new(1, 0)
-	pill.Position = UDim2.new(1, 0, 0, 0)
-	pill.Size = UDim2.new(1, 0, 0, 42)
+	pill.Position = UDim2.new(1, -8, 0, 8)
+	pill.Size = UDim2.new(0, 160, 0, 34)
 	pill.BackgroundColor3 = Theme.Colors.Ink
 	Theme.Corner(pill, UDim.new(1, 0))
 	Theme.Stroke(pill, Theme.Colors.Sun, 2.5)
 	local pillScale = Instance.new("UIScale")
 	pillScale.Parent = pill
-	pill.Parent = corner
+	local pillGui = Instance.new("ScreenGui")
+	pillGui.Name = "JunkshotBalance"
+	pillGui.ResetOnSpawn = false
+	pillGui.ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets
+	pillGui.DisplayOrder = 7
+	pill.Parent = pillGui
+	pillGui.Parent = localPlayer:WaitForChild("PlayerGui")
 	local coin = Instance.new("Frame")
 	coin.Name = "Coin"
 	coin.AnchorPoint = Vector2.new(0, 0.5)
-	coin.Position = UDim2.new(0, 6, 0.5, 0)
-	coin.Size = UDim2.new(0, 32, 0, 32)
+	coin.Position = UDim2.new(0, 5, 0.5, 0)
+	coin.Size = UDim2.new(0, 25, 0, 25)
 	coin.BackgroundColor3 = Theme.Colors.Sun
 	Theme.Corner(coin, UDim.new(1, 0))
 	Theme.Stroke(coin, Theme.Colors.AccentDark, 2)
@@ -75,11 +81,11 @@ function Hud.Mount(screenGui: ScreenGui): Hud
 	local balanceLabel = Theme.Label({
 		Name = "Amount",
 		Text = "0 K",
-		Size = UDim2.new(1, -54, 0.8, 0),
-		Position = UDim2.new(0, 44, 0.1, 0),
+		Size = UDim2.new(1, -46, 0.76, 0),
+		Position = UDim2.new(0, 34, 0.12, 0),
 		Color = Theme.Colors.White,
 		MinTextSize = 14,
-		MaxTextSize = 24,
+		MaxTextSize = 20,
 		XAlignment = Enum.TextXAlignment.Right,
 		Parent = pill,
 	})
@@ -87,8 +93,8 @@ function Hud.Mount(screenGui: ScreenGui): Hud
 	-- Level badge + XP bar + BAG button
 	local levelBadge = Instance.new("Frame")
 	levelBadge.Name = "Level"
-	levelBadge.Position = UDim2.new(0, 0, 0, 50)
-	levelBadge.Size = UDim2.new(1, -78, 0, 40)
+	levelBadge.Position = UDim2.new(0, 0, 0, 0)
+	levelBadge.Size = UDim2.new(1, 0, 0, 36)
 	levelBadge.BackgroundColor3 = Theme.Colors.Panel
 	Theme.Corner(levelBadge, UDim.new(0, 12))
 	Theme.Stroke(levelBadge, Theme.Colors.Ink, 2.5)
@@ -121,8 +127,8 @@ function Hud.Mount(screenGui: ScreenGui): Hud
 	local bag = Instance.new("TextButton")
 	bag.Name = "Bag"
 	bag.AnchorPoint = Vector2.new(1, 0)
-	bag.Position = UDim2.new(1, 0, 0, 50)
-	bag.Size = UDim2.new(0, 70, 0, 44)
+	bag.Position = UDim2.new(1, 0, 0, 44)
+	bag.Size = UDim2.new(0, 66, 0, 38)
 	bag.BackgroundColor3 = Theme.Colors.Accent
 	bag.Text = ""
 	Theme.Corner(bag, UDim.new(0, 12))
@@ -148,8 +154,8 @@ function Hud.Mount(screenGui: ScreenGui): Hud
 	local refillLabel = Theme.Label({
 		Name = "Refill",
 		Text = "",
-		Size = UDim2.new(1, 0, 0, 22),
-		Position = UDim2.new(0, 0, 0, 98),
+		Size = UDim2.new(1, 0, 0, 20),
+		Position = UDim2.new(0, 0, 0, 88),
 		Color = Theme.Colors.White,
 		Font = Theme.FontBody,
 		MinTextSize = 11,
@@ -165,7 +171,7 @@ function Hud.Mount(screenGui: ScreenGui): Hud
 			return
 		end
 		local left = math.max(0, math.ceil(at - Workspace:GetServerTimeNow()))
-		refillLabel.Text = if left > 0 then string.format("New scrap in %d:%02d", left // 60, left % 60) else "Scrap delivery arriving!"
+		refillLabel.Text = if left > 0 then string.format("New scrap in %d:%02d 🔩", left // 60, left % 60) else "Scrap delivery arriving! 🔩"
 	end
 
 	-- Smooth count: a NumberValue tweened towards the new balance.
@@ -196,7 +202,7 @@ function Hud.Mount(screenGui: ScreenGui): Hud
 			Name = "Float",
 			Text = (if amount > 0 then "+" else "") .. KlunksFormat.Format(amount),
 			Size = UDim2.new(0, 160, 0, 30),
-			Position = UDim2.new(0, -8, 0, 6),
+			Position = UDim2.new(0, -8, 0, -40),
 			AnchorPoint = Vector2.new(1, 0),
 			Color = if amount > 0 then Theme.Colors.Success else Theme.Colors.Danger,
 			MinTextSize = 16,
@@ -206,7 +212,7 @@ function Hud.Mount(screenGui: ScreenGui): Hud
 		})
 		Theme.TextStroke(label, Theme.Colors.Ink, 2)
 		local tween = TweenService:Create(label, TweenInfo.new(1.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-			Position = UDim2.new(0, -8, 0, 60),
+			Position = UDim2.new(0, -8, 0, 20),
 			TextTransparency = 1,
 		})
 		tween.Completed:Connect(function()

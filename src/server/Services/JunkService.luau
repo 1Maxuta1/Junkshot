@@ -304,6 +304,21 @@ local function acquireModel(junkId: string): Model?
 	return model
 end
 
+-- Set by PlotService: the owner of the base plot at a position. Items lying there can only be
+-- taken by that player.
+local zoneOwner: ((position: Vector3) -> number?)? = nil
+function JunkService.SetZoneOwner(provider: (position: Vector3) -> number?)
+	zoneOwner = provider
+end
+
+local function mayTake(entry: ActiveJunk, userId: number?): boolean
+	if entry.ReservedFor ~= nil then
+		return entry.ReservedFor == userId
+	end
+	local owner = if zoneOwner ~= nil then zoneOwner(entry.Position) else nil
+	return owner == nil or userId == nil or owner == userId
+end
+
 -- Puts one junk object on `groundPosition` and registers it.
 local function createJunk(junkId: string, groundPosition: Vector3, options: SpawnOptions?): Model?
 	local folder = container
@@ -358,11 +373,16 @@ local function createJunk(junkId: string, groundPosition: Vector3, options: Spaw
 		naturalCount += 1
 	end
 
+	-- On somebody's base: only they see the prompt (Claim checks it again, see zoneOwner).
+	local shownFor = reservedFor
+	if shownFor == nil and zoneOwner ~= nil then
+		shownFor = zoneOwner(root.Position)
+	end
 	-- Pooled models keep their prompt, so its state is set on every spawn.
 	local prompt = root:FindFirstChildOfClass("ProximityPrompt")
 	if prompt ~= nil then
 		-- Clients hide prompts reserved for someone else; the server enforces it in Claim.
-		prompt:SetAttribute("ReservedFor", reservedFor)
+		prompt:SetAttribute("ReservedFor", shownFor)
 		prompt.ObjectText = if options ~= nil and options.ObjectText ~= nil then options.ObjectText else ItemConfig.GetDisplayName(junkId)
 		prompt.Enabled = lockedFor <= 0
 		if lockedFor > 0 then
@@ -537,7 +557,7 @@ function JunkService.Claim(junk: any, claimant: Player?): (string?, string?)
 	if entry == nil or os.clock() < entry.ClaimableAt then
 		return nil, nil
 	end
-	if entry.ReservedFor ~= nil and (claimant == nil or claimant.UserId ~= entry.ReservedFor) then
+	if not mayTake(entry, if claimant ~= nil then claimant.UserId else nil) then
 		return nil, nil
 	end
 	release(junk :: Model, entry.Id)
@@ -553,7 +573,7 @@ function JunkService.CanClaim(junk: any, player: Player): boolean
 	local entry = active[junk]
 	return entry ~= nil
 		and os.clock() >= entry.ClaimableAt
-		and (entry.ReservedFor == nil or entry.ReservedFor == player.UserId)
+		and mayTake(entry, player.UserId)
 end
 
 -- Removes the world object of `uid` WITHOUT calling OnClaimed (the owner keeps its record,

@@ -349,7 +349,8 @@ function CarryService.TryPickup(player: Player, junk: any): (boolean, string?)
 		return false, CarryService.Errors.NotReady -- still flying after a throw
 	end
 	if not JunkService.CanClaim(junk, player) then
-		return false, CarryService.Errors.Reserved -- waiting on someone else's machine tray
+		CarryService.Notify(player, "That belongs to another player")
+		return false, CarryService.Errors.Reserved -- someone else's machine tray or base
 	end
 
 	local maxDistance = CarryService.GetPickupRange(player) + GameConfig.Carry.PickupDistanceTolerance

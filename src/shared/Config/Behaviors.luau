@@ -38,6 +38,24 @@ local Behaviors = {
 			WheelRadius = 1.3,
 		},
 	},
+	-- 1.5 times the bicycle's top speed.
+	["Vehicle.Scooter"] = {
+		Kind = "Vehicle",
+		Mode = "Place",
+		Model = "Scooter",
+		Storable = true,
+		Vehicle = {
+			MaxSpeed = 51,
+			Acceleration = 28,
+			Braking = 65,
+			Coast = 13,
+			ReverseSpeed = 10,
+			TurnRate = 2.2,
+			PassengerCapacity = 0,
+			EngineSoundId = nil,
+			WheelRadius = 0.75,
+		},
+	},
 	["Vehicle.Car"] = {
 		Kind = "Vehicle",
 		Mode = "Place",
@@ -66,6 +84,22 @@ local Behaviors = {
 			FollowDistance = 6.5, -- studs behind the owner while towed
 			FollowSharpness = 8, -- higher = snappier following
 			MaxTowDistance = 40, -- towing stops when the owner is further away (teleport, death)
+		},
+	},
+	-- Wooden Sled: a small cart on runners.
+	["Vehicle.Sled"] = {
+		Kind = "Cart",
+		Mode = "Place",
+		Model = "WoodenSled",
+		Storable = true,
+		FacePlayer = true,
+		Cart = {
+			Capacity = 4,
+			FollowDistance = 5.5,
+			FollowSharpness = 9,
+			MaxTowDistance = 40,
+			ContentSize = 0.95,
+			Slots = { Vector3.new(-0.5, 1.25, 0.8), Vector3.new(0.5, 1.25, 0.8), Vector3.new(-0.5, 1.25, -0.5), Vector3.new(0.5, 1.25, -0.5) },
 		},
 	},
 	["Deploy.Radio"] = {

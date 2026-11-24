@@ -96,20 +96,7 @@ function Dealer.Mount(screenGui: ScreenGui, source: Source): Dealer
 		for _, entry in source.Carried() do
 			table.insert(list, { Uid = entry.Uid, Id = entry.Id, Where = "HANDS", Price = ItemValue.SellPrice(entry.Id) })
 		end
-		local stored = {}
-		for uid, record in source.Stored() do
-			table.insert(stored, { Uid = uid, Id = record.id, Where = "STORAGE", Price = ItemValue.SellPrice(record.id) })
-		end
-		table.sort(stored, function(a, b)
-			if a.Price ~= b.Price then
-				return a.Price > b.Price
-			end
-			return a.Uid < b.Uid
-		end)
-		for _, entry in stored do
-			table.insert(list, entry)
-		end
-		return list
+		return list -- only what you carry: chest items have to be brought here
 	end
 
 	local function bonusFactor(): number
@@ -148,7 +135,7 @@ function Dealer.Mount(screenGui: ScreenGui, source: Source): Dealer
 			end
 		end
 		if #entries == 0 then
-			Window.Header(list, 1, "Nothing to sell yet - bring items from the yard!")
+			Window.Header(list, 1, "Your hands are empty - bring items from the yard or your chest!")
 		end
 		local payout = math.floor(total * bonusFactor())
 		summary.Text = `{count} selected  ·  you get {KlunksFormat.Format(payout)}`

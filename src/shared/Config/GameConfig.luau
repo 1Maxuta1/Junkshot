@@ -122,6 +122,7 @@ local GameConfig = {
 			Primary = { Key = Enum.KeyCode.E, Gamepad = Enum.KeyCode.ButtonX }, -- drive / ride / tow / play
 			Secondary = { Key = Enum.KeyCode.Z, Gamepad = Enum.KeyCode.DPadLeft }, -- load / next track
 			Tertiary = { Key = Enum.KeyCode.X, Gamepad = Enum.KeyCode.DPadRight }, -- unload
+			Quaternary = { Key = Enum.KeyCode.V, Gamepad = Enum.KeyCode.ButtonR3 }, -- next track
 			Store = { Key = Enum.KeyCode.T, Gamepad = Enum.KeyCode.DPadDown }, -- pick it back up
 		},
 	},

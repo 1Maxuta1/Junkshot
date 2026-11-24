@@ -74,7 +74,7 @@ local builders: { [string]: (model: Model, glow: Color3) -> () } = {
 		sparkles.Name = "Sparkles"
 		sparkles.Texture = "rbxasset://textures/particles/sparkles_main.dds"
 		sparkles.Color = ColorSequence.new(glow)
-		sparkles.LightEmission = 1
+		sparkles.LightEmission = 0.4
 		sparkles.Size = NumberSequence.new(0.35, 0)
 		sparkles.Lifetime = NumberRange.new(0.8, 1.4)
 		sparkles.Rate = 6
@@ -99,9 +99,9 @@ function CreatureModels.Build(name: string, glow: Color3): Model?
 
 	-- Rarity presentation: ground ring + light pillar.
 	local ring = part(model, "RarityRing", C, V(0.2, 6.5, 6.5), V(0, 0.12, 0), glow, M.Neon, V(0, 0, 90))
-	ring.Transparency = 0.35
+	ring.Transparency = 0.6
 	local pillar = part(model, "Pillar", C, V(60, 0.8, 0.8), V(0, 34, 0), glow, M.Neon, V(0, 0, 90))
-	pillar.Transparency = 0.6
+	pillar.Transparency = 0.8
 
 	model.PrimaryPart = root
 	root.PivotOffset = root.CFrame:ToObjectSpace(CFrame.new())

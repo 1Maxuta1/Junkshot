@@ -47,7 +47,7 @@ function RewardReveal.Mount(screenGui: ScreenGui): RewardReveal
 	overlay.Name = "RewardReveal"
 	overlay.Size = UDim2.fromScale(1, 1)
 	overlay.BackgroundColor3 = Color3.new(0, 0, 0)
-	overlay.BackgroundTransparency = 0.55
+	overlay.BackgroundTransparency = 1 -- no dark sheet behind the card
 	overlay.Visible = false
 	overlay.ZIndex = 10
 	overlay:AddTag("JunkshotMenu") -- blocks throwing while shown (InputController)

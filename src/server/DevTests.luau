@@ -1318,7 +1318,7 @@ local function runEconomyTests(player: Player)
 
 	-- Selling
 	local canUid, tireUid = give("rusty_can"), give("old_tire")
-	local storedUid = InventoryService.AddItem(player, "metal_sheet") :: string
+	local storedUid = give("metal_sheet")
 	atBase()
 	local farOk, farCode = SellService.Sell(player, guid(), { canUid })
 	check("selling away from the dealer is rejected", not farOk and farCode == SellService.Errors.NotAtDealer, tostring(farCode))
@@ -1329,10 +1329,15 @@ local function runEconomyTests(player: Player)
 	local balanceBefore = CurrencyService.GetKlunks(player) :: number
 	local requestId = guid()
 	local sellOk, sellCode, earned = SellService.Sell(player, requestId, { canUid, tireUid, storedUid })
-	check("selling hand and storage items works", sellOk and earned == expected, tostring(sellCode))
+	check("selling carried items works", sellOk and earned == expected, tostring(sellCode))
 	check("the money is paid exactly once", CurrencyService.GetKlunks(player) == balanceBefore + expected)
 	check("sold items are consumed", not CarryService.HasUid(player, canUid) and not CarryService.HasUid(player, tireUid)
-		and not InventoryService.HasItem(player, storedUid))
+		and not CarryService.HasUid(player, storedUid))
+	local chestUid = InventoryService.AddItem(player, "metal_sheet") :: string
+	local chestOk, chestCode = SellService.Sell(player, guid(), { chestUid })
+	check("an item in the chest cannot be sold", not chestOk and chestCode == SellService.Errors.NotOwned
+		and InventoryService.HasItem(player, chestUid), tostring(chestCode))
+	InventoryService.RemoveItem(player, chestUid)
 	local dupOk, dupCode = SellService.Sell(player, requestId, { canUid })
 	check("a repeated sale request is ignored", not dupOk and dupCode == SellService.Errors.Duplicate
 		and CurrencyService.GetKlunks(player) == balanceBefore + expected, tostring(dupCode))
@@ -1855,6 +1860,102 @@ local function runMonetizationTests(player: Player)
 	PlotService.PlotAssigned:Fire(player, PlotService.GetPlot(player))
 end
 
+-- Ownership on bases, trophy stand, new placeables, radio controls.
+local function runFixTests(player: Player)
+	local plot = PlotService.GetPlot(player)
+	local data = DataService.GetData(player) :: any
+	if plot == nil or data == nil then
+		return
+	end
+	CarryService.Clear(player)
+	-- An item lying on a base belongs to the owner.
+	local spot = (PlotService.GetPlotCFrame(plot) * CFrame.new(-2, 0.5, -18)).Position
+	check("a point on the base has an owner", PlotService.OwnerAt(spot) == player.UserId)
+	check("the plaza has no owner", PlotService.OwnerAt(Vector3.new(0, 1, 30)) == nil)
+	local junk = JunkService.SpawnAt("rusty_can", spot)
+	check("an item lies on the base", junk ~= nil)
+	if junk ~= nil then
+		local stranger: any = { UserId = -12345 }
+		check("another player cannot take it", not JunkService.CanClaim(junk, stranger) and JunkService.Claim(junk, stranger) == nil)
+		check("its owner can", JunkService.CanClaim(junk, player))
+		JunkService.Despawn(JunkService.GetUid(junk) :: string)
+	end
+	-- Trophy stand
+	local savedBuildings, savedLevel = data.Base.Buildings, data.Base.Level
+	data.Base.Level = math.max(savedLevel, 1)
+	data.Base.Buildings = { [BaseConfig.Slots[1].Id] = { Id = "DisplayStand", Level = 1 } }
+	PlotService.PlotReleased:Fire(player, plot)
+	PlotService.PlotAssigned:Fire(player, plot)
+	task.wait(0.8)
+	teleportNear(player, PlotService.GetPlotCFrame(plot) * CFrame.new(0, 4, -4))
+	task.wait(0.2)
+	local trophy = InventoryService.AddItem(player, "snow_globe") :: string
+	local setOk, setCode = BaseService.Act(player, JunkService.NewUid(), "SetTrophy", BaseConfig.Slots[1].Id, trophy)
+	check("the trophy stand shows the chosen chest item", setOk and data.Base.Buildings[BaseConfig.Slots[1].Id].Shown == trophy, tostring(setCode))
+	check("the trophy stays in the chest", InventoryService.HasItem(player, trophy))
+	local badOk = BaseService.Act(player, JunkService.NewUid(), "SetTrophy", BaseConfig.Slots[1].Id, JunkService.NewUid())
+	check("an item the player does not store cannot be shown", not badOk)
+	InventoryService.RemoveItem(player, trophy)
+	data.Base.Buildings, data.Base.Level = savedBuildings, savedLevel
+	PlotService.PlotReleased:Fire(player, plot)
+	PlotService.PlotAssigned:Fire(player, plot)
+	task.wait(0.8)
+	for _, className in { "BloomEffect", "Atmosphere", "ColorCorrectionEffect" } do
+		local effects = 0
+		for _, child in game:GetService("Lighting"):GetChildren() do
+			effects += if child.ClassName == className then 1 else 0
+		end
+		check(`exactly one {className}`, effects == 1, tostring(effects))
+	end
+	-- Sled and scooter
+	check("the sled is a 4-item cart", ItemCapabilities.Get("wooden_sled").Behavior.Kind == "Cart" and ItemCapabilities.Get("wooden_sled").Behavior.Cart.Capacity == 4)
+	check("the scooter is 1.5 times as fast as the bicycle",
+		ItemCapabilities.Get("scooter").Behavior.Vehicle.MaxSpeed == ItemCapabilities.Get("bicycle").Behavior.Vehicle.MaxSpeed * 1.5)
+	for _, id in { "wooden_sled", "scooter", "boombox_radio" } do
+		local definition = ItemConfig.Get(id)
+		if definition == nil then
+			continue
+		end
+		local uid = JunkService.NewUid()
+		CarryService.AddJunk(player, id, uid)
+		teleportNear(player, CFrame.new(0, 4, -70))
+		task.wait(0.3)
+		local placed, code = PlacementService.Place(player, uid, Vector3.new(0, 0.2, -60), 0)
+		check(`{id} can be placed`, placed, tostring(code))
+		local entry = PlacementService.GetEntry(uid)
+		if entry ~= nil then
+			check(`{id} shows its owner's name`, entry.Model:FindFirstChild("OwnerTag", true) ~= nil)
+			if entry.Kind == "Cart" then
+				for _ = 1, 5 do
+					CarryService.AddJunk(player, "rusty_can")
+				end
+				local loadedCount = 0
+				for _ = 1, 5 do
+					if CartBehavior.Load(entry, player) then
+						loadedCount += 1
+					end
+				end
+				check("the sled holds exactly 4 items", loadedCount == 4, tostring(loadedCount))
+				for _ = 1, 4 do
+					CartBehavior.Unload(entry, player)
+				end
+				CarryService.Clear(player)
+			elseif entry.Kind == "Radio" then
+				RadioBehavior.Toggle(entry)
+				check("the radio prompt says Stop while playing", entry.State.TogglePrompt.ActionText == "Stop")
+				RadioBehavior.Pause(entry)
+				check("pause keeps the song but silences it", entry.State.Playing and not entry.State.Sound.Playing)
+				RadioBehavior.Previous(entry)
+				check("previous wraps to the last song", entry.State.Track == #entry.Behavior.Radio.Tracks and entry.State.Sound.Playing)
+				RadioBehavior.Toggle(entry)
+				check("the radio prompt says Play when stopped", entry.State.TogglePrompt.ActionText == "Play" and not entry.State.PausePrompt.Enabled)
+			end
+			check(`{id} can be picked up again`, (PlacementService.Store(player, uid)))
+		end
+		CarryService.Clear(player)
+	end
+end
+
 local function runCreatureTests(player: Player)
 	local root = waitForLiveRoot(player, 15)
 	if root == nil then
@@ -1989,6 +2090,7 @@ function DevTests.Run()
 	runBaseTests(player)
 	runMonetizationTests(player)
 	runCreatureTests(player)
+	runFixTests(player)
 
 	print(`[DevTests] done: {passed} passed, {failed} failed`)
 end

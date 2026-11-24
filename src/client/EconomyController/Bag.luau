@@ -187,6 +187,11 @@ function Bag.Mount(screenGui: ScreenGui, source: any): Bag
 			end
 			local here = atBase()
 			if here ~= lastAtBase then
+				if lastAtBase == true then
+					window.Close() -- walked away from the chest
+					lastAtBase = nil
+					return
+				end
 				lastAtBase = here
 				refresh()
 			end

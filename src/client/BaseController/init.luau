@@ -23,6 +23,9 @@ local BaseConfig = require(ReplicatedStorage.Shared.Config.BaseConfig)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local KlunksFormat = require(ReplicatedStorage.Shared.Util.KlunksFormat)
 
+local ItemConfig = require(ReplicatedStorage.Shared.Config.ItemConfig)
+local Rarities = require(ReplicatedStorage.Shared.Config.Rarities)
+local DataController = require(script.Parent.DataController)
 local InputController = require(script.Parent.InputController)
 local Theme = require(script.Parent.UI.Theme)
 local Window = require(script.Parent.EconomyController.Window)
@@ -82,6 +85,7 @@ local function mount()
 	local window = Window.Mount(screenGui, "BaseWindow", "MY BASE", { "BASE" })
 	local currentSlot: string? = nil
 	local baseWatch: RBXScriptConnection? = nil
+	local shownWatch: RBXScriptConnection? = nil
 	local pending = false
 
 	local hint = Theme.Label({
@@ -163,6 +167,32 @@ local function mount()
 				send("Remove", slotId)
 			end)
 			hint.Text = "Removing gives back half of what it cost."
+			if builtId == "DisplayStand" then
+				Window.Header(list, add(), "CHOOSE THE TROPHY (from your chest)")
+				local shownUid = pad and pad:GetAttribute("ShownUid")
+				local stored = {}
+				for uid, record in DataController.GetItems() do
+					table.insert(stored, { Uid = uid, Id = record.id, Rank = Rarities.GetRank(ItemConfig.GetRarity(record.id)) })
+				end
+				table.sort(stored, function(a, b)
+					if a.Rank ~= b.Rank then
+						return a.Rank > b.Rank
+					end
+					return a.Uid < b.Uid
+				end)
+				if #stored == 0 then
+					Window.Header(list, add(), "Your chest is empty - store an item first.")
+				end
+				for _, item in stored do
+					local itemRow = Window.Row(list, add(), ItemConfig.GetDisplayName(item.Id), ItemConfig.GetRarity(item.Id) or "", item.Id)
+					local shown = item.Uid == shownUid
+					local choose = Window.SmallButton(itemRow.Right, if shown then "SHOWN" else "SHOW",
+						if shown then Theme.Colors.InkSoft else Theme.Colors.Success, UDim2.new(0, 110, 0, 40))
+					choose.Activated:Connect(function()
+						send("SetTrophy", slotId, item.Uid)
+					end)
+				end
+			end
 			return
 		end
 
@@ -218,6 +248,11 @@ local function mount()
 				end
 			end)
 		end
+		local pad = slotPad(slotId)
+		if shownWatch ~= nil then
+			shownWatch:Disconnect()
+		end
+		shownWatch = if pad ~= nil then pad:GetAttributeChangedSignal("ShownUid"):Connect(render) else nil
 		render()
 	end)
 	window.Closed.Event:Connect(function()
