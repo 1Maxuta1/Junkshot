@@ -12,7 +12,7 @@ local GameConfig = {
 		StoreName = "PlayerData",
 		KeyPrefix = "Player_",
 		-- Bump when the profile shape changes and add a migration in DataService.
-		ProfileVersion = 7, -- 2: Carry, Machine (2A); 3: Deployed (2B); 4: economy (3); 5: Base (4); 6: cosmetics; 7: racing
+		ProfileVersion = 8, -- 2: Carry, Machine (2A); 3: Deployed (2B); 4: economy (3); 5: Base (4); 6: cosmetics; 7: racing; 8: onboarding
 	},
 
 	Klunks = {
@@ -166,6 +166,7 @@ local GameConfig = {
 		StorageMove = { MaxRequests = 8, Window = 1 },
 		BaseAction = { MaxRequests = 4, Window = 2 },
 		SaveSettings = { MaxRequests = 3, Window = 3 },
+		OnboardingSkip = { MaxRequests = 2, Window = 2 },
 		HoldItem = { MaxRequests = 10, Window = 1 },
 		TradeAction = { MaxRequests = 10, Window = 2 },
 	},

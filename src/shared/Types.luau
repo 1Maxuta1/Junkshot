@@ -134,6 +134,7 @@ export type ProfileData = {
 	Stats: ProfileStats,
 	Settings: { [string]: any },
 	Racing: { BestMs: number, Races: number, Wins: number }, -- RaceService
+	Onboarding: { Step: number, Progress: number, Done: boolean }, -- OnboardingService
 }
 
 -- What a client is allowed to see. Intentionally excludes Version, Stats and Settings.

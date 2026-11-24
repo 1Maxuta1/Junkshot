@@ -76,6 +76,8 @@ local WorldServiceModule = require(script.Parent.Services.WorldService)
 local WorldEventService = require(script.Parent.Services.WorldEventService)
 local RaceService = require(script.Parent.Services.RaceService)
 local RaceConfig = require(ReplicatedStorage.Shared.Config.RaceConfig)
+local OnboardingService = require(script.Parent.Services.OnboardingService)
+local OnboardingConfig = require(ReplicatedStorage.Shared.Config.OnboardingConfig)
 local TradeService = require(script.Parent.Services.TradeService)
 local WorldEventConfig = require(ReplicatedStorage.Shared.Config.WorldEventConfig)
 
@@ -2199,6 +2201,40 @@ local function runGadgetTests(player: Player)
 	CarryService.Clear(player)
 end
 
+local function runOnboardingTests(player: Player)
+	local data = DataService.GetData(player) :: any
+	local saved = data.Onboarding
+	data.Onboarding = { Step = 1, Progress = 0, Done = false }
+	local start = CurrencyService.GetKlunks(player) :: number
+	check("tutorial: later steps cannot be done early", not OnboardingService.Advance(player, "Sell") and OnboardingService.GetStep(player) == "Collect")
+	OnboardingService.Advance(player, "Collect")
+	OnboardingService.Advance(player, "Collect")
+	check("tutorial: two of three is not enough", OnboardingService.GetStep(player) == "Collect" and CurrencyService.GetKlunks(player) == start)
+	local total = 0
+	OnboardingService.Advance(player, "Collect")
+	for index, step in OnboardingConfig.Steps do
+		total += step.Reward
+		if index > 1 then
+			check(`tutorial: step {step.Id}`, OnboardingService.GetStep(player) == step.Id)
+			for _ = 1, step.Goal do
+				OnboardingService.Advance(player, step.Id)
+			end
+		end
+	end
+	check("tutorial: it ends and the attribute is gone", OnboardingService.GetStep(player) == nil and player:GetAttribute("OnboardStep") == nil)
+	check("tutorial: every reward is paid once", CurrencyService.GetKlunks(player) == start + total and total == 150, tostring(total))
+	check("tutorial: nothing more after the end", not OnboardingService.Advance(player, "Explore") and CurrencyService.GetKlunks(player) == start + total)
+	CurrencyService.RemoveKlunks(player, total)
+	data.Onboarding = { Step = 2, Progress = 0, Done = false }
+	OnboardingService.Skip(player)
+	check("tutorial: skip ends it without money", data.Onboarding.Done and CurrencyService.GetKlunks(player) == start)
+	local old, fresh = { Progress = { Discovered = { rusty_can = true } } } :: any, { Progress = { Discovered = {} } } :: any
+	DataService.MigrationsForTest[7](old)
+	DataService.MigrationsForTest[7](fresh)
+	check("tutorial: returning players do not get it, untouched profiles do", old.Onboarding.Done and not fresh.Onboarding.Done)
+	data.Onboarding = saved
+end
+
 local function runCreatureTests(player: Player)
 	local root = waitForLiveRoot(player, 15)
 	if root == nil then
@@ -2336,6 +2372,7 @@ function DevTests.Run()
 	runFixTests(player)
 	runQueueTests(player)
 	runGadgetTests(player)
+	runOnboardingTests(player)
 
 	print(`[DevTests] done: {passed} passed, {failed} failed`)
 end

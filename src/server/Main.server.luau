@@ -17,6 +17,7 @@
 	  8d. Bases & audio (4)      BaseService (chest, slots, buildings, Bases/Conveyor), AudioService
 	  8e. World & looks          WorldService (day cycle, sky), LeaderboardService, Cosmetics, Companions
 	  8f. World events         WorldEventService (Rare Creature every 5 min), RaceService (hourly), TradeService
+	  8g. OnboardingService     the tutorial of new players
 	  9. DataService.Start()     LAST: begins loading profiles, which fires PlayerLoaded, and
 	                             every listener above must already be connected
 
@@ -63,6 +64,7 @@ local CompanionService = require(Services.CompanionService)
 local WorldEventService = require(Services.WorldEventService)
 local RaceService = require(Services.RaceService)
 local TradeService = require(Services.TradeService)
+local OnboardingService = require(Services.OnboardingService)
 
 Remotes.Init()
 -- Listeners of DataService.PlayerLoaded must exist before the first profile can load, so the
@@ -90,6 +92,7 @@ CompanionService.Start()
 WorldEventService.Start()
 RaceService.Start()
 TradeService.Start()
+OnboardingService.Start()
 DataService.Start()
 
 -- DevTests move the test player around (machine, plot, junk) for about a minute, so they only
@@ -127,6 +130,10 @@ if runDevTests or (RunService:IsStudio() and ServerScriptService:GetAttribute("D
 			return WorldEventService.TryClaim(player, WorldEventService.GetActive())
 		elseif action == "OpenRace" then
 			task.spawn(RaceService.Open, arg)
+			return true
+		elseif action == "ResetOnboarding" then
+			local data = DataService.GetData(player) :: any
+			data.Onboarding = { Step = 1, Progress = 0, Done = false }
 			return true
 		elseif action == "JoinRace" then
 			return RaceService.Join(player)

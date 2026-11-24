@@ -38,6 +38,7 @@ local CONTROLLER_NAMES = {
 	"RaceController",
 	"TradeController",
 	"GadgetController",
+	"OnboardingController",
 }
 
 for _, name in CONTROLLER_NAMES do

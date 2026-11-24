@@ -90,6 +90,7 @@ local TEMPLATE: Types.ProfileData = {
 	},
 	Settings = {},
 	Racing = { BestMs = 0, Races = 0, Wins = 0 },
+	Onboarding = { Step = 1, Progress = 0, Done = false },
 }
 
 -- MIGRATIONS[n] upgrades data from version n to n + 1 (mutating it in place).
@@ -120,6 +121,12 @@ local MIGRATIONS: { [number]: (data: any) -> () } = {
 	end,
 	[6] = function(_data: any)
 		-- 6 -> 7: Racing and Machine.SkipSeconds were added; Reconcile() creates them.
+	end,
+	[7] = function(data: any)
+		-- 7 -> 8: the tutorial. Whoever already discovered an item knows the game: no tutorial.
+		local discovered = if type(data.Progress) == "table" then data.Progress.Discovered else nil
+		local played = type(discovered) == "table" and next(discovered) ~= nil
+		data.Onboarding = { Step = 1, Progress = 0, Done = played }
 	end,
 }
 
@@ -283,6 +290,8 @@ local function reportDataStoreState()
 		)
 	end
 end
+
+DataService.MigrationsForTest = MIGRATIONS
 
 function DataService.Start()
 	assert(not started, "[DataService] Start() called twice")

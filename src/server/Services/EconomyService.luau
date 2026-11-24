@@ -36,6 +36,7 @@ local DataService = require(script.Parent.DataService)
 
 local EconomyService = {}
 
+EconomyService.Earned = Signal.new() -- (player, amount, reason) after a successful Earn
 EconomyService.Spent = Signal.new() -- (player, amount, reason) after a successful Spend
 
 EconomyService.Errors = table.freeze({
@@ -125,6 +126,7 @@ function EconomyService.Earn(player: Player, amount: number, reason: string, txI
 	end
 	log(player, "Earn", amount, reason, txId)
 	fx(player, { Kind = "Earn", Amount = amount, Reason = reason })
+	EconomyService.Earned:Fire(player, amount, reason)
 	return true, nil
 end
 
