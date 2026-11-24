@@ -50,6 +50,7 @@ local definitions: { [string]: string } = {
 	AudioCue = "RemoteEvent", -- server -> client: (cueName) a short sound for that player
 	AbilityFx = "RemoteEvent", -- server -> clients: { Effect, UserId, Position, Direction } comet / starfall
 	OnboardingSkip = "RemoteEvent", -- client -> server: () ends the tutorial
+	DailyClaim = "RemoteEvent", -- client -> server: ("Reward" | "Quest" | "Weekly", index?)
 	HoldItem = "RemoteEvent", -- client -> server: (uid | "") the selected carried item, shown in the hand
 	TradeAction = "RemoteEvent", -- client -> server: (action, a?, b?) Trade Station; see TradeService
 	TradeState = "RemoteEvent", -- server -> client: invite / session / closed

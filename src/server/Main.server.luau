@@ -17,7 +17,7 @@
 	  8d. Bases & audio (4)      BaseService (chest, slots, buildings, Bases/Conveyor), AudioService
 	  8e. World & looks          WorldService (day cycle, sky), LeaderboardService, Cosmetics, Companions
 	  8f. World events         WorldEventService (Rare Creature every 5 min), RaceService (hourly), TradeService
-	  8g. OnboardingService     the tutorial of new players
+	  8g. OnboardingService     the tutorial of new players; DailyService daily reward and quests
 	  9. DataService.Start()     LAST: begins loading profiles, which fires PlayerLoaded, and
 	                             every listener above must already be connected
 
@@ -65,6 +65,7 @@ local WorldEventService = require(Services.WorldEventService)
 local RaceService = require(Services.RaceService)
 local TradeService = require(Services.TradeService)
 local OnboardingService = require(Services.OnboardingService)
+local DailyService = require(Services.DailyService)
 
 Remotes.Init()
 -- Listeners of DataService.PlayerLoaded must exist before the first profile can load, so the
@@ -93,6 +94,7 @@ WorldEventService.Start()
 RaceService.Start()
 TradeService.Start()
 OnboardingService.Start()
+DailyService.Start()
 DataService.Start()
 
 -- DevTests move the test player around (machine, plot, junk) for about a minute, so they only

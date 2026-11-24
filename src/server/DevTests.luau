@@ -76,6 +76,8 @@ local WorldServiceModule = require(script.Parent.Services.WorldService)
 local WorldEventService = require(script.Parent.Services.WorldEventService)
 local RaceService = require(script.Parent.Services.RaceService)
 local RaceConfig = require(ReplicatedStorage.Shared.Config.RaceConfig)
+local DailyService = require(script.Parent.Services.DailyService)
+local DailyConfig = require(ReplicatedStorage.Shared.Config.DailyConfig)
 local OnboardingService = require(script.Parent.Services.OnboardingService)
 local ItemSounds = require(ReplicatedStorage.Shared.Config.ItemSounds)
 local OnboardingConfig = require(ReplicatedStorage.Shared.Config.OnboardingConfig)
@@ -2295,6 +2297,64 @@ local function runOnboardingTests(player: Player)
 	data.Onboarding = saved
 end
 
+local function runDailyTests(player: Player)
+	local data = DataService.GetData(player) :: any
+	local savedDaily = data.Daily
+	local day = 20000 -- any day number
+	local clock = day * DailyConfig.DaySeconds + 100
+	DailyService.SetClockForTest(function()
+		return clock
+	end)
+	data.Daily = {}
+	local start = CurrencyService.GetKlunks(player) :: number
+	local function earned(): number
+		return (CurrencyService.GetKlunks(player) :: number) - start
+	end
+	check("daily: quests are the same for the same day", DailyConfig.QuestsFor(day)[1] == DailyConfig.QuestsFor(day)[1] and #DailyConfig.QuestsFor(day) == 3)
+	check("daily: weeks start on Monday", DailyConfig.Week(4) == DailyConfig.Week(10) and DailyConfig.Week(3) ~= DailyConfig.Week(4))
+	local rewards = DailyConfig.StreakRewards
+	check("daily: the first reward", DailyService.ClaimReward(player) and earned() == rewards[1])
+	check("daily: only once a day", not DailyService.ClaimReward(player) and earned() == rewards[1])
+	local total = rewards[1]
+	for index = 2, 7 do
+		clock += DailyConfig.DaySeconds
+		DailyService.ClaimReward(player)
+		total += rewards[index]
+	end
+	check("daily: seven days in a row", earned() == total, `{earned()} / {total}`)
+	clock += DailyConfig.DaySeconds
+	DailyService.ClaimReward(player)
+	check("daily: day 8 starts again at 1", data.Daily.Streak == 1)
+	clock += DailyConfig.DaySeconds
+	DailyService.ClaimReward(player)
+	clock += 2 * DailyConfig.DaySeconds
+	DailyService.ClaimReward(player)
+	check("daily: a missed day resets the streak", data.Daily.Streak == 1)
+	clock -= 5 * DailyConfig.DaySeconds
+	data.Daily = {}
+	start = CurrencyService.GetKlunks(player) :: number
+
+	check("quests: an unfinished one pays nothing", not DailyService.ClaimQuest(player, 1) and earned() == 0)
+	check("quests: a wrong index is refused", not DailyService.ClaimQuest(player, 0) and not DailyService.ClaimQuest(player, 4) and not DailyService.ClaimQuest(player, 1.5) and not DailyService.ClaimQuest(player, "x"))
+	local sum = 0
+	for index, quest in DailyConfig.QuestsFor(DailyConfig.Day(clock)) do
+		DailyService.Count(player, quest.Event, quest.Goal + 500)
+		check(`quests: {quest.Id} pays once`, DailyService.ClaimQuest(player, index) and not DailyService.ClaimQuest(player, index))
+		sum += quest.Reward
+	end
+	check("quests: the rewards add up", earned() == sum, `{earned()} / {sum}`)
+	check("weekly: not before the goal", not DailyService.ClaimWeekly(player) and data.Daily.WeekDone == 3)
+	data.Daily.WeekDone = DailyConfig.Weekly.Goal
+	check("weekly: pays once", DailyService.ClaimWeekly(player) and not DailyService.ClaimWeekly(player) and earned() == sum + DailyConfig.Weekly.Reward)
+	clock += DailyConfig.DaySeconds
+	check("quests: a new day starts at zero", not DailyService.ClaimQuest(player, 1) and data.Daily.Progress[1] == 0 and data.Daily.Claimed[1] == false)
+	clock += 7 * DailyConfig.DaySeconds
+	check("weekly: a new week starts at zero", not DailyService.ClaimWeekly(player) and data.Daily.WeekDone == 0 and data.Daily.WeekClaimed == false)
+	CurrencyService.RemoveKlunks(player, (CurrencyService.GetKlunks(player) :: number) - start)
+	DailyService.SetClockForTest(nil)
+	data.Daily = savedDaily
+end
+
 local function runCreatureTests(player: Player)
 	local root = waitForLiveRoot(player, 15)
 	if root == nil then
@@ -2433,6 +2493,7 @@ function DevTests.Run()
 	runQueueTests(player)
 	runGadgetTests(player)
 	runOnboardingTests(player)
+	runDailyTests(player)
 
 	print(`[DevTests] done: {passed} passed, {failed} failed`)
 end

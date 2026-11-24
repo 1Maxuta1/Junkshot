@@ -28,6 +28,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
+local Signal = require(ReplicatedStorage.Shared.Util.Signal)
 local RaceConfig = require(ReplicatedStorage.Shared.Config.RaceConfig)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
@@ -50,6 +51,8 @@ export type Racer = {
 	Out: boolean,
 	SeatlessSince: number?,
 }
+
+RaceService.Finished = Signal.new() -- (player) crossed the finish line
 
 local started = false
 local state = "Idle"
@@ -390,6 +393,7 @@ local function finishRewards(points: { [number]: BasePart }, startCount: number)
 		end
 		place += 1
 		local prize = RaceService.PrizeFor(place, startCount)
+		RaceService.Finished:Fire(player)
 		local best = RaceService.SaveResult(player, racer.TimeMs, place == 1 and startCount >= RaceConfig.MinForPrizes)
 		if best then
 			prize += RaceConfig.RecordBonus

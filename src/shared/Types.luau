@@ -134,6 +134,7 @@ export type ProfileData = {
 	Stats: ProfileStats,
 	Settings: { [string]: any },
 	Racing: { BestMs: number, Races: number, Wins: number }, -- RaceService
+	Daily: { [string]: any }, -- DailyService
 	Onboarding: { Step: number, Progress: number, Done: boolean }, -- OnboardingService
 }
 

@@ -192,6 +192,12 @@ local function mount()
 	})
 	Theme.TextStroke(label, Theme.Colors.Ink, 1.5)
 	button.Parent = screenGui
+	local function fit() -- phones: higher, so it does not cover the hotbar
+		local small = screenGui.AbsoluteSize.Y < 500
+		button.Position = UDim2.new(0.5, 0, if small then 0.74 else 0.8, 0)
+		button.Size = if small then UDim2.new(0, 230, 0, 40) else UDim2.new(0, 280, 0, 44)
+	end
+	screenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
 	button.Activated:Connect(act)
 	chip, chipLabel = button, label
 
@@ -200,6 +206,7 @@ local function mount()
 	Detector.Mount(screenGui, refresh)
 
 	screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+	fit()
 	refresh()
 end
 

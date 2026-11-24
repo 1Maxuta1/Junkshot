@@ -90,6 +90,7 @@ local TEMPLATE: Types.ProfileData = {
 	},
 	Settings = {},
 	Racing = { BestMs = 0, Races = 0, Wins = 0 },
+	Daily = {},
 	Onboarding = { Step = 1, Progress = 0, Done = false },
 }
 
@@ -127,6 +128,9 @@ local MIGRATIONS: { [number]: (data: any) -> () } = {
 		local discovered = if type(data.Progress) == "table" then data.Progress.Discovered else nil
 		local played = type(discovered) == "table" and next(discovered) ~= nil
 		data.Onboarding = { Step = 1, Progress = 0, Done = played }
+	end,
+	[8] = function(_data: any)
+		-- 8 -> 9: Daily was added; Reconcile() creates it.
 	end,
 }
 

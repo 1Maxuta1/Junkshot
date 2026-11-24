@@ -39,6 +39,7 @@ local CONTROLLER_NAMES = {
 	"TradeController",
 	"GadgetController",
 	"OnboardingController",
+	"DailyController",
 	"SfxController",
 }
 
