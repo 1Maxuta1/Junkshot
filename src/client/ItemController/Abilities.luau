@@ -217,6 +217,43 @@ local function starfall(center: Vector3)
 	end
 end
 
+local function rootOf(userId: any): BasePart?
+	local player = if type(userId) == "number" then Players:GetPlayerByUserId(userId) else nil
+	local character = if player ~= nil then player.Character else nil
+	local root = if character ~= nil then character:FindFirstChild("HumanoidRootPart") else nil
+	return if root ~= nil and root:IsA("BasePart") then root else nil
+end
+
+local function rocketJump(userId: any, direction: Vector3)
+	local root = rootOf(userId)
+	if root == nil then
+		return
+	end
+	sparkleBurst(root.Position - Vector3.new(0, 2.5, 0), Color3.fromRGB(255, 150, 40), 40)
+	AudioController.PlayAt(AudioConfig.Abilities.CometWhoosh, root, false, 90)
+	if userId == Players.LocalPlayer.UserId then
+		local humanoid = (root.Parent :: Instance):FindFirstChildOfClass("Humanoid")
+		if humanoid ~= nil and not humanoid.Sit then
+			humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
+			root.AssemblyLinearVelocity = direction * 45 + Vector3.new(0, 85, 0)
+		end
+	end
+end
+
+local function magnetPulse(userId: any)
+	local root = rootOf(userId)
+	if root == nil then
+		return
+	end
+	AudioController.PlayAt(AudioConfig.Abilities.StarChime, root, false, 60)
+	local ring = glowPart(Vector3.new(0.3, 56, 56), Color3.fromRGB(255, 90, 80), Enum.PartType.Cylinder)
+	ring.Transparency = 0.7
+	ring.CFrame = CFrame.new(root.Position - Vector3.new(0, 2.5, 0)) * CFrame.Angles(0, 0, math.rad(90))
+	ring.Parent = effectsFolder()
+	TweenService:Create(ring, TweenInfo.new(0.5), { Size = Vector3.new(0.3, 4, 4), Transparency = 1 }):Play()
+	Debris:AddItem(ring, 0.7)
+end
+
 function Abilities.Start()
 	Remotes.GetEvent("AbilityFx").OnClientEvent:Connect(function(payload: any)
 		if type(payload) ~= "table" or typeof(payload.Position) ~= "Vector3" then
@@ -230,6 +267,10 @@ function Abilities.Start()
 			comet(payload.Position, direction)
 		elseif payload.Effect == "Starfall" then
 			starfall(payload.Position)
+		elseif payload.Effect == "RocketJump" then
+			rocketJump(payload.UserId, direction)
+		elseif payload.Effect == "Magnet" then
+			magnetPulse(payload.UserId)
 		end
 	end)
 end

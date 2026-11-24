@@ -47,6 +47,8 @@ local PlacementService = require(script.Parent.Services.PlacementService)
 local VehicleBehavior = require(script.Parent.Services.Behaviors.Vehicle)
 local CartBehavior = require(script.Parent.Services.Behaviors.Cart)
 local RadioBehavior = require(script.Parent.Services.Behaviors.Radio)
+local GadgetBehavior = require(script.Parent.Services.Behaviors.Gadget)
+local AbilityBehavior = require(script.Parent.Services.Behaviors.Ability)
 local DetectorBehavior = require(script.Parent.Services.Behaviors.Detector)
 local ItemCapabilities = require(ReplicatedStorage.Shared.Util.ItemCapabilities)
 local PlacementRules = require(ReplicatedStorage.Shared.Util.PlacementRules)
@@ -278,9 +280,9 @@ local function runCatalogTests()
 			end
 		end
 	end
-	check("the item catalog has 66 buildable items", count == 66, tostring(count))
+	check("the item catalog has 84 buildable items", count == 84, tostring(count))
 	check("every catalog item builds in World and Cosmetic mode", #failures == 0, table.concat(failures, ", "))
-	check("there are 15-25 recipes", #Recipes.List >= 15 and #Recipes.List <= 25, tostring(#Recipes.List))
+	check("there are 40 recipes or more", #Recipes.List >= 40, tostring(#Recipes.List))
 	local badRecipes: { string } = {}
 	for _, recipe in Recipes.List do
 		if not ItemConfig.Exists(recipe.OutputItemId) or Recipes.TotalIngredients(recipe) > GameConfig.Carry.MaxJunk then
@@ -2036,6 +2038,155 @@ local function runQueueTests(player: Player)
 		Position = Vector3.new(60, 1, -312), Yaw = 0 }))) == "NoPlace")
 end
 
+-- Every item is useful in some recipe; every gadget can be placed, used, saved and picked up.
+local function runGadgetTests(player: Player)
+	local used: { [string]: boolean } = {}
+	for _, recipe in Recipes.List do
+		for _, ingredient in recipe.Ingredients do
+			used[ingredient.Id] = true
+		end
+	end
+	local useless: { string } = {}
+	local noAction: { string } = {}
+	for id, definition in ItemConfig.Items do
+		if definition.IsDebug == true then
+			continue
+		end
+		if definition.Category ~= "Crafted" and not used[id] then
+			table.insert(useless, id)
+		end
+		if definition.Category == "Crafted" and ItemCapabilities.GetBehavior(id) == nil and id ~= "golden_trophy" and id ~= "flashlight" then
+			table.insert(noAction, id)
+		end
+	end
+	check("every found item is an ingredient of something", #useless == 0, table.concat(useless, ", "))
+	check("every crafted item does something", #noAction == 0, table.concat(noAction, ", "))
+
+	local plot = PlotService.GetPlot(player)
+	if plot == nil then
+		return
+	end
+	CarryService.Clear(player)
+	local base = PlotService.GetPlotCFrame(plot)
+	local spot = base * CFrame.new(0, 0, -15)
+	teleportNear(player, spot * CFrame.new(0, 3, 8))
+	task.wait(0.3)
+	local data = DataService.GetData(player) :: any
+	local failures: { string } = {}
+	local placedCount = 0
+	for id in ItemConfig.Items do
+		local behavior = ItemCapabilities.GetBehavior(id)
+		if behavior == nil or (behavior.Kind ~= "Gadget" and id ~= "storage_box" and id ~= "turbo_kart" and id ~= "jet_board") then
+			continue
+		end
+		local uid = JunkService.NewUid()
+		CarryService.AddJunk(player, id, uid)
+		local ok, code = PlacementService.Place(player, uid, spot.Position, 0)
+		local entry = PlacementService.GetEntry(uid)
+		if not ok or entry == nil then
+			table.insert(failures, `{id}: place {tostring(code)}`)
+			CarryService.Clear(player)
+			continue
+		end
+		placedCount += 1
+		if type((entry.Record :: any).Spot) ~= "table" then
+			table.insert(failures, `{id}: spot not saved`)
+		end
+		if behavior.Kind == "Gadget" then
+			local config = behavior.Gadget
+			if entry.Model:GetAttribute("Gadget") ~= config.Effect then
+				table.insert(failures, `{id}: effect`)
+			end
+			if config.Action == "Cycle" then
+				for index = 1, #config.Modes do
+					GadgetBehavior.Cycle(entry)
+					if entry.Model:GetAttribute("GadgetMode") ~= index % #config.Modes + 1 then
+						table.insert(failures, `{id}: mode {index}`)
+					end
+				end
+			elseif config.Action == "Fire" then
+				GadgetBehavior.Fire(entry)
+				if entry.Model:GetAttribute("GadgetFire") ~= 1 then
+					table.insert(failures, `{id}: fire`)
+				end
+			elseif config.Action == "Robot" then
+				GadgetBehavior.Robot(entry, player)
+				if type(entry.Model:GetAttribute("Speech")) ~= "string" then
+					table.insert(failures, `{id}: speech`)
+				end
+			elseif config.Action == "Arcade" then
+				GadgetBehavior.Arcade(entry, player)
+				GadgetBehavior.Arcade(entry, player)
+				check("arcade: pressing before GO is no score", entry.Model:GetAttribute("ScreenText") == "TOO EARLY!" and (entry.Record :: any).Best == nil)
+				GadgetBehavior.Arcade(entry, player)
+				entry.State.Round.GoAt = os.clock() - 0.25
+				GadgetBehavior.Arcade(entry, player)
+				check("arcade: the reaction time is saved", math.abs(((entry.Record :: any).Best or 0) - 250) < 60, tostring((entry.Record :: any).Best))
+			elseif config.Action == "Hologram" then
+				player:SetAttribute("HeldUid", nil)
+				check("hologram: nothing in the hand is refused", not GadgetBehavior.SetHologram(entry, player))
+				local shown = JunkService.NewUid()
+				CarryService.AddJunk(player, "rubber_duck", shown)
+				player:SetAttribute("HeldUid", shown)
+				check("hologram: shows a copy, the item stays in the hand", GadgetBehavior.SetHologram(entry, player)
+					and entry.Model:GetAttribute("HoloId") == "rubber_duck" and CarryService.HasUid(player, shown))
+				CarryService.TakeByUid(player, shown)
+			end
+		end
+		local stored, storeCode = PlacementService.Store(player, uid)
+		if not stored then
+			table.insert(failures, `{id}: store {tostring(storeCode)}`)
+		end
+		CarryService.Clear(player)
+	end
+	check("every gadget can be placed, used and picked up", #failures == 0, table.concat(failures, "; "))
+	check("gadgets were tested", placedCount >= 24, tostring(placedCount))
+
+	-- A gadget stays where it was placed, in the mode it had, after a rejoin
+	local lampUid = JunkService.NewUid()
+	CarryService.AddJunk(player, "frost_lamp", lampUid)
+	local away = (base * CFrame.new(6, 0, -12)).Position
+	check("a lamp can be placed", (PlacementService.Place(player, lampUid, away, 1)))
+	local lamp = PlacementService.GetEntry(lampUid)
+	if lamp ~= nil then
+		GadgetBehavior.SetMode(lamp, 3)
+		local before = lamp.Model:GetPivot()
+		PlacementService.Unload(player)
+		PlacementService.Load(player)
+		local again = PlacementService.GetEntry(lampUid)
+		check("a placed gadget returns to its own spot after a rejoin", again ~= nil and (again.Model:GetPivot().Position - before.Position).Magnitude < 0.5
+			and again.Model:GetPivot().LookVector:Dot(before.LookVector) > 0.99)
+		check("and keeps its mode", again ~= nil and again.Model:GetAttribute("GadgetMode") == 3)
+		PlacementService.Store(player, lampUid)
+	end
+	CarryService.Clear(player)
+
+	-- Scrap magnet and rocket boots
+	local savedCooldowns = data.Cooldowns
+	data.Cooldowns = {}
+	local here = (base * CFrame.new(0, 0, -15)).Position
+	local theirs = JunkService.SpawnAt("old_tire", here + Vector3.new(12, 0, 0), { ReservedFor = player.UserId + 1 } :: any)
+	local mine = JunkService.SpawnAt("rusty_can", here + Vector3.new(-10, 0, 0))
+	local theirBefore = if theirs ~= nil then JunkService.GetPosition(theirs) else nil
+	task.wait(0.2)
+	local pulled = AbilityBehavior.PullScrap(player, here + Vector3.new(0, 3, 0), 14, 5)
+	local minePosition = if mine ~= nil then JunkService.GetPosition(mine) else nil
+	check("the magnet pulls loose scrap closer", pulled >= 1 and minePosition ~= nil and ((minePosition - here) * Vector3.new(1, 0, 1)).Magnitude < 6, `{pulled} {tostring(minePosition)}`)
+	check("the magnet leaves reserved items alone", theirs ~= nil and JunkService.GetPosition(theirs) == theirBefore)
+	for _, model in { mine, theirs } do
+		local uid = if model ~= nil then JunkService.GetUid(model) else nil
+		if uid ~= nil then
+			JunkService.Despawn(uid)
+		end
+	end
+	local bootsUid = JunkService.NewUid()
+	CarryService.AddJunk(player, "rocket_boots", bootsUid)
+	check("rocket boots work", (PlacementService.Use(player, bootsUid)))
+	check("and then recharge", not PlacementService.Use(player, bootsUid))
+	data.Cooldowns = savedCooldowns
+	CarryService.Clear(player)
+end
+
 local function runCreatureTests(player: Player)
 	local root = waitForLiveRoot(player, 15)
 	if root == nil then
@@ -2172,6 +2323,7 @@ function DevTests.Run()
 	runCreatureTests(player)
 	runFixTests(player)
 	runQueueTests(player)
+	runGadgetTests(player)
 
 	print(`[DevTests] done: {passed} passed, {failed} failed`)
 end

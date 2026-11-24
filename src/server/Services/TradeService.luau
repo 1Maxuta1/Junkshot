@@ -13,6 +13,8 @@
 	    CHANGE_LOCK seconds after it, so an offer cannot be switched at the last moment.
 	  - Items keep their uid (CarryService), so nothing can be duplicated. Money goes through
 	    EconomyService (logged as "Trade").
+	  - The last LOCK_SECONDS are shown to both (LockEndsAt, server time); taking READY back or
+	    CANCEL during them stops the swap.
 	  - Walking away, dying or leaving cancels. A player is in at most one trade.
 
 	Remotes: TradeAction client -> server (action, a, b); TradeState server -> client (table).
@@ -43,7 +45,7 @@ TradeService.LockSeconds = LOCK_SECONDS
 TradeService.ChangeLock = CHANGE_LOCK
 
 type Offer = { Uids: { string }, Klunks: number, Ready: boolean }
-type Session = { A: Player, B: Player, Offers: { [Player]: Offer }, ChangedAt: number, Token: number, Closed: boolean }
+type Session = { A: Player, B: Player, Offers: { [Player]: Offer }, ChangedAt: number, Token: number, LockEndsAt: number?, Closed: boolean }
 
 local started = false
 local anchor: BasePart? = nil
@@ -97,7 +99,7 @@ local function publish(session: Session)
 			Name = other.DisplayName,
 			Mine = describe(player, session.Offers[player]),
 			Theirs = describe(other, session.Offers[other]),
-			Locking = session.Offers[player].Ready and session.Offers[other].Ready,
+			LockEndsAt = session.LockEndsAt, -- server time of the swap, nil = not counting down
 		})
 	end
 end
@@ -157,6 +159,7 @@ function TradeService.Accept(player: Player, from: Player): (boolean, string?)
 		},
 		ChangedAt = os.clock(),
 		Token = 0,
+		LockEndsAt = nil,
 		Closed = false,
 	}
 	sessions[from], sessions[player] = session, session
@@ -191,6 +194,7 @@ function TradeService.SetOffer(player: Player, uids: any, klunks: any): (boolean
 		offer.Ready = false
 	end
 	session.ChangedAt = os.clock()
+	session.LockEndsAt = nil
 	session.Token += 1
 	publish(session)
 	return true, nil
@@ -258,10 +262,21 @@ function TradeService.SetReady(player: Player, ready: boolean): (boolean, string
 		return false, "JustChanged"
 	end
 	local other = otherOf(session, player)
+	if session.Offers[player].Ready == ready then
+		return true, nil -- a repeated press must not restart the countdown
+	end
+	local wasLocking = session.LockEndsAt ~= nil
+	local locking = ready and session.Offers[other].Ready
 	session.Offers[player].Ready = ready
+	session.LockEndsAt = if locking then Workspace:GetServerTimeNow() + LOCK_SECONDS else nil
 	session.Token += 1
 	publish(session)
-	if ready and session.Offers[other].Ready then
+	if wasLocking then
+		for _, each in { player, other } do
+			EconomyService.Message(each, `{player.DisplayName} stopped the swap`, "Warning")
+		end
+	end
+	if locking then
 		local token = session.Token
 		task.delay(LOCK_SECONDS, function()
 			if session.Closed or session.Token ~= token then
@@ -277,7 +292,7 @@ end
 function TradeService.Cancel(player: Player)
 	local session = sessions[player]
 	if session ~= nil then
-		close(session, "Trade cancelled")
+		close(session, `Trade cancelled by {player.DisplayName}`)
 	end
 end
 

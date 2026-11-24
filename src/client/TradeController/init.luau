@@ -7,6 +7,7 @@
 local Players = game:GetService("Players")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
 local ItemConfig = require(ReplicatedStorage.Shared.Config.ItemConfig)
 local KlunksFormat = require(ReplicatedStorage.Shared.Util.KlunksFormat)
@@ -42,6 +43,51 @@ local function mount()
 		UDim2.new(0.3, 0, 0, 42), UDim2.new(1, 0, 0.5, 0), Vector2.new(1, 0.5))
 	local cancel = Window.SmallButton(window.Footer, "CANCEL", Theme.Colors.Danger,
 		UDim2.new(0.24, 0, 0, 42), UDim2.new(0.68, 0, 0.5, 0), Vector2.new(1, 0.5))
+	-- Who you trade with and the countdown (left side of the footer, always visible).
+	local status = Theme.Label({
+		Name = "Status",
+		Text = "",
+		Size = UDim2.new(0.42, 0, 1, 0),
+		Color = Theme.Colors.Ink,
+		MinTextSize = 10,
+		MaxTextSize = 18,
+		XAlignment = Enum.TextXAlignment.Left,
+		Parent = window.Footer,
+	})
+	local banner = Instance.new("TextLabel")
+	banner.Name = "Countdown"
+	banner.AnchorPoint = Vector2.new(0.5, 0.5)
+	banner.Position = UDim2.fromScale(0.5, 0.45)
+	banner.Size = UDim2.fromScale(0.5, 0.22)
+	banner.BackgroundColor3 = Theme.Colors.Ink
+	banner.BackgroundTransparency = 0.15
+	banner.Font = Enum.Font.FredokaOne
+	banner.TextColor3 = Theme.Colors.Sun
+	banner.TextScaled = true
+	banner.Text = ""
+	banner.ZIndex = 20
+	banner.Visible = false
+	Theme.Corner(banner, UDim.new(0, 16))
+	banner.Parent = window.Root
+	local function lockLeft(): number?
+		if session == nil or type(session.LockEndsAt) ~= "number" then
+			return nil
+		end
+		return math.max(0, session.LockEndsAt - Workspace:GetServerTimeNow())
+	end
+	local function updateCountdown()
+		local left = lockLeft()
+		banner.Visible = left ~= nil
+		if session == nil then
+			status.Text = ""
+		elseif left ~= nil then
+			local seconds = math.max(1, math.ceil(left))
+			banner.Text = ` SWAP IN {seconds} `
+			status.Text = `Swap with {session.Name} in {seconds}`
+		else
+			status.Text = `Trading with {session.Name}`
+		end
+	end
 	ready.Activated:Connect(function()
 		if session ~= nil then
 			send("Ready", not session.Mine.Ready)
@@ -106,9 +152,9 @@ local function mount()
 		end
 
 		window.SetTitle(`TRADE WITH {string.upper(session.Name)}`)
-		readyLabel.Text = if session.Locking then "SWAPPING..." elseif session.Mine.Ready then "NOT READY" else "READY"
-		ready.BackgroundColor3 = if session.Mine.Ready then Theme.Colors.InkSoft else Theme.Colors.Success
-		Window.Header(list, add(), `THEY GIVE {if session.Theirs.Ready then "(READY)" else ""}`)
+		readyLabel.Text = if session.LockEndsAt ~= nil then "STOP SWAP" elseif session.Mine.Ready then "NOT READY" else "READY"
+		ready.BackgroundColor3 = if session.LockEndsAt ~= nil then Theme.Colors.Accent elseif session.Mine.Ready then Theme.Colors.InkSoft else Theme.Colors.Success
+		Window.Header(list, add(), `{string.upper(session.Name)} GIVES {if session.Theirs.Ready then "(READY)" else ""}`)
 		if session.Theirs.Klunks > 0 then
 			Window.Row(list, add(), KlunksFormat.Format(session.Theirs.Klunks), "money", nil)
 		end
@@ -145,6 +191,14 @@ local function mount()
 		end
 	end
 
+	task.spawn(function()
+		while true do
+			task.wait(0.1)
+			if window.IsOpen() then
+				updateCountdown()
+			end
+		end
+	end)
 	Remotes.GetEvent("TradeState").OnClientEvent:Connect(function(payload: any)
 		if type(payload) ~= "table" then
 			return
@@ -163,6 +217,7 @@ local function mount()
 			NotifyController.Show(payload.Reason, if payload.Reason == "Trade complete!" then "Success" else "Warning")
 			window.Close()
 		end
+		updateCountdown()
 		render()
 	end)
 	CarryController.Changed:Connect(render)

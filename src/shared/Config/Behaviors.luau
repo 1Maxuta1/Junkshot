@@ -6,7 +6,7 @@
 
 	Fields
 	  Kind     server module in ServerScriptService.Server.Services.Behaviors/<Kind> and the
-	           client feature that drives it: "Vehicle" | "Cart" | "Radio" | "Detector"
+	           client feature that drives it: "Vehicle" | "Cart" | "Radio" | "Detector" | "Ability" | "Gadget"
 	  Mode     "Place" = selected in the hotbar, placed in the world (preview -> server checks)
 	           "Use"   = used while carried (no world object)
 	           "Activate" = an ability used while carried (left click too), with a cooldown
@@ -143,6 +143,115 @@ local Behaviors = {
 			Distance = 0,
 		},
 	},
+	["Vehicle.Kart"] = {
+		Kind = "Vehicle",
+		Mode = "Place",
+		Model = "TurboKart",
+		Storable = true,
+		Vehicle = {
+			MaxSpeed = 70,
+			Acceleration = 30,
+			Braking = 80,
+			Coast = 14,
+			ReverseSpeed = 18,
+			TurnRate = 1.9,
+			PassengerCapacity = 0,
+			EngineSoundId = "rbxassetid://80317022777602",
+			WheelRadius = 0.9,
+		},
+	},
+	["Vehicle.JetBoard"] = {
+		Kind = "Vehicle",
+		Mode = "Place",
+		Model = "JetBoard",
+		Storable = true,
+		Vehicle = {
+			MaxSpeed = 62,
+			Acceleration = 26,
+			Braking = 55,
+			Coast = 9,
+			ReverseSpeed = 10,
+			TurnRate = 2.3,
+			PassengerCapacity = 0,
+			EngineSoundId = nil,
+			WheelRadius = 0.8,
+		},
+	},
+	-- Storage Box: a cart that is never towed.
+	["Deploy.Storage"] = {
+		Kind = "Cart",
+		Mode = "Place",
+		Model = "Item:storage_box:1.8",
+		Storable = true,
+		FacePlayer = true,
+		Cart = {
+			Fixed = true,
+			Capacity = 6,
+			FollowDistance = 0,
+			FollowSharpness = 0,
+			MaxTowDistance = 0,
+			ContentSize = 1,
+			Slots = {
+				Vector3.new(-1.2, 3.6, -0.6), Vector3.new(0, 3.6, -0.6), Vector3.new(1.2, 3.6, -0.6),
+				Vector3.new(-1.2, 3.6, 0.6), Vector3.new(0, 3.6, 0.6), Vector3.new(1.2, 3.6, 0.6),
+			},
+		},
+	},
+	["Ability.RocketBoots"] = {
+		Kind = "Ability",
+		Mode = "Activate",
+		Ability = { Effect = "RocketJump", Name = "Rocket Jump", Cooldown = 8, Distance = 0 },
+	},
+	["Tool.Magnet"] = {
+		Kind = "Ability",
+		Mode = "Activate",
+		Ability = { Effect = "Magnet", Name = "Pull Scrap", Cooldown = 25, Distance = 0, Range = 28, Amount = 5 },
+	},
+
+	-- Gadgets: placed, press E (server Behaviors/Gadget, client GadgetController).
+	-- Cycle: the prompt always offers the next entry of Modes; Modes[1] = the idle state.
+	["Deploy.Throne"] = { Kind = "Gadget", Mode = "Place", Model = "GoldenThrone", Storable = true, FacePlayer = true,
+		Gadget = { Effect = "Throne", Action = "Sit", Label = "Sit" } },
+	["Deploy.Panel"] = { Kind = "Gadget", Mode = "Place", Model = "Item:glass_panel:2.4", Storable = true, FacePlayer = true,
+		Gadget = { Effect = "Panel", Action = "Cycle", Modes = { "Clear", "Blue", "Red", "Gold", "Green", "Dark" } } },
+	["Deploy.Television"] = { Kind = "Gadget", Mode = "Place", Model = "Item:neon_tv:2", Storable = true, FacePlayer = true,
+		Gadget = { Effect = "Television", Action = "Cycle", Modes = { "Switch off", "Yard news", "Race channel", "Cartoon", "Party colors" } } },
+	["Deploy.Disco"] = { Kind = "Gadget", Mode = "Place", Model = "Item:disco_ball:2", Storable = true, FacePlayer = true,
+		Gadget = { Effect = "Disco", Action = "Cycle", Modes = { "Stop party", "Start party" } } },
+	["Deploy.Fountain"] = { Kind = "Gadget", Mode = "Place", Model = "Item:duck_fountain:2.4", Storable = true, FacePlayer = true,
+		Gadget = { Effect = "Fountain", Action = "Cycle", Modes = { "Turn off", "Water on", "Rainbow water" } } },
+	["Deploy.SnowMachine"] = { Kind = "Gadget", Mode = "Place", Model = "Item:snow_machine:2", Storable = true, FacePlayer = true,
+		Gadget = { Effect = "SnowMachine", Action = "Cycle", Modes = { "Turn off", "Make snow", "Blizzard" } } },
+	["Deploy.FrostLamp"] = { Kind = "Gadget", Mode = "Place", Model = "Item:frost_lamp:2", Storable = true, FacePlayer = true,
+		Gadget = { Effect = "Lamp", Action = "Cycle", Modes = { "Light off", "Ice light", "Warm light", "Violet light" } } },
+	["Deploy.Band"] = { Kind = "Gadget", Mode = "Place", Model = "Item:robot_band:1.8", Storable = true, FacePlayer = true,
+		Gadget = { Effect = "Band", Action = "Cycle", Modes = { "Stop", "Play" } } },
+	["Deploy.Beacon"] = { Kind = "Gadget", Mode = "Place", Model = "Item:crystal_beacon:2", Storable = true, FacePlayer = true,
+		Gadget = { Effect = "Beacon", Action = "Cycle", Modes = { "Turn off", "Violet beam", "Blue beam", "Gold beam" } } },
+	["Deploy.Reactor"] = { Kind = "Gadget", Mode = "Place", Model = "Item:aurora_reactor:1.8", Storable = true, FacePlayer = true,
+		Gadget = { Effect = "Reactor", Action = "Cycle", Modes = { "Shut down", "Start aurora" } } },
+	["Deploy.Generator"] = { Kind = "Gadget", Mode = "Place", Model = "Item:generator:1.8", Storable = true, FacePlayer = true,
+		Gadget = { Effect = "Generator", Action = "Cycle", Modes = { "Shut down", "Start" } } },
+	["Deploy.CosmicGate"] = { Kind = "Gadget", Mode = "Place", Model = "Item:cosmic_gate:2.4", Storable = true, FacePlayer = true,
+		Gadget = { Effect = "Gate", Action = "Cycle", Modes = { "Close gate", "Golden gate", "Pink gate" } } },
+	["Deploy.Incubator"] = { Kind = "Gadget", Mode = "Place", Model = "Item:dragon_incubator:2", Storable = true, FacePlayer = true,
+		Gadget = { Effect = "Incubator", Action = "Cycle", Modes = { "Call it back", "Let it fly" } } },
+	["Deploy.ToastCannon"] = { Kind = "Gadget", Mode = "Place", Model = "Item:toast_cannon:2", Storable = true, FacePlayer = true,
+		Gadget = { Effect = "Toast", Action = "Fire", Label = "Launch toast", Cooldown = 3 } },
+	["Deploy.PlasmaCannon"] = { Kind = "Gadget", Mode = "Place", Model = "Item:plasma_cannon:2", Storable = true, FacePlayer = true,
+		Gadget = { Effect = "Plasma", Action = "Fire", Label = "Fireworks", Cooldown = 5 } },
+	["Deploy.HighFive"] = { Kind = "Gadget", Mode = "Place", Model = "Item:high_five_machine:2.2", Storable = true, FacePlayer = true,
+		Gadget = { Effect = "HighFive", Action = "Fire", Label = "High five!", Cooldown = 1.5 } },
+	["Deploy.Snowman"] = { Kind = "Gadget", Mode = "Place", Model = "Item:scrap_snowman:2", Storable = true, FacePlayer = true,
+		Gadget = { Effect = "Snowman", Action = "Fire", Label = "Snowball burst", Cooldown = 2 } },
+	["Deploy.Arcade"] = { Kind = "Gadget", Mode = "Place", Model = "Item:arcade_machine:2.2", Storable = true, FacePlayer = true,
+		Gadget = { Effect = "Arcade", Action = "Arcade", Label = "Play / React" } },
+	["Deploy.Hologram"] = { Kind = "Gadget", Mode = "Place", Model = "Item:hologram_projector:2", Storable = true, FacePlayer = true,
+		Gadget = { Effect = "Hologram", Action = "Hologram", Label = "Show held item" } },
+	["Companion.Robot"] = { Kind = "Gadget", Mode = "Place", Model = "Item:junk_robot:1.8", Storable = true, FacePlayer = true,
+		Gadget = { Effect = "Robot", Action = "Robot", Label = "Find treasure", Cooldown = 2 } },
+	["Deploy.Launcher"] = { Kind = "Gadget", Mode = "Place", Model = "Item:spring_launcher:2.2", Storable = true, FacePlayer = true,
+		Gadget = { Effect = "Launcher", Action = "None" } },
 	["Tool.Detector"] = {
 		Kind = "Detector",
 		Mode = "Use",
@@ -155,7 +264,7 @@ local Behaviors = {
 	},
 }
 
-local VALID_KINDS = { Vehicle = true, Cart = true, Radio = true, Detector = true, Ability = true }
+local VALID_KINDS = { Vehicle = true, Cart = true, Radio = true, Detector = true, Ability = true, Gadget = true }
 
 for id, behavior in Behaviors :: { [string]: any } do
 	assert(VALID_KINDS[behavior.Kind], `[Behaviors] "{id}" has unknown Kind "{tostring(behavior.Kind)}"`)

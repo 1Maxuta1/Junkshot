@@ -20,8 +20,8 @@
 
 	Persistence: the record lives in profile.Data.Deployed from the moment it is placed. When
 	the owner leaves, the objects are removed from the world (the records stay); on the next
-	join they are placed again on the owner's plot (positions are not kept on purpose: the
-	yard changes between sessions). A record that cannot be restored returns to the hands.
+	join they are placed again on the owner's plot: where they were placed if that was on the
+	own plot (Record.Spot, relative to it), otherwise on a free spot (PLOT_SPOTS). A record that cannot be restored returns to the hands.
 
 	Behavior module contract (Services/Behaviors/<Kind>.luau)
 	  Init(api)                       receives this service (no circular require)
@@ -132,6 +132,12 @@ local PLOT_SPOTS = {
 	Vector3.new(-11, 0, -17),
 	Vector3.new(7, 0, -6),
 	Vector3.new(-5, 0, 16),
+	Vector3.new(5, 0, 16),
+	Vector3.new(-9, 0, 8),
+	Vector3.new(9, 0, 8),
+	Vector3.new(0, 0, -11),
+	Vector3.new(11, 0, -18),
+	Vector3.new(-7, 0, -4),
 }
 
 local started = false
@@ -442,6 +448,14 @@ function PlacementService.Place(player: Player, uid: any, position: any, yaw: an
 		return false, PlacementService.Errors.NotCarried
 	end
 	local record: DeployedRecord = { Uid = taken.Uid, Id = taken.Id }
+	if PlotService.OwnerAt(pivot.Position) == player.UserId then
+		local plot = PlotService.GetPlot(player)
+		if plot ~= nil then
+			local offset = PlotService.GetPlotCFrame(plot):ToObjectSpace(pivot)
+			local _, spotYaw = offset:ToEulerAnglesYXZ()
+			record.Spot = { offset.X, offset.Y, offset.Z, spotYaw }
+		end
+	end
 	table.insert(data.Deployed, record)
 	local entry = spawnEntry(player, record, pivot)
 	if entry == nil then
@@ -521,6 +535,25 @@ local function findPlotSpot(player: Player, record: DeployedRecord): CFrame?
 	end
 	local behavior = ItemCapabilities.GetBehavior(record.Id)
 	local base = PlotService.GetPlotCFrame(plot)
+	local saved = record.Spot
+	if type(saved) == "table" and #saved == 4 then
+		local valid = true
+		for _, value in saved do
+			valid = valid and Validate.IsFiniteNumber(value)
+		end
+		if valid then
+			local _, yaw = (base * CFrame.Angles(0, saved[4], 0)):ToEulerAnglesYXZ()
+			local pivot = PlacementRules.Check({
+				UserId = player.UserId,
+				ModelName = behavior.Model,
+				Position = (base * CFrame.new(saved[1], saved[2], saved[3])).Position,
+				Yaw = yaw,
+			})
+			if pivot ~= nil then
+				return pivot
+			end
+		end
+	end
 	for _, spot in PLOT_SPOTS do
 		local point = base * CFrame.new(spot)
 		local _, yaw = (base * CFrame.Angles(0, math.pi, 0)):ToEulerAnglesYXZ()

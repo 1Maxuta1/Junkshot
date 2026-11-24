@@ -80,6 +80,8 @@ export type DeployedRecord = {
 	Uid: string,
 	Id: string, -- key into ItemConfig
 	Contents: { CarriedJunk }?, -- items inside it (Metal Cart)
+	Spot: { number }?, -- { x, y, z, yaw } relative to the owner's plot, when placed there
+	Mode: number?, Best: number?, Holo: string?, -- Behaviors/Gadget state
 }
 
 -- One currency movement (EconomyService). Kept as a short log in ProfileData.Economy.

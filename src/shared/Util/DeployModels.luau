@@ -17,10 +17,14 @@
 	  - Seats ("DriverSeat" VehicleSeat, "PassengerSeat" Seat) exist only when real = true.
 
 	API
-	  Build(name, real) -> Model
+	  Build(name, real) -> Model   "Item:<itemId>:<scale>" builds a bigger copy of that item's parts
+	                               (first part = Base, the others Part2, Part3 ... as in Config/Items)
 	  GetSize(name) -> Vector3     axis-aligned size of the model at the identity pivot
 	  Exists(name) -> boolean
 ]]
+
+local ItemConfig = require(script.Parent.Parent.Config.ItemConfig)
+local JunkFactory = require(script.Parent.JunkFactory)
 
 local DeployModels = {}
 
@@ -229,14 +233,99 @@ local builders: { [string]: Builder } = {
 	end,
 }
 
+builders.TurboKart = function(model: Model, real: boolean)
+	local paint = rgb(255, 196, 40)
+	local base = addPart(model, "Base", Block, V(3.2, 0.7, 6.4), paint, M.Metal, V(0, 1, 0))
+	base.CanCollide = true
+	for _, x in { -1.9, 1.9 } do
+		for _, z in { -2.2, 2.2 } do
+			local wheel = addPart(model, "Wheel", Cylinder, V(0.8, 1.8, 1.8), rgb(36, 38, 46), M.Slate, V(x, 0.9, z))
+			wheel:SetAttribute("Spin", 0.9)
+			addCollider(model, 0.9, V(x, 0.9, z))
+		end
+	end
+	addPart(model, "Nose", Block, V(2.2, 0.5, 1.6), rgb(236, 74, 70), M.SmoothPlastic, V(0, 1.4, -2.6), V(-10, 0, 0))
+	addPart(model, "Wing", Block, V(4, 0.2, 0.9), rgb(236, 74, 70), M.SmoothPlastic, V(0, 3.1, 2.8))
+	for _, x in { -1.1, 1.1 } do
+		addPart(model, "WingPost", Block, V(0.2, 1.6, 0.4), rgb(60, 66, 90), M.Metal, V(x, 2.2, 2.8))
+		addPart(model, "Jet", Cylinder, V(2, 0.9, 0.9), rgb(60, 66, 90), M.Metal, V(x, 1.7, 2.4), V(0, 90, 0))
+		addPart(model, "Flame", Cylinder, V(0.3, 0.7, 0.7), rgb(255, 120, 40), M.Neon, V(x, 1.7, 3.45), V(0, 90, 0))
+	end
+	addPart(model, "Wheelbar", Cylinder, V(1.1, 0.18, 0.18), rgb(40, 42, 50), M.Metal, V(0, 2.2, -1))
+	addSeat(model, "DriverSeat", true, V(1.5, 0.4, 1.5), V(0, 1.6, 0.5), rgb(40, 42, 50), real)
+end
+
+-- Jet board: a hovering board; invisible rollers keep it above the ground.
+builders.JetBoard = function(model: Model, real: boolean)
+	local base = addPart(model, "Base", Block, V(2, 0.4, 5.2), rgb(70, 210, 240), M.SmoothPlastic, V(0, 1.1, 0))
+	base.CanCollide = true
+	for _, z in { -1.8, 1.8 } do
+		addCollider(model, 0.8, V(0, 0.8, z))
+	end
+	addPart(model, "Nose", Block, V(1.6, 0.35, 1.2), rgb(236, 74, 70), M.SmoothPlastic, V(0, 1.3, -2.9), V(20, 0, 0))
+	for _, x in { -0.8, 0.8 } do
+		addPart(model, "Blade", Block, V(0.15, 0.4, 4.4), rgb(220, 230, 240), M.Metal, V(x, 0.75, 0))
+		addPart(model, "Jet", Cylinder, V(1.4, 0.7, 0.7), rgb(60, 66, 90), M.Metal, V(x, 1.5, 2.2), V(0, 90, 0))
+		addPart(model, "Flame", Cylinder, V(0.3, 0.55, 0.55), rgb(80, 220, 255), M.Neon, V(x, 1.5, 2.95), V(0, 90, 0))
+	end
+	addPart(model, "Column", Cylinder, V(1.8, 0.22, 0.22), rgb(200, 206, 214), M.Metal, V(0, 2.1, -1.6), UPRIGHT)
+	addPart(model, "Handlebar", Cylinder, V(1.6, 0.2, 0.2), rgb(40, 42, 50), M.Metal, V(0, 3, -1.6))
+	addSeat(model, "DriverSeat", true, V(1, 0.3, 1.3), V(0, 1.75, 0.5), rgb(40, 42, 50), real)
+end
+
+-- Golden throne with a real seat.
+builders.GoldenThrone = function(model: Model, real: boolean)
+	local gold = rgb(255, 205, 50)
+	local base = addPart(model, "Base", Block, V(4.2, 1.6, 3.6), gold, M.Metal, V(0, 0.8, 0))
+	base.CanCollide = true
+	addPart(model, "Cushion", Block, V(2.8, 0.3, 2.6), rgb(190, 40, 70), M.Fabric, V(0, 1.75, -0.2))
+	addPart(model, "Back", Block, V(3.4, 5, 0.6), gold, M.Metal, V(0, 4, 1.5)).CanCollide = true
+	addPart(model, "BackCushion", Block, V(2.4, 3.4, 0.2), rgb(190, 40, 70), M.Fabric, V(0, 3.7, 1.15))
+	for _, x in { -1.75, 1.75 } do
+		addPart(model, "Arm", Block, V(0.6, 1.2, 3), gold, M.Metal, V(x, 2.2, 0))
+		addPart(model, "Knob", Enum.PartType.Ball, V(0.9, 0.9, 0.9), rgb(120, 210, 255), M.Neon, V(x, 6.6, 1.5))
+	end
+	addPart(model, "Crown", Block, V(2, 0.5, 0.7), rgb(150, 220, 255), M.Neon, V(0, 6.8, 1.5))
+	addSeat(model, "ThroneSeat", false, V(2, 0.3, 2), V(0, 1.95, -0.2), rgb(190, 40, 70), real)
+	local seat = model:FindFirstChild("ThroneSeat") :: BasePart
+	seat.CanTouch = false -- only the prompt seats somebody
+	seat.Transparency = 1
+end
+
+-- "Item:<id>:<scale>": the item's own parts, bigger, standing on the ground.
+local function itemBuilder(name: string): Builder?
+	local id, scaleText = string.match(name, "^Item:([%w_]+):([%d%.]+)$")
+	local definition = if id ~= nil then ItemConfig.Get(id) else nil
+	local bounds = if id ~= nil then JunkFactory.GetBounds(id) else nil
+	local scale = tonumber(scaleText)
+	if definition == nil or definition.Parts == nil or bounds == nil or scale == nil then
+		return nil
+	end
+	local parts = definition.Parts
+	return function(model: Model, _real: boolean)
+		for index, spec in parts do
+			local part = addPart(model, if index == 1 then "Base" else `Part{index}`, spec.Shape, spec.Size * scale, spec.Color,
+				spec.Material, (spec.Offset - Vector3.new(0, bounds.Min.Y, 0)) * scale, spec.Rotation)
+			part.CanCollide = true
+			if spec.Material == M.Glass then
+				part.Transparency = 0.4
+			end
+		end
+	end
+end
+
+local function findBuilder(name: string): Builder?
+	return builders[name] or itemBuilder(name)
+end
+
 local sizeCache: { [string]: Vector3 } = {}
 
 function DeployModels.Exists(name: string): boolean
-	return builders[name] ~= nil
+	return findBuilder(name) ~= nil
 end
 
 function DeployModels.Build(name: string, real: boolean): Model
-	local builder = builders[name]
+	local builder = findBuilder(name)
 	assert(builder ~= nil, `[DeployModels] unknown model "{name}"`)
 	local model = Instance.new("Model")
 	model.Name = name

@@ -10,8 +10,10 @@
 	    ready again), so leaving and rejoining does not reset it; published as the Player
 	    attribute "Cooldown_<Effect>" for the client's countdown
 	  - the effect is broadcast to every client (AbilityFx) with the server-chosen position;
-	    clients draw it (ItemController/Abilities). Nothing is spawned on the server and nothing
-	    is granted: purely visual.
+	    clients draw it (ItemController/Abilities). Nothing is granted.
+	  - Rocket Boots ("RocketJump"): the owner's own client adds the jump.
+	  - Scrap Magnet ("Magnet"): the server slides a few loose yard items to the player's feet;
+	    only items the player may take (bases and machine trays are respected).
 ]]
 
 local Players = game:GetService("Players")
@@ -20,6 +22,7 @@ local Workspace = game:GetService("Workspace")
 
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
+local JunkService = require(script.Parent.Parent.JunkService)
 local CarryService = require(script.Parent.Parent.CarryService)
 local DataService = require(script.Parent.Parent.DataService)
 
@@ -66,6 +69,39 @@ function Ability.TimeLeft(player: Player, effect: string): number
 	return if type(readyAt) == "number" then math.max(0, readyAt - os.time()) else 0
 end
 
+-- Slides up to `amount` of the nearest loose items to a ring around `center`. Returns how many.
+function Ability.PullScrap(player: Player, center: Vector3, range: number, amount: number): number
+	local found: { { Model: Model, Distance: number } } = {}
+	JunkService.ForEachClaimable(function(model: Model, _uid: string, _id: string, position: Vector3, reservedFor: number?)
+		local distance = (position - center).Magnitude
+		if reservedFor == nil and distance <= range and distance > 6 and JunkService.CanClaim(model, player) then
+			table.insert(found, { Model = model, Distance = distance })
+		end
+	end)
+	table.sort(found, function(a, b)
+		return a.Distance < b.Distance
+	end)
+	local moved = 0
+	for index = 1, math.min(amount, #found) do
+		local angle = index / amount * math.pi * 2
+		local model = found[index].Model
+		local position = JunkService.GetPosition(model)
+		local exclude: { Instance } = { model }
+		for _, other in Players:GetPlayers() do
+			if other.Character ~= nil then
+				table.insert(exclude, other.Character)
+			end
+		end
+		local spot = groundBelow(center + Vector3.new(math.cos(angle) * 3.5, 0, math.sin(angle) * 3.5), exclude)
+		-- The item keeps its height above the ground.
+		local height = if position ~= nil then math.clamp(position.Y - groundBelow(position, exclude).Y, 0, 4) else 0
+		if JunkService.MoveTo(model, spot + Vector3.new(0, height, 0)) then
+			moved += 1
+		end
+	end
+	return moved
+end
+
 function Ability.Use(player: Player, _carried: any, behavior: any): (boolean, string?)
 	local config = behavior.Ability
 	local list = cooldowns(player)
@@ -88,6 +124,15 @@ function Ability.Use(player: Player, _carried: any, behavior: any): (boolean, st
 		end
 	end
 	local target = groundBelow(root.Position + flat * config.Distance, exclude)
+
+	local humanoid = (root.Parent :: Instance):FindFirstChildOfClass("Humanoid")
+	if config.Effect == "RocketJump" and humanoid ~= nil and humanoid.Sit then
+		return false, nil
+	end
+	if config.Effect == "Magnet" and Ability.PullScrap(player, root.Position, config.Range, config.Amount) == 0 then
+		api.Notify(player, "No loose scrap nearby")
+		return false, nil
+	end
 
 	list[config.Effect] = os.time() + config.Cooldown
 	publish(player)

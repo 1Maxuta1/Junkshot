@@ -95,7 +95,14 @@ local list: { Types.Recipe } = {
 		ing("homemade_car"), ing("electric_motor"), ing("control_panel"), ing("toxic_barrel"),
 	}, { DurationOverride = 4 * 60 * 60 }),
 
+	recipe("Vehicles", "jet_board", 2, "Put a jet sled on ice skates.", {
+		ing("jet_sled"), ing("ice_skate", 2), ing("small_engine"),
+	}, { DurationOverride = 90 * 60 }),
+
 	-- Tools
+	recipe("Tools", "rocket_boots", 1, "Boots, springs and a brave little robot.", {
+		ing("old_boot", 2), ing("bouncy_spring", 2), ing("spring_bot"),
+	}),
 	recipe("Tools", "flashlight", 1, "A lamp, a battery and a bucket reflector.", {
 		ing("broken_lamp"), ing("car_battery"), ing("tin_bucket"),
 	}),
@@ -120,7 +127,56 @@ local list: { Types.Recipe } = {
 		ing("small_engine"), ing("battery_pack"), ing("toxic_barrel"), ing("metal_sheet"),
 	}),
 
+	recipe("Deployables", "glass_panel", 1, "Melt bottles into one clear panel.", {
+		ing("soda_bottle", 3),
+	}),
+	recipe("Deployables", "toast_cannon", 1, "Add a spring to a broken toaster.", {
+		ing("broken_toaster"), ing("bouncy_spring"), ing("copper_wire"),
+	}),
+	recipe("Deployables", "high_five_machine", 1, "A mitten on a springy pipe.", {
+		ing("patched_mitten"), ing("bouncy_spring"), ing("pipe_segment"),
+	}),
+	recipe("Deployables", "duck_fountain", 1, "A kettle pumps, the duck supervises.", {
+		ing("rubber_duck"), ing("tin_bucket"), ing("pipe_segment"), ing("copper_kettle"),
+	}),
+	recipe("Deployables", "robot_band", 1, "Two tin robots and an old radio.", {
+		ing("tin_robot", 2), ing("old_radio"),
+	}),
+	recipe("Deployables", "snow_machine", 1, "Shake, heat and blow.", {
+		ing("snow_globe", 2), ing("copper_kettle"), ing("electric_motor"),
+	}),
+	recipe("Deployables", "frost_lamp", 1, "A frost lantern on a tall pole.", {
+		ing("frost_lantern"), ing("pipe_segment", 2), ing("copper_wire"),
+	}),
+	recipe("Deployables", "disco_ball", 1, "Glass around a glowing neon gear.", {
+		ing("neon_gear"), ing("glass_panel", 2), ing("copper_wire"),
+	}),
+	recipe("Deployables", "neon_tv", 1, "Neon gears light up a cracked monitor.", {
+		ing("neon_gear", 2), ing("cracked_monitor"), ing("copper_wire"),
+	}),
+	recipe("Deployables", "arcade_machine", 1, "A joystick, a monitor and a crate.", {
+		ing("arcade_joystick"), ing("cracked_monitor"), ing("circuit_board"), ing("wooden_crate"),
+	}),
+	recipe("Deployables", "crystal_beacon", 2, "Crystals on a powered base.", {
+		ing("crystal_snowman"), ing("crystal_shard"), ing("battery_pack"),
+	}),
+	recipe("Deployables", "plasma_cannon", 2, "Upgrade a toast cannon with plasma.", {
+		ing("plasma_toaster"), ing("toast_cannon"), ing("copper_wire"),
+	}),
+	recipe("Deployables", "hologram_projector", 3, "An aurora orb behind glass.", {
+		ing("aurora_orb"), ing("glass_panel", 2), ing("control_panel"),
+	}),
+
 	-- Special
+	recipe("Special", "golden_throne", 3, "A crown, a wrench and a trophy make a ruler.", {
+		ing("frozen_crown"), ing("golden_wrench"), ing("golden_trophy"),
+	}, { Special = true }),
+	recipe("Special", "dragon_incubator", 3, "Keep the dragon egg cozy until it hatches.", {
+		ing("dragon_egg"), ing("frost_lamp"), ing("generator"),
+	}, { Special = true }),
+	recipe("Special", "cosmic_gate", 3, "Two star relics and a lot of glass.", {
+		ing("starforged_core"), ing("comet_shard"), ing("glass_panel", 2), ing("control_panel"),
+	}, { Special = true }),
 	recipe("Special", "scrap_snowman", 1, "Stack cans and a bucket into a snowman.", {
 		ing("tin_bucket"), ing("rusty_can", 2), ing("soda_bottle"),
 	}),

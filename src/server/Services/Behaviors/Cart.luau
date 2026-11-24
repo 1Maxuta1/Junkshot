@@ -157,6 +157,9 @@ function Cart.Unload(entry: any, player: Player): (boolean, string?)
 end
 
 function Cart.ToggleTow(entry: any)
+	if entry.Behavior.Cart.Fixed then
+		return
+	end
 	setTowing(entry, not entry.State.Towing)
 end
 
@@ -180,6 +183,7 @@ function Cart.Attach(entry: any)
 		held[item.Uid] = true
 	end
 	local base = entry.Model.PrimaryPart
+	if not entry.Behavior.Cart.Fixed then -- the Storage Box stays where it is
 	entry.State.TowPrompt = api.AddPrompt(entry, base, {
 		Name = "TowPrompt",
 		Action = "Tow",
@@ -189,6 +193,7 @@ function Cart.Attach(entry: any)
 	}, function(_player: Player)
 		Cart.ToggleTow(entry)
 	end)
+	end
 	api.AddPrompt(entry, base, {
 		Name = "LoadPrompt",
 		Action = "Load",

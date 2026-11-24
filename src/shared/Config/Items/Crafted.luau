@@ -181,9 +181,118 @@ return {
 	}),
 
 	---------------------------------------------------------------------------------------------
+	-- Gadgets (Behaviors Kind "Gadget"). Part numbers are used by client/GadgetController: keep
+	-- the order.
+	---------------------------------------------------------------------------------------------
+	crafted("glass_panel", "Glass Panel", "Common", "Crafted", "Deployable", "Deploy.Panel", "Melted bottles. Build windows and walls.", {
+		part(Block, V(2.8, 2.4, 0.15), rgb(150, 220, 230), M.Glass),
+		part(Block, V(3, 0.15, 0.3), rgb(150, 170, 196), M.Metal, V(0, -1.25, 0)),
+		part(Block, V(3, 0.15, 0.3), rgb(150, 170, 196), M.Metal, V(0, 1.25, 0)),
+	}),
+	crafted("neon_tv", "Neon Television", "Rare", "Crafted", "Deployable", "Deploy.Television", "Five channels. Shows the yard news and the next race.", {
+		part(Block, V(3, 1.9, 0.5), rgb(40, 44, 66), M.SmoothPlastic, V(0, 0.4, 0)),
+		part(Block, V(2.6, 1.5, 0.1), rgb(20, 24, 40), M.SmoothPlastic, V(0, 0.4, -0.26)),
+		part(Block, V(3.1, 0.12, 0.55), rgb(60, 150, 255), M.Neon, V(0, 1.4, 0)),
+		part(Block, V(1.6, 0.4, 1), rgb(60, 66, 90), M.Metal, V(0, -0.75, 0)),
+	}),
+	crafted("disco_ball", "Disco Ball", "Rare", "Crafted", "Deployable", "Deploy.Disco", "Spins, glows, makes everyone dance.", {
+		part(Cylinder, V(0.3, 1.6, 1.6), rgb(50, 50, 70), M.Metal, V(0, -1.6, 0), UPRIGHT),
+		part(Ball, V(1.6, 1.6, 1.6), rgb(225, 232, 245), M.Foil, V(0, 1.2, 0)),
+		part(Cylinder, V(2.2, 0.2, 0.2), rgb(160, 166, 180), M.Metal, V(0, -0.5, 0), UPRIGHT),
+	}),
+	crafted("duck_fountain", "Duck Fountain", "Uncommon", "Crafted", "Deployable", "Deploy.Fountain", "The duck is in charge of the water.", {
+		part(Cylinder, V(0.6, 2.6, 2.6), rgb(120, 145, 170), M.Metal, nil, UPRIGHT),
+		part(Cylinder, V(0.1, 2.3, 2.3), rgb(90, 190, 240), M.Glass, V(0, 0.3, 0), UPRIGHT),
+		part(Ball, V(1, 1, 1), rgb(255, 214, 50), M.SmoothPlastic, V(0, 0.7, 0)),
+		part(Ball, V(0.6, 0.6, 0.6), rgb(255, 214, 50), M.SmoothPlastic, V(0, 1.3, -0.2)),
+		part(Block, V(0.3, 0.12, 0.3), rgb(255, 130, 40), M.SmoothPlastic, V(0, 1.25, -0.55)),
+	}),
+	crafted("snow_machine", "Snow Machine", "Rare", "Crafted", "Deployable", "Deploy.SnowMachine", "Your own little winter.", {
+		part(Block, V(1.8, 1.2, 1.8), rgb(90, 160, 220), M.Metal),
+		part(Cylinder, V(0.9, 0.9, 0.9), rgb(214, 126, 70), M.Metal, V(0, 0.9, 0), UPRIGHT),
+		part(Ball, V(1, 1, 1), rgb(230, 244, 255), M.Glass, V(0, 1.6, 0)),
+	}),
+	crafted("frost_lamp", "Frost Lamp", "Rare", "Crafted", "Deployable", "Deploy.FrostLamp", "A street lamp with a frosty heart.", {
+		part(Cylinder, V(0.3, 1.2, 1.2), rgb(40, 50, 80), M.Metal, V(0, -2.2, 0), UPRIGHT),
+		part(Ball, V(0.9, 0.9, 0.9), rgb(150, 215, 255), M.SmoothPlastic, V(0, 2.2, 0)),
+		part(Cylinder, V(4, 0.25, 0.25), rgb(40, 50, 80), M.Metal, V(0, -0.1, 0), UPRIGHT),
+		part(Cylinder, V(0.2, 1.1, 1.1), rgb(40, 50, 80), M.Metal, V(0, 2.75, 0), UPRIGHT),
+	}),
+	crafted("robot_band", "Robot Band", "Uncommon", "Crafted", "Deployable", "Deploy.Band", "Two tin robots and a lot of rhythm.", {
+		part(Block, V(3.2, 0.4, 1.6), rgb(80, 50, 120), M.SmoothPlastic, V(0, -1, 0)),
+		part(Block, V(0.8, 1, 0.7), rgb(236, 74, 70), M.Metal, V(-0.9, -0.2, 0)),
+		part(Block, V(0.6, 0.5, 0.5), rgb(196, 206, 220), M.Metal, V(-0.9, 0.6, 0)),
+		part(Block, V(0.8, 1, 0.7), rgb(60, 150, 255), M.Metal, V(0.9, -0.2, 0)),
+		part(Block, V(0.6, 0.5, 0.5), rgb(196, 206, 220), M.Metal, V(0.9, 0.6, 0)),
+	}),
+	crafted("crystal_beacon", "Crystal Beacon", "Epic", "Crafted", "Deployable", "Deploy.Beacon", "A beam of light everybody can see.", {
+		part(Cylinder, V(0.5, 2.2, 2.2), rgb(60, 50, 90), M.Metal, V(0, -0.9, 0), UPRIGHT),
+		part(Block, V(0.8, 2, 0.8), rgb(180, 130, 255), M.Neon, V(0, 0.4, 0), V(0, 45, 0)),
+		part(Block, V(0.4, 1, 0.4), rgb(140, 200, 255), M.Neon, V(0.6, -0.2, 0.2), V(0, 20, -20)),
+	}),
+	crafted("toast_cannon", "Toast Cannon", "Uncommon", "Crafted", "Deployable", "Deploy.ToastCannon", "Breakfast, at high altitude.", {
+		part(Block, V(2, 1.2, 1.4), rgb(190, 196, 206), M.Metal),
+		part(Block, V(1.5, 0.15, 0.3), rgb(40, 40, 46), M.SmoothPlastic, V(0, 0.6, 0)),
+		part(Cylinder, V(0.3, 0.8, 0.8), rgb(235, 55, 130), M.Metal, V(0, -0.75, 0), UPRIGHT),
+	}),
+	crafted("plasma_cannon", "Plasma Fireworks", "Epic", "Crafted", "Deployable", "Deploy.PlasmaCannon", "The toast cannon, but it is plasma now.", {
+		part(Block, V(2, 1, 2), rgb(120, 70, 200), M.Metal),
+		part(Cylinder, V(1.6, 0.7, 0.7), rgb(60, 50, 90), M.Metal, V(-0.5, 1.2, 0), UPRIGHT),
+		part(Cylinder, V(1.6, 0.7, 0.7), rgb(60, 50, 90), M.Metal, V(0.5, 1.2, 0), UPRIGHT),
+		part(Block, V(2.1, 0.15, 2.1), rgb(220, 120, 255), M.Neon, V(0, 0.2, 0)),
+	}),
+	crafted("high_five_machine", "High-Five Machine", "Uncommon", "Crafted", "Deployable", "Deploy.HighFive", "It believes in you.", {
+		part(Block, V(1.4, 1, 1.4), rgb(255, 150, 30), M.SmoothPlastic, V(0, -1, 0)),
+		part(Block, V(1.2, 1.4, 0.5), rgb(220, 70, 70), M.Fabric, V(0, 1.1, 0)),
+		part(Cylinder, V(1.4, 0.3, 0.3), rgb(200, 206, 214), M.Metal, V(0, 0, 0), UPRIGHT),
+	}),
+	crafted("arcade_machine", "Arcade Machine", "Rare", "Crafted", "Deployable", "Deploy.Arcade", "Reaction Rush: beat the best time of the yard.", {
+		part(Block, V(1.8, 3.2, 1.4), rgb(60, 70, 170), M.SmoothPlastic),
+		part(Block, V(1.5, 1.1, 0.1), rgb(20, 24, 40), M.SmoothPlastic, V(0, 0.6, -0.72)),
+		part(Block, V(1.7, 0.2, 0.7), rgb(30, 34, 60), M.SmoothPlastic, V(0, -0.3, -0.95)),
+		part(Ball, V(0.35, 0.35, 0.35), rgb(255, 60, 60), M.SmoothPlastic, V(-0.4, 0, -1)),
+		part(Block, V(1.8, 0.4, 0.2), rgb(255, 80, 180), M.Neon, V(0, 1.4, -0.65)),
+	}),
+	crafted("hologram_projector", "Hologram Projector", "Legendary", "Crafted", "Deployable", "Deploy.Hologram", "Shows a hologram of any item you hold.", {
+		part(Cylinder, V(0.5, 2, 2), rgb(40, 50, 80), M.Metal, nil, UPRIGHT),
+		part(Cylinder, V(0.1, 1.5, 1.5), rgb(120, 255, 220), M.Neon, V(0, 0.28, 0), UPRIGHT),
+	}),
+	crafted("rocket_boots", "Rocket Boots", "Uncommon", "Crafted", "Tool", "Ability.RocketBoots", "Two old boots with a very strong opinion about gravity.", {
+		part(Block, V(0.6, 1.3, 0.8), rgb(120, 82, 52), M.Leather, V(-0.45, 0.2, 0)),
+		part(Block, V(0.6, 0.5, 1.4), rgb(120, 82, 52), M.Leather, V(-0.45, -0.5, -0.25)),
+		part(Block, V(0.6, 1.3, 0.8), rgb(120, 82, 52), M.Leather, V(0.45, 0.2, 0)),
+		part(Block, V(0.6, 0.5, 1.4), rgb(120, 82, 52), M.Leather, V(0.45, -0.5, -0.25)),
+		part(Block, V(1.4, 0.2, 0.5), rgb(255, 130, 40), M.Neon, V(0, -0.8, 0.1)),
+	}),
+	crafted("jet_board", "Jet Board", "Epic", "Crafted", "Vehicle", "Vehicle.JetBoard", "A jet sled on ice skates. What could go wrong?", {
+		part(Block, V(1.2, 0.25, 3), rgb(70, 210, 240), M.SmoothPlastic),
+		part(Block, V(0.1, 0.25, 2.6), rgb(220, 230, 240), M.Metal, V(-0.4, -0.25, 0)),
+		part(Block, V(0.1, 0.25, 2.6), rgb(220, 230, 240), M.Metal, V(0.4, -0.25, 0)),
+		part(Cylinder, V(0.9, 0.5, 0.5), rgb(60, 66, 90), M.Metal, V(0, 0.35, 1.2), V(0, 90, 0)),
+	}),
+	crafted("golden_throne", "Golden Throne", "Legendary", "Crafted", "Deployable", "Deploy.Throne", "For the ruler of the junkyard.", {
+		part(Block, V(1.8, 0.8, 1.6), rgb(255, 205, 50), M.Metal, V(0, -0.8, 0)),
+		part(Block, V(1.6, 2.2, 0.3), rgb(255, 205, 50), M.Metal, V(0, 0.6, 0.65)),
+		part(Block, V(1.3, 0.2, 1.2), rgb(190, 40, 70), M.Fabric, V(0, -0.35, 0)),
+		part(Block, V(0.9, 0.25, 0.35), rgb(150, 220, 255), M.Neon, V(0, 1.8, 0.65)),
+	}),
+	crafted("dragon_incubator", "Dragon Incubator", "Mythic", "Crafted", "Deployable", "Deploy.Incubator", "The egg hatched. It likes flying.", {
+		part(Cylinder, V(0.6, 2.4, 2.4), rgb(40, 50, 80), M.Metal, nil, UPRIGHT),
+		part(Ball, V(1.5, 1.5, 1.5), rgb(120, 220, 255), M.Ice, V(0, 0.9, 0)),
+		part(Cylinder, V(0.15, 2.1, 2.1), rgb(255, 150, 60), M.Neon, V(0, 0.3, 0), UPRIGHT),
+	}),
+	crafted("cosmic_gate", "Cosmic Gate", "Mythic", "Crafted", "Deployable", "Deploy.CosmicGate", "A window to the stars.", {
+		part(Block, V(3, 0.4, 1.4), rgb(50, 40, 80), M.Metal, V(0, -1.9, 0)),
+		part(Cylinder, V(0.15, 2.8, 2.8), rgb(60, 40, 110), M.Glass, nil, V(0, 90, 0)),
+		part(Ball, V(0.5, 0.5, 0.5), rgb(255, 220, 120), M.Neon, V(0, 1.6, 0)),
+		part(Ball, V(0.5, 0.5, 0.5), rgb(150, 200, 255), M.Neon, V(1.5, -0.5, 0)),
+		part(Ball, V(0.5, 0.5, 0.5), rgb(255, 120, 220), M.Neon, V(-1.5, -0.5, 0)),
+	}),
+
+	---------------------------------------------------------------------------------------------
 	-- Special creations
 	---------------------------------------------------------------------------------------------
-	crafted("scrap_snowman", "Scrap Snowman", "Common", "Crafted", "Collectible", nil, "A snowman built from cans. Very festive.", {
+	crafted("scrap_snowman", "Scrap Snowman", "Common", "Crafted", "Deployable", "Deploy.Snowman", "A snowman built from cans. Very festive.", {
 		part(Ball, V(1.8, 1.8, 1.8), rgb(196, 204, 216), M.Metal),
 		part(Ball, V(1.3, 1.3, 1.3), rgb(196, 204, 216), M.Metal, V(0, 1.4, 0)),
 		part(Cylinder, V(0.9, 1, 1), rgb(120, 145, 170), M.Metal, V(0, 2.4, 0), UPRIGHT),
