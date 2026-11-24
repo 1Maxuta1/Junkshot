@@ -109,9 +109,9 @@ local function buildBooth(ground: CFrame): Model
 	pompom.Shape = Enum.PartType.Ball
 	local tag = Instance.new("BillboardGui")
 	tag.Name = "NameTag"
-	tag.Size = UDim2.fromOffset(150, 22)
+	tag.Size = UDim2.fromScale(4, 0.7) -- in studs: it shrinks with distance
 	tag.StudsOffsetWorldSpace = Vector3.new(0, 2.1, 0)
-	tag.MaxDistance = 60
+	tag.MaxDistance = 45
 	tag.LightInfluence = 0
 	local tagLabel = label:Clone()
 	tagLabel.Text = "Scrappy Sam"
