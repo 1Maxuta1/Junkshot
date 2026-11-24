@@ -27,6 +27,7 @@
 local fs = require("@lune/fs")
 local roblox = require("@lune/roblox")
 local Prefabs = require("./Prefabs")
+local RaceZone = require("./RaceZone")
 
 local Instance = roblox.Instance
 local Vector3 = roblox.Vector3
@@ -326,6 +327,9 @@ end
 for index = 0, 7 do
 	local degrees = index * 45 + 22.5
 	local base = polar(196, degrees)
+	if index == 6 then
+		continue -- the path to the race gate runs here
+	end
 	Prefabs.Pine(decor, CFrame.new(base) * yaw(index * 17), 0.95 + (index % 3) * 0.1)
 	Prefabs.SnowPile(decor, facing(polar(176, degrees), ORIGIN), 0.5)
 end
@@ -389,6 +393,9 @@ for _, side in sides do
 	for index = 0, count - 1 do
 		wallIndex += 1
 		local along = start + index * CONTAINER_STEP
+		if side.Axis == "X" and side.Sign == -1 and math.abs(along - RaceZone.GateX) < 1 then
+			continue -- the gate to the race zone
+		end
 		local depth = side.Sign * (YARD_HALF + 4.5)
 		local position = if side.Axis == "X" then Vector3.new(along, 0, depth) else Vector3.new(depth, 0, along)
 		local cf = CFrame.new(position) * (if side.Axis == "X" then CFrame.new() else yaw(90))
@@ -400,25 +407,38 @@ for _, side in sides do
 
 	-- Invisible wall on the inner face: keeps players and thrown junk inside the yard.
 	local wallCenter = side.Sign * (YARD_HALF + 1)
-	Part(boundary, {
-		Name = "Barrier",
-		Size = if side.Axis == "X"
-			then Vector3.new(YARD_HALF * 2 + 4, 120, 2)
-			else Vector3.new(2, 120, YARD_HALF * 2 + 4),
-		CFrame = CFrame.new(if side.Axis == "X" then Vector3.new(0, 60, wallCenter) else Vector3.new(wallCenter, 60, 0)),
-		Transparency = 1,
-		CastShadow = false,
-	})
+	local runs = { { -YARD_HALF - 2, YARD_HALF + 2 } }
+	if side.Axis == "X" and side.Sign == -1 then -- leave the race gate open
+		runs = {
+			{ -YARD_HALF - 2, RaceZone.GateX - RaceZone.GateHalf },
+			{ RaceZone.GateX + RaceZone.GateHalf, YARD_HALF + 2 },
+		}
+	end
+	for _, run in runs do
+		local middle, length = (run[1] + run[2]) / 2, run[2] - run[1]
+		Part(boundary, {
+			Name = "Barrier",
+			Size = if side.Axis == "X" then Vector3.new(length, 120, 2) else Vector3.new(2, 120, length),
+			CFrame = CFrame.new(if side.Axis == "X" then Vector3.new(middle, 60, wallCenter) else Vector3.new(wallCenter, 60, middle)),
+			Transparency = 1,
+			CastShadow = false,
+		})
+	end
 
 	-- Backdrop pines outside the wall.
 	local treeCount = 13
 	for index = 0, treeCount - 1 do
 		local along = -YARD_HALF + 20 + index * ((YARD_HALF * 2 - 40) / (treeCount - 1))
+		if side.Axis == "X" and side.Sign == -1 and math.abs(along - RaceZone.GateX) < 24 then
+			continue -- keep the race gate clear
+		end
 		local depth = side.Sign * (YARD_HALF + 20 + (index % 2) * 6)
 		local position = if side.Axis == "X" then Vector3.new(along, 0, depth) else Vector3.new(depth, 0, along)
 		Prefabs.Pine(boundary, CFrame.new(position) * yaw(index * 23), 1.15 + (index % 3) * 0.15)
 	end
 end
+
+RaceZone.Build(map)
 
 ---------------------------------------------------------------------------------------------
 -- Write
