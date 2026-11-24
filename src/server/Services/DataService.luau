@@ -340,6 +340,36 @@ function DataService.GetData(player: Player): Types.ProfileData?
 	return profile.Data :: any
 end
 
+-- Starts a save now instead of waiting for the next auto save (does not yield).
+function DataService.SaveNow(player: Player)
+	if DataService.IsLoaded(player) then
+		Profiles[player]:Save()
+	end
+end
+
+-- Saves and waits until a FINISHED save contains the change (isSaved looks at the saved data).
+-- Yields up to `timeout` seconds. false = not confirmed: assume it is not on disk yet. Keeps
+-- working when the player leaves meanwhile (the leave save confirms it as well).
+function DataService.SaveAndConfirm(player: Player, isSaved: (saved: any) -> boolean, timeout: number): boolean
+	local profile = Profiles[player]
+	if profile == nil or not DataService.IsLoaded(player) then
+		return false
+	end
+	local confirmed = false
+	local connection = profile.OnAfterSave:Connect(function(saved: any)
+		if type(saved) == "table" and isSaved(saved) then
+			confirmed = true
+		end
+	end)
+	profile:Save()
+	local deadline = os.clock() + timeout
+	while not confirmed and os.clock() < deadline do
+		task.wait(0.1)
+	end
+	connection:Disconnect()
+	return confirmed
+end
+
 -- Polls until the player's data is ready, the player leaves, or the timeout passes.
 function DataService.WaitForData(player: Player, timeout: number): Types.ProfileData?
 	local deadline = os.clock() + timeout

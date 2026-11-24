@@ -52,6 +52,7 @@ export type MachineJob = {
 	StartedAt: number,
 	Duration: number, -- seconds, after upgrades
 	Accelerated: number, -- seconds removed by clicks / boosts
+	Clicked: number?, -- of those, seconds removed by clicks (MachineConfig.MaxClickShare)
 	Inputs: { CarriedJunk }, -- consumed items (kept for support/audit)
 	RecipeId: string?,
 	Result: CarriedJunk, -- decided when the job starts (no re-roll by rejoining)

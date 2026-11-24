@@ -20,8 +20,9 @@
 	DEVELOPER PRODUCTS (repeatable)
 	  - The game's ONLY MarketplaceService.ProcessReceipt. The receipt is validated (PlayerId,
 	    ProductId, PurchaseId), routed to the product's Handler, and acknowledged
-	    (PurchaseGranted) only after the grant succeeded AND the PurchaseId was stored in the
-	    buyer's profile (last MaxStoredReceipts). A repeated PurchaseId is acknowledged without
+	    (PurchaseGranted) only after the grant succeeded AND a finished profile save contains the
+	    PurchaseId (last MaxStoredReceipts), so a server crash can never lose a paid item: the
+	    grant and the id are in the same save, or neither is. A repeated PurchaseId is acknowledged without
 	    granting again. Anything uncertain returns NotProcessedYet so Roblox retries.
 
 	No remote can grant anything. Clients only open Roblox's own purchase prompts.
@@ -74,6 +75,9 @@ local function registerProducts()
 	end
 end
 
+local SAVE_TIMEOUT = 25
+local confirmSave: (player: Player, isSaved: (saved: any) -> boolean, timeout: number) -> boolean = DataService.SaveAndConfirm
+
 local function processReceipt(receipt: any): Enum.ProductPurchaseDecision
 	if type(receipt) ~= "table" or type(receipt.PlayerId) ~= "number" or type(receipt.ProductId) ~= "number"
 		or receipt.PurchaseId == nil
@@ -92,8 +96,14 @@ local function processReceipt(receipt: any): Enum.ProductPurchaseDecision
 		(data :: any).Purchases = {}
 	end
 	local purchaseId = tostring(receipt.PurchaseId)
+	local function confirm(): Enum.ProductPurchaseDecision
+		local onDisk = confirmSave(player, function(saved: any): boolean
+			return type(saved.Purchases) == "table" and table.find(saved.Purchases, purchaseId) ~= nil
+		end, SAVE_TIMEOUT)
+		return if onDisk then Enum.ProductPurchaseDecision.PurchaseGranted else Enum.ProductPurchaseDecision.NotProcessedYet
+	end
 	if table.find(data.Purchases, purchaseId) ~= nil then
-		return Enum.ProductPurchaseDecision.PurchaseGranted -- already granted earlier
+		return confirm() -- granted earlier (never twice); acknowledged once it is on disk
 	end
 	local grant = handlers[receipt.ProductId]
 	if grant == nil then
@@ -108,7 +118,7 @@ local function processReceipt(receipt: any): Enum.ProductPurchaseDecision
 	while #data.Purchases > MonetizationConfig.MaxStoredReceipts do
 		table.remove(data.Purchases, 1)
 	end
-	return Enum.ProductPurchaseDecision.PurchaseGranted
+	return confirm()
 end
 
 ---------------------------------------------------------------------------------------------
@@ -220,6 +230,10 @@ MonetizationService.ProductHandlers = PRODUCT_HANDLERS
 -- DevTests (Studio only): run the receipt logic with a fake receipt, register a test product,
 -- replace the ownership source to simulate owning / API failures. Never used in a live game.
 MonetizationService.ProcessReceiptForTest = processReceipt
+MonetizationService.SetConfirmForTest = function(confirm: ((Player, (any) -> boolean, number) -> boolean)?)
+	assert(RunService:IsStudio(), "test hook")
+	confirmSave = confirm or DataService.SaveAndConfirm
+end
 MonetizationService.RegisterHandlerForTest = function(productId: number, grant: (player: Player) -> boolean)
 	assert(RunService:IsStudio(), "test hook")
 	handlers[productId] = grant

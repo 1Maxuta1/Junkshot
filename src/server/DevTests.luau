@@ -735,11 +735,14 @@ local function runMachineTests(player: Player)
 	local afterFive = MachineService.GetRemaining(player) :: number
 	check("five more clicks remove five more seconds", math.abs((after - afterFive) - 5) < 0.2, string.format("%.3f", after - afterFive))
 	local clicks = 0
-	while MachineService.GetRemaining(player) ~= nil and clicks < 60 do
-		MachineService.Accelerate(player)
+	while clicks < 60 and MachineService.Accelerate(player) do
 		clicks += 1
 	end
-	check("clicking to zero finishes the job", MachineService.GetRemaining(player) == nil and model:GetAttribute("State") == "RewardReady")
+	check("clicks remove at most half of the job", clicks + 6 == 15 and MachineService.GetRemaining(player) ~= nil, tostring(clicks + 6))
+	check("and the limit has its own error", (select(2, MachineService.Accelerate(player))) == errors.ClickLimit)
+	check("the panel learns the limit", (model:GetAttribute("ClickLeft") or 1) < 1)
+	MachineService.SkipTime(player, 3600)
+	check("bought time finishes the job", MachineService.GetRemaining(player) == nil and model:GetAttribute("State") == "RewardReady")
 	local extraOk, extraErr = MachineService.Accelerate(player)
 	check("clicking a finished machine is rejected", not extraOk and extraErr == errors.NoJob, tostring(extraErr))
 
@@ -907,6 +910,15 @@ local function runMachineTests(player: Player)
 		grants += 1
 		return true
 	end)
+	local failing = { PlayerId = player.UserId, ProductId = 424242, PurchaseId = "devtest-" .. JunkService.NewUid() }
+	MonetizationService.SetConfirmForTest(function()
+		return false -- the save never finishes
+	end)
+	check("a receipt that is not on disk is not acknowledged", MonetizationService.ProcessReceiptForTest(failing) == Enum.ProductPurchaseDecision.NotProcessedYet and grants == 1)
+	MonetizationService.SetConfirmForTest(nil)
+	check("its retry is acknowledged after a real save and not granted twice",
+		MonetizationService.ProcessReceiptForTest(failing) == Enum.ProductPurchaseDecision.PurchaseGranted and grants == 1, tostring(grants))
+	grants = 0
 	local receipt = { PlayerId = player.UserId, ProductId = 424242, PurchaseId = "devtest-" .. JunkService.NewUid() }
 	local first = MonetizationService.ProcessReceiptForTest(receipt)
 	local second = MonetizationService.ProcessReceiptForTest(receipt)

@@ -246,7 +246,7 @@ function Panel.Mount(screenGui: ScreenGui, actions: Widgets.Actions, durationFor
 	tabs.UPGRADES = UpgradesTab.Mount(tabFrames.UPGRADES, actions)
 
 	speedButton.Activated:Connect(function()
-		if lastView ~= nil and lastView.State == "Processing" then
+		if lastView ~= nil and lastView.State == "Processing" and lastView.ClickLeft >= 1 then
 			actions.Accelerate()
 			speedScale.Scale = 0.9
 			TweenService:Create(speedScale, TweenInfo.new(0.12), { Scale = 1 }):Play()
@@ -342,7 +342,9 @@ function Panel.Mount(screenGui: ScreenGui, actions: Widgets.Actions, durationFor
 		end
 		speedButton.Visible = view.State == "Processing"
 		skipButton.Visible = speedButton.Visible
-		speedLabel.Text = "SPEED UP\n-1s"
+		local canClick = view.ClickLeft >= 1
+		speedLabel.Text = if canClick then `SPEED UP -1s\n{Widgets.FormatTime(view.ClickLeft)} left` else "CLICK\nLIMIT"
+		speedButton.BackgroundColor3 = if canClick then Theme.Colors.Ice else Theme.Colors.InkSoft
 		renderTray(view)
 		for _, tab in tabs do
 			tab.Render(view)

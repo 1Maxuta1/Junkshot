@@ -194,6 +194,7 @@ local function buildView(view: View): Widgets.View
 		JobLabel = text("JobLabel"),
 		StartedAt = number("JobStartedAt", 0),
 		CompletesAt = number("JobCompletesAt", 0),
+		ClickLeft = number("ClickLeft", 0),
 		Duration = number("JobDuration", 0),
 		Output = parseList(attr(view, "OutputList")),
 		OutputCapacity = number("OutputCapacity", 1),

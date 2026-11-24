@@ -31,6 +31,7 @@ local MachineConfig = {
 	MinDuration = 5, -- no upgrade combination makes a job shorter than this
 
 	SecondsPerClick = 1, -- every valid acceleration click removes exactly this much
+	MaxClickShare = 0.5, -- all clicks of one job together remove at most this share of its duration
 
 	UseDistance = 22, -- studs from the machine within which items can be inserted / taken
 	PromptDistance = 14, -- the machine ProximityPrompt's activation distance

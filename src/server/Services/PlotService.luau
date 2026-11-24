@@ -8,7 +8,8 @@
 	    released when they leave. Lowest free PlotId first.
 	  - The plot's attributes Owner (UserId, 0 = free) and OwnerName are set, and its sign shows
 	    the owner's name.
-	  - With more players than plots, the extra players simply get no plot (warned).
+	  - With more players than plots, the extra players are told so (every WAIT_NOTICE seconds)
+	    and get the next plot that becomes free. Servers should be set to 8 players (= plots).
 
 	Public API (server only)
 	  GetPlot(player) -> Model?
@@ -21,11 +22,13 @@ local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Signal = require(ReplicatedStorage.Shared.Util.Signal)
 local DataService = require(script.Parent.DataService)
 local JunkService = require(script.Parent.JunkService)
 
 local PLOT_TAG = "BasePlot"
+local WAIT_NOTICE = 30
 
 local PlotService = {}
 
@@ -35,6 +38,7 @@ PlotService.PlotReleased = Signal.new() -- (player: Player, plot: Model)
 local started = false
 local plotOf: { [Player]: Model } = {}
 local ownerOf: { [Model]: Player } = {}
+local waiting: { Player } = {} -- loaded players without a plot, first come first served
 
 local function getPlots(): { Model }
 	local plots: { Model } = {}
@@ -100,10 +104,17 @@ local function assign(player: Player)
 			return
 		end
 	end
-	warn(`[PlotService] no free plot for {player.Name}`)
+	if table.find(waiting, player) == nil then
+		warn(`[PlotService] no free plot for {player.Name}`)
+		table.insert(waiting, player)
+	end
 end
 
 local function release(player: Player)
+	local index = table.find(waiting, player)
+	if index ~= nil then
+		table.remove(waiting, index)
+	end
 	local plot = plotOf[player]
 	if plot == nil then
 		return
@@ -114,12 +125,29 @@ local function release(player: Player)
 	plot:SetAttribute("Owner", 0)
 	plot:SetAttribute("OwnerName", "")
 	setSign(plot, `BASE {plot:GetAttribute("PlotId")}`)
+	local nextPlayer = table.remove(waiting, 1)
+	if nextPlayer ~= nil then
+		task.defer(assign, nextPlayer) -- after every PlotReleased handler has cleaned up
+	end
+end
+
+-- DevTests: is this player waiting for a plot?
+function PlotService.IsWaiting(player: Player): boolean
+	return table.find(waiting, player) ~= nil
 end
 
 function PlotService.Start()
 	assert(not started, "[PlotService] Start() called twice")
 	started = true
 
+	task.spawn(function()
+		while true do
+			task.wait(WAIT_NOTICE)
+			for _, player in waiting do
+				Remotes.GetEvent("Notify"):FireClient(player, "Every base is taken. You get the next free one!", "Warning")
+			end
+		end
+	end)
 	if #getPlots() == 0 then
 		warn(`[PlotService] no plots found (Models tagged "{PLOT_TAG}")`)
 	end

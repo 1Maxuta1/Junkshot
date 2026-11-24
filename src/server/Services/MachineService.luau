@@ -98,6 +98,7 @@ MachineService.Errors = table.freeze({
 	Locked = "Locked",
 	MissingIngredients = "MissingIngredients",
 	NoJob = "NoJob",
+	ClickLimit = "ClickLimit",
 	NotInOutput = "NotInOutput",
 	CarryFull = "CarryFull",
 	UnknownUpgrade = "UnknownUpgrade",
@@ -203,6 +204,9 @@ local function sanitize(player: Player, data: any, carry: any)
 			and not seen[job.Result.Uid]
 		if valid then
 			seen[job.Result.Uid] = true
+			if not Validate.IsFiniteNumber(job.Clicked) or (job.Clicked :: number) < 0 then
+				job.Clicked = 0
+			end
 			if type(job.Label) ~= "string" then
 				job.Label = ItemConfig.GetDisplayName(job.Result.Id)
 			end
@@ -233,6 +237,11 @@ end
 -- World presentation
 ---------------------------------------------------------------------------------------------
 
+-- Seconds that clicks may still remove from this job.
+local function clickLeft(job: any): number
+	return math.max(0, math.floor(job.Duration * MachineConfig.MaxClickShare) - (job.Clicked or 0))
+end
+
 local function publish(machine: Machine)
 	local model = machine.Model
 	if model == nil then
@@ -247,6 +256,7 @@ local function publish(machine: Machine)
 	model:SetAttribute("JobStartedAt", if job ~= nil then job.StartedAt else 0)
 	model:SetAttribute("JobDuration", if job ~= nil then job.Duration else 0)
 	model:SetAttribute("JobCompletesAt", if job ~= nil then completesAt(job) else 0)
+	model:SetAttribute("ClickLeft", if job ~= nil then clickLeft(job) else 0)
 	model:SetAttribute("OutputCount", #data.Output)
 	local outputs = table.create(#data.Output)
 	for index, entry in data.Output do
@@ -514,7 +524,8 @@ function MachineService.Mythic(player: Player, uidA: any, uidB: any, uidC: any):
 	return true, nil
 end
 
--- One valid click removes exactly MachineConfig.SecondsPerClick (never below zero).
+-- One valid click removes exactly MachineConfig.SecondsPerClick (never below zero), until the
+-- clicks of this job have removed MachineConfig.MaxClickShare of it.
 function MachineService.Accelerate(player: Player): (boolean, string?)
 	local machine = machines[player]
 	if machine == nil then
@@ -529,7 +540,12 @@ function MachineService.Accelerate(player: Player): (boolean, string?)
 		settle(machine)
 		return false, MachineService.Errors.NoJob
 	end
-	job.Accelerated += math.min(MachineConfig.SecondsPerClick, left)
+	if clickLeft(job) < MachineConfig.SecondsPerClick then
+		return false, MachineService.Errors.ClickLimit
+	end
+	local removed = math.min(MachineConfig.SecondsPerClick, left)
+	job.Accelerated += removed
+	job.Clicked = (job.Clicked or 0) + removed
 	if remaining(job) <= 0 then
 		settle(machine)
 	else

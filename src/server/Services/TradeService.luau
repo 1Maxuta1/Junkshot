@@ -30,6 +30,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Validate = require(ReplicatedStorage.Shared.Util.Validate)
 
 local CarryService = require(script.Parent.CarryService)
+local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
 local RemoteGuard = require(script.Parent.RemoteGuard)
 
@@ -241,6 +242,11 @@ local function execute(session: Session): (boolean, string?)
 			EconomyService.Spend(player, offer.Klunks, "Trade")
 			EconomyService.Earn(otherOf(session, player), offer.Klunks, "Trade")
 		end
+	end
+	-- Both profiles are written right away: a crash between their separate saves could otherwise
+	-- leave an item with both players (or with nobody) for up to a whole auto save period.
+	for player in session.Offers do
+		DataService.SaveNow(player)
 	end
 	return true, nil
 end

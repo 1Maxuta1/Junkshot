@@ -20,6 +20,7 @@ export type View = {
 	JobLabel: string,
 	StartedAt: number,
 	CompletesAt: number,
+	ClickLeft: number, -- seconds clicks may still remove from this job
 	Duration: number,
 	Output: { Types.CarriedJunk },
 	OutputCapacity: number,
