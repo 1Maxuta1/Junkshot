@@ -153,9 +153,10 @@ function NotifyController.Start()
 	-- Messages sent before the toast stack exists are dropped (nothing important is lost).
 	task.spawn(function()
 		stack = build()
-		Remotes.GetEvent("Notify").OnClientEvent:Connect(function(message: any)
+		-- (message, kind?) - kind defaults to "Warning" (most server messages are refusals).
+		Remotes.GetEvent("Notify").OnClientEvent:Connect(function(message: any, kind: any)
 			if type(message) == "string" and #message > 0 and #message <= MAX_LENGTH then
-				NotifyController.Show(message, "Warning")
+				NotifyController.Show(message, if kind == "Info" or kind == "Success" then kind else "Warning")
 			end
 		end)
 	end)

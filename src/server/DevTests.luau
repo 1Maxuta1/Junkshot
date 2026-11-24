@@ -71,6 +71,8 @@ local AudioService = require(script.Parent.Services.AudioService)
 local CosmeticsService = require(script.Parent.Services.CosmeticsService)
 local CompanionService = require(script.Parent.Services.CompanionService)
 local WorldServiceModule = require(script.Parent.Services.WorldService)
+local WorldEventService = require(script.Parent.Services.WorldEventService)
+local WorldEventConfig = require(ReplicatedStorage.Shared.Config.WorldEventConfig)
 
 local DevTests = {}
 
@@ -1853,6 +1855,110 @@ local function runMonetizationTests(player: Player)
 	PlotService.PlotAssigned:Fire(player, PlotService.GetPlot(player))
 end
 
+local function runCreatureTests(player: Player)
+	local root = waitForLiveRoot(player, 15)
+	if root == nil then
+		warn("[DevTests] no character: creature tests skipped")
+		return
+	end
+	local home = root.CFrame
+	local Errors = WorldEventService.Errors
+	local pool = ItemConfig.GetRewardPool("Rare")
+	local function claim(model: any): (boolean, string?)
+		task.wait(WorldEventConfig.ClaimCooldown + 0.1)
+		return WorldEventService.TryClaim(player, model)
+	end
+	WorldEventService.Despawn()
+	CarryService.Clear(player)
+
+	local valid = 0
+	for index, point in WorldEventConfig.SpawnPoints do
+		if WorldEventService.CheckSpawnPoint(point) ~= nil then
+			valid += 1
+		else
+			print(`[DevTests] spawn point {index} ({point}) is not usable right now`)
+		end
+	end
+	check("most creature spawn points are usable", valid >= #WorldEventConfig.SpawnPoints * 0.7, `{valid}/{#WorldEventConfig.SpawnPoints}`)
+	local plot = PlotService.GetPlot(player)
+	check("a point on a base plot is refused", plot ~= nil and WorldEventService.CheckSpawnPoint(plot:GetPivot().Position) == nil)
+	check("a point outside the map is refused", WorldEventService.CheckSpawnPoint(Vector3.new(5000, 0, 5000)) == nil)
+
+	local model = WorldEventService.SpawnNow()
+	check("a creature spawns", model ~= nil and WorldEventService.GetActive() == model)
+	if model == nil then
+		return
+	end
+	check("only one creature at a time", WorldEventService.SpawnNow() == nil)
+	check("it has a prompt", model:FindFirstChild("CatchPrompt", true) ~= nil)
+	check("it is a tagged, active creature", model:HasTag(WorldEventConfig.Tag) and model:GetAttribute("State") == "Active")
+
+	local spot = model:GetPivot().Position
+	teleportNear(player, CFrame.new(spot + Vector3.new(WorldEventConfig.ClaimDistance + 20, 4, 0)))
+	local ok, err = claim(model)
+	check("too far away is refused", not ok and err == Errors.TooFar, tostring(err))
+	teleportNear(player, CFrame.new(spot + Vector3.new(3, 4, 0)))
+	ok, err = WorldEventService.TryClaim(player, model)
+	check("repeated requests are rate limited", not ok and err == Errors.TooFast, tostring(err))
+	teleportNear(player, CFrame.new(spot + Vector3.new(3, 4, 0)))
+	ok, err = claim(model)
+	local carriedList = CarryService.GetCarried(player)
+	check("a close player catches it", ok, tostring(err))
+	check("exactly one Rare item is in the hands", #carriedList == 1 and table.find(pool, carriedList[1].Id) ~= nil)
+	check("the model says who won what", model:GetAttribute("ClaimedBy") == player.UserId
+		and model:GetAttribute("RewardId") == (carriedList[1] and carriedList[1].Id) and model:GetAttribute("RewardWhere") == "Hands")
+	check("the prompt is gone at once", model:FindFirstChild("CatchPrompt", true) == nil)
+	ok, err = claim(model)
+	check("a second claim gets nothing", not ok and err == Errors.Gone and CarryService.GetCount(player) == 1, tostring(err))
+	task.wait(WorldEventConfig.FadeTime + 0.2)
+	check("the caught creature is removed", model.Parent == nil)
+
+	-- Full hands: the reward falls on the ground, reserved for the winner.
+	while CarryService.GetCount(player) < CarryService.GetCapacity(player) do
+		if not CarryService.AddJunk(player, pool[1]) then
+			break
+		end
+	end
+	local before = CarryService.GetCount(player)
+	local second = WorldEventService.SpawnNow()
+	if second ~= nil then
+		teleportNear(player, CFrame.new(second:GetPivot().Position + Vector3.new(3, 4, 0)))
+		ok, err = claim(second)
+		check("full hands still win", ok, tostring(err))
+		check("the hands did not change", CarryService.GetCount(player) == before)
+		check("the reward is on the ground", second:GetAttribute("RewardWhere") == "Ground")
+		local found: Model? = nil
+		JunkService.ForEachClaimable(function(junk, _uid, id, position, reservedFor)
+			if id == second:GetAttribute("RewardId") and reservedFor == player.UserId
+				and (position - second:GetPivot().Position).Magnitude < 25 then
+				found = junk
+			end
+		end)
+		check("it is reserved for the winner", found ~= nil)
+		if found ~= nil then
+			local uid = JunkService.GetUid(found)
+			if uid ~= nil then
+				JunkService.Despawn(uid)
+			end
+		end
+	else
+		check("a second creature spawns", false)
+	end
+
+	-- Leaving
+	local third = WorldEventService.SpawnNow()
+	check("a third creature spawns", third ~= nil)
+	if third ~= nil then
+		teleportNear(player, CFrame.new(third:GetPivot().Position + Vector3.new(3, 4, 0)))
+		WorldEventService.Despawn()
+		ok, err = claim(third)
+		check("a departed creature cannot be caught", not ok and err == Errors.Gone, tostring(err))
+	end
+	check("nothing is active afterwards", WorldEventService.GetActive() == nil)
+	CarryService.Clear(player)
+	teleportNear(player, home)
+end
+
 function DevTests.Run()
 	print("[DevTests] waiting for a player...")
 	local player = waitForPlayer(60)
@@ -1882,6 +1988,7 @@ function DevTests.Run()
 	runEconomyTests(player)
 	runBaseTests(player)
 	runMonetizationTests(player)
+	runCreatureTests(player)
 
 	print(`[DevTests] done: {passed} passed, {failed} failed`)
 end

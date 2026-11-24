@@ -44,6 +44,12 @@ local AudioConfig = {
 		CometImpact = { SoundId = "rbxasset://sounds/impact_explosion_03.mp3", Volume = 0.6, Pitch = 0.85 },
 		StarChime = { SoundId = "rbxasset://sounds/electronicpingshort.wav", Volume = 0.25, Pitch = 1.6 },
 	},
+	-- The Rare Creature world event (client/CreatureController).
+	Creature = {
+		Appear = { SoundId = "rbxasset://sounds/electronicpingshort.wav", Volume = 0.35, Pitch = 1.25 },
+		Catch = { SoundId = "rbxasset://sounds/electronicpingshort.wav", Volume = 0.5, Pitch = 1.9 },
+		Range = 120,
+	},
 	CueCooldown = 0.8, -- seconds: the same cue never plays more often than this
 	Defaults = { Music = 0.6, Sfx = 0.8, Muted = false }, -- the player's own settings (0..1)
 }
