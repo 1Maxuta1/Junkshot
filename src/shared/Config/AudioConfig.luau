@@ -51,7 +51,7 @@ local AudioConfig = {
 		Range = 120,
 	},
 	CueCooldown = 0.8, -- seconds: the same cue never plays more often than this
-	Defaults = { Music = 0.6, Sfx = 0.8, Muted = false }, -- the player's own settings (0..1)
+	Defaults = { Music = 0.6, Sfx = 0.8, Muted = false, Graphics = "Auto" }, -- the player's own settings (0..1); Graphics: Auto | Lite | Full (client GraphicsController)
 }
 
 local function deepFreeze(value: any)

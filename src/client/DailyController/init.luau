@@ -56,6 +56,21 @@ local function mount()
 	local window = Window.Mount(gui, "DailyWindow", "QUESTS", { "QUESTS" })
 	local open = Window.HudButton("JunkshotDailyButton", "QUESTS", Theme.Colors.Accent, UDim2.new(0, 104, 0, 38), UDim2.new(1, -8, 0, 114))
 	local openLabel = open:FindFirstChild("Label") :: TextLabel
+	-- Green circle at the corner: how many of today's quests are complete.
+	local badge = Instance.new("TextLabel")
+	badge.Name = "Badge"
+	badge.AnchorPoint = Vector2.new(0.5, 0.5)
+	badge.Position = UDim2.new(1, -12, 0, 2)
+	badge.Size = UDim2.fromOffset(26, 26)
+	badge.BackgroundColor3 = Theme.Colors.Success
+	badge.Font = Enum.Font.FredokaOne
+	badge.TextColor3 = Theme.Colors.White
+	badge.TextSize = 16
+	badge.ZIndex = 3
+	badge.Visible = false
+	Theme.Corner(badge, UDim.new(1, 0))
+	Theme.Stroke(badge, Theme.Colors.Ink, 2)
+	badge.Parent = open
 	local resetLabel = Theme.Label({
 		Name = "Reset",
 		Text = "",
@@ -81,7 +96,15 @@ local function mount()
 	local function render()
 		local state = read()
 		local count = if state ~= nil then readyCount(state) else 0
-		openLabel.Text = if count > 0 then `QUESTS ({count})` else "QUESTS"
+		openLabel.Text = "QUESTS"
+		local complete = 0
+		if state ~= nil then
+			for index, quest in DailyConfig.QuestsFor(state.Day) do
+				complete += if (state.Progress[index] or 0) >= quest.Goal then 1 else 0
+			end
+		end
+		badge.Text = tostring(complete)
+		badge.Visible = complete > 0
 		open.BackgroundColor3 = if count > 0 then Theme.Colors.Success else Theme.Colors.Accent
 		if not window.IsOpen() then
 			return

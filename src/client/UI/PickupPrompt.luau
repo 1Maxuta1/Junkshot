@@ -117,8 +117,15 @@ function PickupPrompt.Mount(onTriggeredLocally: (prompt: ProximityPrompt) -> ())
 			gui.StudsOffset = Vector3.zero
 			if model ~= nil and base ~= nil then
 				local cf, bounds = model:GetBoundingBox()
-				gui.Adornee = base
-				gui.StudsOffsetWorldSpace = Vector3.new(0, cf.Position.Y + bounds.Y / 2 - base.Position.Y + 1.4, 0)
+				-- Straight above the object, whatever way its Base is turned.
+				local anchor = Instance.new("Attachment")
+				anchor.Name = "PromptAnchor"
+				anchor.Parent = base
+				anchor.WorldPosition = Vector3.new(base.Position.X, cf.Position.Y + bounds.Y / 2 + 1.4, base.Position.Z)
+				gui.Adornee = anchor
+				gui.Destroying:Once(function()
+					anchor:Destroy()
+				end)
 			end
 			local column = prompt:GetAttribute("CardColumn")
 			gui.SizeOffset = Vector2.new((if type(column) == "number" then column else 0) * 2.06 / 2, 0.5 + row * 1.12)

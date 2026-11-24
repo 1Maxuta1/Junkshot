@@ -439,6 +439,17 @@ end
 
 RaceZone.Build(map)
 
+-- Small parts cast no shadow: nobody sees them, but phones draw every one of them again.
+local SMALL = 5
+for _, descendant in map:GetDescendants() do
+	if descendant:IsA("BasePart") then
+		local size = descendant.Size
+		if math.max(size.X, size.Y, size.Z) < SMALL then
+			descendant.CastShadow = false
+		end
+	end
+end
+
 ---------------------------------------------------------------------------------------------
 -- Write
 ---------------------------------------------------------------------------------------------

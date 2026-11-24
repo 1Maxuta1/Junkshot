@@ -61,7 +61,7 @@ end
 local function publish(player: Player)
 	local audio = settingsOf(player)
 	if audio ~= nil then
-		player:SetAttribute("AudioSettings", HttpService:JSONEncode({ Music = audio.Music, Sfx = audio.Sfx, Muted = audio.Muted }))
+		player:SetAttribute("AudioSettings", HttpService:JSONEncode({ Music = audio.Music, Sfx = audio.Sfx, Muted = audio.Muted, Graphics = audio.Graphics }))
 	end
 end
 
@@ -83,6 +83,9 @@ function AudioService.SaveSettings(player: Player, settings: any): boolean
 	audio.Music = math.clamp(math.floor(music * 20 + 0.5) / 20, 0, 1)
 	audio.Sfx = math.clamp(math.floor(sfx * 20 + 0.5) / 20, 0, 1)
 	audio.Muted = muted
+	if settings.Graphics == "Auto" or settings.Graphics == "Lite" or settings.Graphics == "Full" then
+		audio.Graphics = settings.Graphics
+	end
 	publish(player)
 	return true
 end

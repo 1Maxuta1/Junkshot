@@ -50,6 +50,12 @@ function WeatherController.Start()
 	emitter.Shape = Enum.ParticleEmitterShape.Box
 	emitter.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
 	emitter.Parent = cloud
+	local player = game:GetService("Players").LocalPlayer
+	local function lite()
+		emitter.Rate = if player:GetAttribute("LiteGraphics") == true then config.Rate * 0.35 else config.Rate
+	end
+	player:GetAttributeChangedSignal("LiteGraphics"):Connect(lite)
+	lite()
 	cloud.Parent = Workspace.CurrentCamera
 
 	RunService.RenderStepped:Connect(function()

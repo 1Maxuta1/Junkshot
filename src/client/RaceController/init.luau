@@ -11,6 +11,8 @@ local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 
+local RaceConfig = require(game:GetService("ReplicatedStorage").Shared.Config.RaceConfig)
+
 local Theme = require(script.Parent.UI.Theme)
 
 local RaceController = {}
@@ -31,6 +33,64 @@ local function setLights(count: number, color: Color3)
 			local on = (lamp:GetAttribute("Order") or 0) <= count
 			lamp.Color = if on then color else LIGHT_OFF
 			lamp.Material = if on then Enum.Material.Neon else Enum.Material.SmoothPlastic
+		end
+	end
+end
+
+-- The big plaza board: page 1 the countdown, a click shows prizes / your record for a while.
+local PAGE_SECONDS = 8
+local boardPage, boardPageUntil = 1, 0
+local hooked: { [Instance]: boolean } = {}
+
+local function formatMs(ms: any): string
+	return if type(ms) == "number" and ms > 0 then string.format("%d:%05.2f", ms // 60000, ms % 60000 / 1000) else "no time yet"
+end
+
+local function boardTexts(): (string, string, string)
+	if os.clock() > boardPageUntil then
+		boardPage = 1
+	end
+	if boardPage == 2 then
+		local p = RaceConfig.Prizes
+		return "PRIZES", `1st {p[1]}   2nd {p[2]}   3rd {p[3]}`, `{RaceConfig.MinForPrizes}+ racers. Alone: {RaceConfig.SoloReward}. New record: +{RaceConfig.RecordBonus}`
+	elseif boardPage == 3 then
+		return "YOUR BEST TIME", formatMs(localPlayer:GetAttribute("RaceBestMs")), `{RaceConfig.Laps} laps. Any vehicle can win`
+	end
+	local state = Workspace:GetAttribute("RaceState")
+	local startsAt = Workspace:GetAttribute("RaceStartsAt")
+	local left = if type(startsAt) == "number" then startsAt - Workspace:GetServerTimeNow() else 0
+	if state == "Open" then
+		return "JOIN NOW!", clock(left), `{Workspace:GetAttribute("RaceRacers") or 0} / {RaceConfig.MaxRacers} racers. Go to the Raceway`
+	elseif state == "Countdown" or state == "Racing" then
+		return "LIVE", "RACE!", "Watch it at the Raceway"
+	end
+	return "NEXT RACE", clock(left), "Bring your own vehicle. Tap the board"
+end
+
+local updateBoards: () -> ()
+function updateBoards()
+	local title, main, note = boardTexts()
+	for _, board in CollectionService:GetTagged("RaceTimerBoard") do
+		if not hooked[board] then
+			local click = board:FindFirstChildOfClass("ClickDetector")
+			if click ~= nil then
+				hooked[board] = true
+				click.MouseClick:Connect(function()
+					boardPage = boardPage % 3 + 1
+					boardPageUntil = os.clock() + PAGE_SECONDS
+					updateBoards()
+				end)
+			end
+		end
+		for _, gui in board:GetChildren() do
+			if gui:IsA("SurfaceGui") then
+				for name, text in { Title = title, Main = main, Note = note } do
+					local label = gui:FindFirstChild(name)
+					if label ~= nil and label:IsA("TextLabel") then
+						label.Text = text
+					end
+				end
+			end
 		end
 	end
 end
@@ -116,7 +176,12 @@ local function mount()
 	end
 	localPlayer:GetAttributeChangedSignal("RaceNext"):Connect(showArrow)
 
+	local lastBoard = 0
 	while true do
+		if os.clock() - lastBoard >= 1 then
+			lastBoard = os.clock()
+			updateBoards()
+		end
 		local state = Workspace:GetAttribute("RaceState")
 		local now = Workspace:GetServerTimeNow()
 		local racing = type(localPlayer:GetAttribute("RaceLap")) == "number"

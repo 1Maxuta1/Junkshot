@@ -36,6 +36,14 @@ local Families: { [string]: Family } = {
 	Coin = family(9125509503, 0.35, 0.35, 0.7),
 	Swish = family(9126283272, 1.4, 0.2, 0.4),
 	Click = family(9119717523, 0.16, 0, 0.2),
+	Tire = family(9126103903, 0.25, 0.7, 0.9),
+	RobotVoice = family(9125850674, 0.8, 0, 0.7),
+	RobotTalk = family(9125854887, 0.6, 0.2, 1),
+	BikeBell = family(9125390321, 0.4, 0.2, 0.8),
+	BikeDrop = family(9113423884, 0.3, 0, 0.4),
+	Radio = family(9118027586, 0.8, 0, 0.5),
+	Motor = family(80317022777602, 0.5, 0.4, 0.9),
+	Ding = family(9126073026, 0.9, 0, 0.6),
 }
 
 local Items: { [string]: { any } } = {
@@ -69,6 +77,18 @@ local Items: { [string]: { any } } = {
 	teleport_pad = { "Tech", 0.8 }, golden_throne = { "Coin", 0.8 }, dragon_incubator = { "Knock", 0.8 }, cosmic_gate = { "Toy", 0.7 },
 }
 
+-- Taking an item into the hand (hotbar). Everything else uses its normal sound here.
+local Equip: { [string]: { any } } = {
+	old_tire = { "Tire", 1 }, bike_wheel = { "BikeDrop", 0.9 }, bicycle = { "BikeBell", 1 }, scooter = { "Motor", 1.5 },
+	homemade_car = { "Motor", 0.9 }, turbo_kart = { "Tire", 1.15 }, jet_board = { "Motor", 1.9 }, small_engine = { "Motor", 1.1 },
+	engine_part = { "Motor", 0.8 }, generator = { "Motor", 0.7 }, jet_sled = { "Motor", 1.7 }, electric_motor = { "Motor", 2 },
+	tin_robot = { "RobotVoice", 1 }, spring_bot = { "RobotTalk", 1.15 }, junk_robot = { "RobotTalk", 0.85 }, robot_band = { "RobotVoice", 1.2 },
+	old_radio = { "Radio", 0.9 }, boombox_radio = { "Radio", 1 }, neon_tv = { "Radio", 1.2 }, cracked_monitor = { "Radio", 0.75 },
+	metal_detector = { "Beep", 1.6 }, dented_trophy = { "Ding", 0.7 }, golden_trophy = { "Ding", 0.9 }, frozen_crown = { "Ding", 1.1 },
+	golden_throne = { "Ding", 0.8 }, arcade_machine = { "Beep", 1.3 }, arcade_joystick = { "Beep", 1.1 }, ice_skate = { "Swish", 1.5 },
+	crystal_shard = { "Ding", 1.2 }, aurora_orb = { "Ding", 0.75 }, starforged_core = { "Ding", 0.65 }, comet_shard = { "Ding", 1 },
+}
+
 -- Sounds that are not an item.
 local Events: { [string]: { any } } = {
 	Throw = { "Swish", 1 },
@@ -96,12 +116,19 @@ function ItemSounds.ForItem(itemId: string): (Family?, number)
 	return resolve(Items[itemId])
 end
 
+function ItemSounds.ForEquip(itemId: string): (Family?, number)
+	return resolve(Equip[itemId] or Items[itemId])
+end
+
 function ItemSounds.ForEvent(name: string): (Family?, number)
 	return resolve(Events[name])
 end
 
 for id, entry in Items do
 	assert(Families[entry[1]] ~= nil, `[ItemSounds] {id} uses unknown family {tostring(entry[1])}`)
+end
+for id, entry in Equip do
+	assert(Items[id] ~= nil and Families[entry[1]] ~= nil, `[ItemSounds] bad equip entry {id}`)
 end
 for name, entry in Events do
 	assert(Families[entry[1]] ~= nil, `[ItemSounds] {name} uses unknown family {tostring(entry[1])}`)

@@ -276,7 +276,7 @@ function Vehicle.Attach(entry: any)
 		engine.Name = "Engine"
 		engine.SoundId = config.EngineSoundId
 		engine.Looped = true
-		engine.Volume = 0.35
+		engine.Volume = if config.EngineRolling then 0 else config.EngineVolume or 0.35
 		engine.RollOffMaxDistance = 90
 		engine.Parent = base
 		state.Engine = engine
@@ -291,6 +291,7 @@ function Vehicle.Attach(entry: any)
 	state.Home = model:GetPivot()
 	model:SetAttribute("MaxSpeed", config.MaxSpeed)
 	model:SetAttribute("EnginePitch", config.EnginePitch or 1)
+	model:SetAttribute("EngineRolling", if config.EngineRolling then config.EngineVolume else nil)
 
 	local isBike = config.PassengerCapacity == 0
 	local driverSeat = model:FindFirstChild("DriverSeat") :: VehicleSeat?

@@ -32,6 +32,7 @@ local AudioController = require(script.Parent.AudioController)
 local GadgetController = {}
 
 local RANGE = 140
+local LITE_RANGE = 60 -- with Lite graphics
 local POWER_RANGE = 25
 local DANCE_RANGE = 18
 local DANCE_ANIMATION = "rbxassetid://507771019"
@@ -811,6 +812,7 @@ local function scan()
 		return
 	end
 	local eye = camera.CFrame.Position
+	local range = if localPlayer:GetAttribute("LiteGraphics") == true then LITE_RANGE else RANGE
 	local generators: { Vector3 } = {}
 	local near: { [Model]: Vector3 } = {}
 	for _, model in folder:GetChildren() do
@@ -821,7 +823,7 @@ local function scan()
 		if model:GetAttribute("Gadget") == "Generator" and model:GetAttribute("GadgetMode") == 2 then
 			table.insert(generators, base.Position)
 		end
-		if (base.Position - eye).Magnitude <= RANGE then
+		if (base.Position - eye).Magnitude <= range then
 			near[model] = base.Position
 			-- Effects remember their parts: start only when all of them have arrived.
 			if active[model] == nil and #model:GetChildren() >= (model:GetAttribute("PartCount") or 1) then

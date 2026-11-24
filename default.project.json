@@ -37,7 +37,7 @@
         "FilteringEnabled": true,
         "StreamingEnabled": true,
         "StreamingMinRadius": 128,
-        "StreamingTargetRadius": 512
+        "StreamingTargetRadius": 352
       },
       "Baseplate": {
         "$className": "Part",

@@ -19,12 +19,15 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local AudioConfig = require(ReplicatedStorage.Shared.Config.AudioConfig)
+local Signal = require(ReplicatedStorage.Shared.Util.Signal)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local Theme = require(script.Parent.UI.Theme)
 local Window = require(script.Parent.EconomyController.Window)
 
 local AudioController = {}
+
+AudioController.GraphicsChanged = Signal.new() -- ()
 
 local localPlayer = Players.LocalPlayer
 local SAVE_DELAY = 1.5
@@ -33,7 +36,7 @@ local DUCK_VOLUME = 0.12 -- share of the music volume left next to it
 
 local duck = 1
 
-local settings = { Music = AudioConfig.Defaults.Music, Sfx = AudioConfig.Defaults.Sfx, Muted = AudioConfig.Defaults.Muted }
+local settings = { Music = AudioConfig.Defaults.Music, Sfx = AudioConfig.Defaults.Sfx, Muted = AudioConfig.Defaults.Muted, Graphics = AudioConfig.Defaults.Graphics }
 local music: { Sound } = {}
 local current = 1
 local order: { number } = {}
@@ -91,7 +94,36 @@ local function watchRadios()
 	end
 end
 
+-- Two groups, so MUTE silences really everything: World = sounds nobody else scales (footsteps,
+-- engines, boomboxes ...), Direct = sounds this module already started at the effects volume.
+local groups: { [string]: SoundGroup } = {}
+
+local function groupOf(name: string): SoundGroup
+	local group = groups[name]
+	if group == nil then
+		group = Instance.new("SoundGroup")
+		group.Name = `Junkshot{name}`
+		group.Parent = SoundService
+		groups[name] = group
+	end
+	return group
+end
+
+local function applyGroups()
+	groupOf("World").Volume = if settings.Muted then 0 else settings.Sfx / AudioConfig.Defaults.Sfx
+	groupOf("Direct").Volume = if settings.Muted then 0 else 1
+end
+
+local function adopt(instance: Instance)
+	if instance:IsA("Sound") and instance.SoundGroup == nil and not instance:IsDescendantOf(SoundService) then
+		instance.SoundGroup = groupOf("World")
+	elseif instance:IsA("AudioPlayer") then
+		instance.Volume = if settings.Muted then 0 else instance.Volume
+	end
+end
+
 local function applyVolumes()
+	applyGroups()
 	local sound = music[current]
 	if sound ~= nil then
 		if volumeTween ~= nil then
@@ -210,6 +242,7 @@ function AudioController.PlayAt(spec: any, parent: Instance, looped: boolean?, r
 	sound.PlaybackSpeed = spec.Pitch or 1
 	sound.Looped = looped == true
 	sound.RollOffMaxDistance = range or 120
+	sound.SoundGroup = groupOf("Direct")
 	sound.RollOffMinDistance = 8
 	sound.Parent = parent
 	sound:Play()
@@ -240,7 +273,7 @@ function AudioController.PlayItem(family: any, pitch: number, parent: Instance?,
 		equalizer.MidGain = -1
 		equalizer.LowGain = 0
 		equalizer.Parent = group
-		group.Parent = SoundService
+		group.Parent = groupOf("Direct")
 		softGroup = group
 	end
 	local sound = Instance.new("Sound")
@@ -262,12 +295,16 @@ function AudioController.PlayItem(family: any, pitch: number, parent: Instance?,
 	end)
 end
 
+function AudioController.GetGraphics(): string
+	return settings.Graphics
+end
+
 local function scheduleSave()
 	saveToken += 1
 	local token = saveToken
 	task.delay(SAVE_DELAY, function()
 		if token == saveToken then
-			Remotes.GetEvent("SaveSettings"):FireServer({ Music = settings.Music, Sfx = settings.Sfx, Muted = settings.Muted })
+			Remotes.GetEvent("SaveSettings"):FireServer({ Music = settings.Music, Sfx = settings.Sfx, Muted = settings.Muted, Graphics = settings.Graphics })
 		end
 	end)
 end
@@ -288,6 +325,10 @@ local function readSaved()
 		if type(decoded.Muted) == "boolean" then
 			settings.Muted = decoded.Muted
 		end
+		if type(decoded.Graphics) == "string" then
+			settings.Graphics = decoded.Graphics
+		end
+		AudioController.GraphicsChanged:Fire()
 		applyVolumes()
 	end
 end
@@ -336,7 +377,16 @@ local function mountSettings()
 			applyVolumes()
 			scheduleSave()
 		end)
-		local tracks = Window.Row(list, 4, "Music", "Winter tracks by APM Music (Roblox Creator Store)", nil)
+		local graphicsRow = Window.Row(list, 4, "Graphics", if settings.Graphics == "Lite" then "Faster, fewer effects" elseif settings.Graphics == "Full" then "Everything on" else "Chooses for your device", nil)
+		local choices = { "Auto", "Lite", "Full" }
+		local pick = Window.SmallButton(graphicsRow.Right, string.upper(settings.Graphics), Theme.Colors.Ice, UDim2.new(0, 110, 0, 40))
+		pick.Activated:Connect(function()
+			settings.Graphics = choices[(table.find(choices, settings.Graphics) or 0) % #choices + 1]
+			AudioController.GraphicsChanged:Fire()
+			applyVolumes()
+			scheduleSave()
+		end)
+		local tracks = Window.Row(list, 5, "Music", "Winter tracks by APM Music (Roblox Creator Store)", nil)
 		tracks.Title.TextColor3 = Theme.Colors.InkSoft
 	end
 	onSettingsChanged = render
@@ -358,6 +408,11 @@ function AudioController.Start()
 		end
 	end)
 	localPlayer:GetAttributeChangedSignal("AudioSettings"):Connect(readSaved)
+	applyGroups()
+	for _, instance in Workspace:GetDescendants() do
+		adopt(instance)
+	end
+	Workspace.DescendantAdded:Connect(adopt)
 	task.spawn(function()
 		mountSettings()
 		readSaved()

@@ -964,7 +964,7 @@ local function runItemTests(player: Player)
 	CarryService.Clear(player)
 
 	local plotTop = PlotService.GetPlotCFrame(plot)
-	local spotA = (plotTop * CFrame.new(-12, 0, -8)).Position
+	local spotA = (plotTop * CFrame.new(-9, 0, -16)).Position
 	local spotB = (plotTop * CFrame.new(1, 0, -14)).Position -- clear of the Stage 4 building slots
 	local spotC = (plotTop * CFrame.new(-12, 0, 8)).Position
 	local function standNear(spot: Vector3)

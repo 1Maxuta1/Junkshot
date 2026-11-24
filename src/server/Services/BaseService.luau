@@ -336,8 +336,8 @@ local function buildChest(base: Base)
 		base.Chest:Destroy()
 	end
 	local chest = BaseModels.Chest(data.ChestLevel)
-	-- Facing the plot's center (front = -Z of the model looks at the machine).
-	local frame = plotFrame(base) * CFrame.new(BaseConfig.Chest.Position) * CFrame.Angles(0, math.rad(-135), 0)
+	-- Next to the machine's front right corner, facing the same way as the machine.
+	local frame = plotFrame(base) * CFrame.new(BaseConfig.Chest.Position)
 	chest:PivotTo(frame)
 	chest:SetAttribute("OwnerUserId", base.Player.UserId)
 	chest:SetAttribute("ChestLevel", data.ChestLevel)

@@ -288,10 +288,14 @@ local function addOwnerTag(model: Model, owner: Player, itemId: string)
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "OwnerTag"
 	gui.Size = UDim2.fromOffset(150, 20)
-	gui.StudsOffsetWorldSpace = Vector3.new(0, top - base.Position.Y + model:GetPivot().Position.Y + 0.6, 0)
+	-- An attachment straight above the object: billboard offsets turn with a rotated Base.
+	local anchor = Instance.new("Attachment")
+	anchor.Name = "OwnerTagAnchor"
+	anchor.Parent = base
+	anchor.WorldPosition = model:GetPivot().Position + Vector3.new(0, top + 0.6, 0)
 	gui.MaxDistance = 45
 	gui.LightInfluence = 0
-	gui.Adornee = base
+	gui.Adornee = anchor
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.fromScale(1, 1)
 	label.BackgroundTransparency = 1

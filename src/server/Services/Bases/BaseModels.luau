@@ -41,65 +41,48 @@ local function finish(model: Model, primary: BasePart): Model
 	return model
 end
 
--- Chest, one look per level: crate -> reinforced chest -> metal container -> industrial ->
--- secure unit. Sizes grow so the upgrade is visible from across the plot.
-local chestBuilders: { (model: Model) -> BasePart } = {
-	function(model)
-		local wood = rgb(176, 120, 64)
-		local body = part(model, "Body", V(4, 3, 3), V(0, 1.5, 0), wood, M.WoodPlanks)
-		for _, x in { -1.6, 1.6 } do
-			part(model, "Slat", V(0.3, 3.1, 3.1), V(x, 1.5, 0), rgb(130, 84, 44), M.Wood)
-		end
-		return body
-	end,
-	function(model)
-		local wood = rgb(186, 110, 52)
-		local body = part(model, "Body", V(4.6, 3, 3.2), V(0, 1.5, 0), wood, M.WoodPlanks)
-		part(model, "Lid", V(4.7, 1, 3.3), V(0, 3.5, 0), rgb(150, 86, 40), M.Wood)
-		for _, x in { -2, 0, 2 } do
-			part(model, "Band", V(0.3, 4.1, 3.4), V(x, 2, 0), rgb(90, 94, 104), M.Metal)
-		end
-		part(model, "Lock", V(0.7, 0.8, 0.3), V(0, 2.8, -1.75), rgb(255, 205, 50), M.Metal)
-		return body
-	end,
-	function(model)
-		local steel = rgb(70, 160, 230)
-		local body = part(model, "Body", V(6, 3.6, 3.8), V(0, 1.8, 0), steel, M.Metal)
-		for index = -2, 2 do
-			part(model, "Rib", V(0.25, 3.7, 3.9), V(index * 1.2, 1.8, 0), rgb(50, 120, 190), M.Metal)
-		end
-		part(model, "Door", V(2.4, 2.8, 0.2), V(0, 1.7, -1.95), rgb(40, 100, 170), M.Metal)
-		part(model, "Handle", V(0.3, 1.2, 0.3), V(0.8, 1.8, -2.1), rgb(255, 205, 50), M.Metal)
-		return body
-	end,
-	function(model)
-		local paint = rgb(255, 150, 30)
-		local body = part(model, "Body", V(7.5, 4.4, 4.4), V(0, 2.2, 0), paint, M.Metal)
-		for index = -3, 3 do
-			part(model, "Rib", V(0.25, 4.5, 4.5), V(index * 1.1, 2.2, 0), rgb(214, 110, 20), M.Metal)
-		end
-		part(model, "Stripe", V(7.6, 0.4, 4.5), V(0, 3.9, 0), rgb(40, 44, 64), M.Metal)
-		part(model, "DoorL", V(1.8, 3.6, 0.2), V(-1, 2, -2.3), rgb(214, 110, 20), M.Metal)
-		part(model, "DoorR", V(1.8, 3.6, 0.2), V(1, 2, -2.3), rgb(214, 110, 20), M.Metal)
-		part(model, "Light", V(0.6, 0.6, 0.6), V(3.2, 4.7, -1.8), rgb(255, 210, 60), M.Neon, Enum.PartType.Ball)
-		return body
-	end,
-	function(model)
-		local body = part(model, "Body", V(8, 5, 5), V(0, 2.5, 0), rgb(40, 44, 64), M.Metal)
-		part(model, "Trim", V(8.2, 0.5, 5.2), V(0, 0.25, 0), rgb(190, 90, 255), M.Neon)
-		part(model, "TopTrim", V(8.2, 0.4, 5.2), V(0, 5.1, 0), rgb(190, 90, 255), M.Neon)
-		part(model, "Vault", V(3.6, 3.6, 0.3), V(0, 2.5, -2.6), rgb(200, 206, 214), M.Metal)
-		part(model, "Wheel", V(0.3, 1.8, 1.8), V(0, 2.5, -2.85), rgb(255, 205, 50), M.Metal, CYL, V(0, 90, 0))
-		part(model, "Screen", V(1.4, 0.8, 0.2), V(2.9, 3.8, -2.6), rgb(90, 230, 120), M.Neon)
-		return body
-	end,
+-- Scrap chest: a rounded treasure chest made of yard metal. Every level is bigger and richer.
+type ChestLook = { Width: number, Body: Color3, Trim: Color3, Accent: Color3, BodyMaterial: Enum.Material, Glow: boolean }
+local chestLooks: { ChestLook } = {
+	{ Width = 4.4, Body = rgb(168, 112, 62), Trim = rgb(96, 102, 116), Accent = rgb(150, 158, 170), BodyMaterial = M.WoodPlanks, Glow = false },
+	{ Width = 5, Body = rgb(176, 96, 48), Trim = rgb(60, 66, 84), Accent = rgb(255, 205, 50), BodyMaterial = M.WoodPlanks, Glow = false },
+	{ Width = 5.6, Body = rgb(52, 140, 205), Trim = rgb(34, 70, 120), Accent = rgb(255, 205, 50), BodyMaterial = M.Metal, Glow = false },
+	{ Width = 6.4, Body = rgb(240, 140, 40), Trim = rgb(44, 50, 70), Accent = rgb(255, 225, 120), BodyMaterial = M.Metal, Glow = true },
+	{ Width = 7.2, Body = rgb(48, 44, 78), Trim = rgb(255, 196, 50), Accent = rgb(190, 110, 255), BodyMaterial = M.Metal, Glow = true },
 }
+
+local function buildChestModel(model: Model, look: ChestLook): BasePart
+	local w = look.Width
+	local depth = w * 0.64
+	local height = w * 0.46
+	local body = part(model, "Body", V(w, height, depth), V(0, height / 2 + 0.25, 0), look.Body, look.BodyMaterial)
+	-- Arched lid: a cylinder along X, its lower half hidden in the body.
+	local lidY = height + 0.25
+	part(model, "Lid", V(w - 0.1, depth, depth), V(0, lidY, 0), look.Body, look.BodyMaterial, CYL)
+	for _, x in { -w / 2 + 0.25, 0, w / 2 - 0.25 } do
+		part(model, "Band", V(0.45, depth + 0.3, depth + 0.3), V(x, lidY, 0), look.Trim, M.Metal, CYL)
+		part(model, "Strap", V(0.45, height, depth + 0.3), V(x, height / 2 + 0.25, 0), look.Trim, M.Metal)
+	end
+	part(model, "Rim", V(w + 0.25, 0.4, depth + 0.35), V(0, lidY, 0), look.Trim, M.Metal)
+	part(model, "Foot", V(w + 0.3, 0.5, depth + 0.4), V(0, 0.25, 0), look.Trim, M.Metal)
+	part(model, "LockPlate", V(1.1, 1.3, 0.25), V(0, lidY - 0.2, -depth / 2 - 0.25), look.Accent, M.Metal)
+	part(model, "Keyhole", V(0.3, 0.5, 0.1), V(0, lidY - 0.25, -depth / 2 - 0.4), rgb(30, 34, 44), M.SmoothPlastic)
+	for _, x in { -w / 2 - 0.2, w / 2 + 0.2 } do
+		part(model, "Grip", V(0.25, 0.4, depth * 0.4), V(x, height * 0.6, 0), look.Accent, M.Metal)
+	end
+	if look.Glow then
+		part(model, "Seam", V(w - 0.6, 0.18, 0.12), V(0, lidY, -depth / 2 - 0.2), look.Accent, M.Neon)
+		for _, x in { -w * 0.3, w * 0.3 } do
+			part(model, "Gem", V(0.55, 0.55, 0.55), V(x, lidY + depth * 0.3, -depth * 0.4), look.Accent, M.Neon, Enum.PartType.Ball)
+		end
+	end
+	return body
+end
 
 function BaseModels.Chest(level: number): Model
 	local model = Instance.new("Model")
 	model.Name = "Chest"
-	local builder = chestBuilders[math.clamp(level, 1, #chestBuilders)]
-	return finish(model, builder(model))
+	return finish(model, buildChestModel(model, chestLooks[math.clamp(level, 1, #chestLooks)]))
 end
 
 -- A flat pad marking a building slot (locked pads are grey).

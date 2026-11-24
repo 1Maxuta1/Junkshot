@@ -17,7 +17,7 @@ local WorldConfig = {
 		DayEnd = 18.5,
 		DayMinutes = 14, -- real minutes from DayStart to DayEnd
 		NightMinutes = 4, -- real minutes from DayEnd round to the next DayStart
-		UpdateSeconds = 1,
+		UpdateSeconds = 6, -- every step makes phones redraw all shadows
 		DayAmbient = Color3.fromRGB(120, 140, 176),
 		NightAmbient = Color3.fromRGB(70, 86, 130),
 		DayOutdoor = Color3.fromRGB(140, 163, 204),
@@ -27,7 +27,7 @@ local WorldConfig = {
 	},
 	Bloom = { Intensity = 0.15, Size = 20, Threshold = 1.9 }, -- the glow of neon and bright parts
 	Sky = {
-		StarCount = 4000,
+		StarCount = 1500,
 		SunAngularSize = 14,
 		MoonAngularSize = 9,
 		CloudCover = 0.55,

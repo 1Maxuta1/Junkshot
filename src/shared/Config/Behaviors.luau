@@ -34,7 +34,9 @@ local Behaviors = {
 			ReverseSpeed = 8,
 			TurnRate = 2.4, -- radians/s at speed
 			PassengerCapacity = 0,
-			EngineSoundId = nil,
+			EngineSoundId = "rbxassetid://9113429966", -- "Bicycle Pedal 1", ProSoundEffects
+			EngineVolume = 2.5,
+			EngineRolling = true, -- louder with speed, silent while standing
 			WheelRadius = 1.3,
 		},
 	},

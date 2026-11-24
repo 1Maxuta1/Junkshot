@@ -4,6 +4,7 @@
 	PlayItem plays them). Local and quiet; nothing is sent to the server.
 
 	  pickup    the item's own sound (one per PICKUP_GAP, not when the save is restored)
+	  hand      the item's equip sound when another item is taken into the hand
 	  throw     a swish at the thrower, the item's sound where it lands
 	  placing   the item's sound at the new object; gadgets also when their mode changes
 	  sale      coins; buttons a soft click; chest / windows opening
@@ -129,6 +130,20 @@ function SfxController.Start()
 		if os.clock() - lastPickup >= PICKUP_GAP and added[1] ~= nil then
 			lastPickup = os.clock()
 			playItem(added[1].Id, nil)
+		end
+	end)
+	local lastSelected: string? = nil
+	CarryController.Changed:Connect(function()
+		local selected = CarryController.GetSelected()
+		local uid = if selected ~= nil then selected.Uid else nil
+		if uid == lastSelected then
+			return
+		end
+		lastSelected = uid
+		-- A pickup plays its own sound in the same moment.
+		if selected ~= nil and os.clock() - startedAt > QUIET_START and os.clock() - lastPickup > PICKUP_GAP then
+			local family, pitch = ItemSounds.ForEquip(selected.Id)
+			AudioController.PlayItem(family, pitch, nil, 0.9, HEAR)
 		end
 	end)
 	Remotes.GetEvent("ThrowFx").OnClientEvent:Connect(function(fx: any)

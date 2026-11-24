@@ -510,11 +510,80 @@ function RaceService.Open(seconds: number)
 	end
 end
 
+-- Big board over the plaza (tag RaceTimerBoard). Clients write it (countdown every second) and
+-- turn its pages on a click (client RaceController).
+local function buildTimerBoard()
+	local site = CollectionService:GetTagged("RecyclerSite")[1]
+	local y = if site ~= nil and site:IsA("BasePart") then site.Position.Y - site.Size.Y / 2 else 0.4
+	local model = Instance.new("Model")
+	model.Name = "RaceTimer"
+	local function part(name: string, size: Vector3, position: Vector3, color: Color3): Part
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Size = size
+		p.Position = Vector3.new(0, y, 16) + position
+		p.Color = color
+		p.Material = Enum.Material.SmoothPlastic
+		p.Anchored = true
+		p.CastShadow = false
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		p.Parent = model
+		return p
+	end
+	local ink, red, white = Color3.fromRGB(28, 36, 60), Color3.fromRGB(236, 74, 70), Color3.fromRGB(245, 248, 255)
+	for _, x in { -14, 14 } do
+		part("Post", Vector3.new(1.2, 26, 1.2), Vector3.new(x, 13, 0), Color3.fromRGB(150, 160, 180))
+		part("PostFoot", Vector3.new(3, 1, 3), Vector3.new(x, 0.5, 0), ink)
+	end
+	local board = part("Board", Vector3.new(28, 10, 0.8), Vector3.new(0, 21, 0), ink)
+	for index = 0, 13 do
+		part("Check", Vector3.new(2, 1, 0.9), Vector3.new(-13 + index * 2, 26.5, 0), if index % 2 == 0 then white else red)
+	end
+	local click = Instance.new("ClickDetector")
+	click.MaxActivationDistance = 120
+	click.Parent = board
+	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
+		local gui = Instance.new("SurfaceGui")
+		gui.Name = face.Name
+		gui.Face = face
+		gui.CanvasSize = Vector2.new(840, 300)
+		gui.LightInfluence = 0
+		local function label(name: string, position: UDim2, size: UDim2, color: Color3)
+			local text = Instance.new("TextLabel")
+			text.Name = name
+			text.Position = position
+			text.Size = size
+			text.BackgroundTransparency = 1
+			text.Font = Enum.Font.FredokaOne
+			text.TextColor3 = color
+			text.TextScaled = true
+			text.Text = ""
+			text.Parent = gui
+		end
+		label("Title", UDim2.fromScale(0.04, 0.04), UDim2.fromScale(0.92, 0.22), Color3.fromRGB(255, 210, 60))
+		label("Main", UDim2.fromScale(0.04, 0.27), UDim2.fromScale(0.92, 0.46), white)
+		label("Note", UDim2.fromScale(0.04, 0.77), UDim2.fromScale(0.92, 0.18), Color3.fromRGB(150, 200, 255))
+		gui.Parent = board
+	end
+	board:AddTag("RaceTimerBoard")
+	model.Parent = Workspace
+end
+
 function RaceService.Start()
 	assert(not started, "[RaceService] Start() called twice")
 	started = true
 	setState("Idle")
 	publishJoined()
+	buildTimerBoard()
+	local function publishBest(player: Player)
+		local data = DataService.GetData(player) :: any
+		local best = if data ~= nil and type(data.Racing) == "table" then data.Racing.BestMs else 0
+		if type(best) == "number" and best > 0 then
+			player:SetAttribute("RaceBestMs", best)
+		end
+	end
+	DataService.PlayerLoaded:Connect(publishBest)
 	Workspace:SetAttribute("RaceLaps", RaceConfig.Laps)
 
 	-- DevTests never write real records.

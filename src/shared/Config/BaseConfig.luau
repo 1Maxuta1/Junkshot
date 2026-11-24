@@ -20,7 +20,7 @@
 
 local BaseConfig = {
 	Chest = {
-		Position = Vector3.new(-15, 0, 14),
+		Position = Vector3.new(-14.5, 0, -7),
 		UseDistance = 12, -- studs from the chest within which items can be moved in / out
 		Levels = {
 			{ Capacity = 10, Price = 0, Name = "Wooden Crate" },
