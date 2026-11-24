@@ -47,6 +47,19 @@ local function musicVolume(): number
 	return if settings.Muted then 0 else AudioConfig.Music.Volume * settings.Music * duck
 end
 
+-- The one tween that moves the current track's volume. A new one (or a settings change) ends the
+-- old one, otherwise a fade that is still running would overwrite the player's mute.
+local volumeTween: Tween? = nil
+
+local function fadeMusic(sound: Sound, seconds: number)
+	if volumeTween ~= nil then
+		volumeTween:Cancel()
+	end
+	local tween = TweenService:Create(sound, TweenInfo.new(seconds), { Volume = musicVolume() })
+	volumeTween = tween
+	tween:Play()
+end
+
 -- Background music fades down next to a playing boombox (attribute Audible on placed radios).
 local function nearPlayingRadio(): boolean
 	local deployed = Workspace:FindFirstChild("Deployed")
@@ -72,7 +85,7 @@ local function watchRadios()
 			duck = target
 			local sound = music[current]
 			if sound ~= nil then
-				TweenService:Create(sound, TweenInfo.new(1.2), { Volume = musicVolume() }):Play()
+				fadeMusic(sound, 1.2)
 			end
 		end
 	end
@@ -80,7 +93,11 @@ end
 
 local function applyVolumes()
 	local sound = music[current]
-	if sound ~= nil and sound.IsPlaying then
+	if sound ~= nil then
+		if volumeTween ~= nil then
+			volumeTween:Cancel()
+			volumeTween = nil
+		end
 		sound.Volume = musicVolume()
 	end
 	if onSettingsChanged ~= nil then
@@ -120,7 +137,7 @@ local function playNext()
 	sound.Volume = 0
 	sound.TimePosition = 0
 	sound:Play()
-	TweenService:Create(sound, TweenInfo.new(fade), { Volume = musicVolume() }):Play()
+	fadeMusic(sound, fade)
 	if old ~= nil and old.IsPlaying then
 		local out = TweenService:Create(old, TweenInfo.new(fade), { Volume = 0 })
 		out.Completed:Connect(function()
@@ -202,6 +219,47 @@ function AudioController.PlayAt(spec: any, parent: Instance, looped: boolean?, r
 		end)
 	end
 	return sound
+end
+
+-- A short item sound (Config/ItemSounds family): quiet, with softened highs. parent = nil plays
+-- it for this player only. At most MAX_ITEM_SOUNDS at once, so a pile of throws is no noise.
+local MAX_ITEM_SOUNDS = 8
+local itemSounds = 0
+local softGroup: SoundGroup? = nil
+
+function AudioController.PlayItem(family: any, pitch: number, parent: Instance?, volume: number?, range: number?)
+	local level = AudioController.GetSfxVolume()
+	if family == nil or level <= 0 or itemSounds >= MAX_ITEM_SOUNDS then
+		return
+	end
+	if softGroup == nil then
+		local group = Instance.new("SoundGroup")
+		group.Name = "ItemSounds"
+		local equalizer = Instance.new("EqualizerSoundEffect")
+		equalizer.HighGain = -9
+		equalizer.MidGain = -1
+		equalizer.LowGain = 0
+		equalizer.Parent = group
+		group.Parent = SoundService
+		softGroup = group
+	end
+	local sound = Instance.new("Sound")
+	sound.Name = "ItemSound"
+	sound.SoundId = family.SoundId
+	sound.Volume = family.Volume * level * (volume or 1)
+	sound.PlaybackSpeed = pitch * (0.96 + math.random() * 0.08) -- never exactly the same twice
+	sound.PlaybackRegionsEnabled = true
+	sound.PlaybackRegion = NumberRange.new(family.Start, family.Start + family.Length)
+	sound.RollOffMinDistance = 8
+	sound.RollOffMaxDistance = range or 70
+	sound.SoundGroup = softGroup
+	sound.Parent = parent or SoundService
+	itemSounds += 1
+	sound:Play()
+	task.delay(family.Length / pitch + 0.6, function()
+		itemSounds -= 1
+		sound:Destroy()
+	end)
 end
 
 local function scheduleSave()

@@ -77,6 +77,7 @@ local WorldEventService = require(script.Parent.Services.WorldEventService)
 local RaceService = require(script.Parent.Services.RaceService)
 local RaceConfig = require(ReplicatedStorage.Shared.Config.RaceConfig)
 local OnboardingService = require(script.Parent.Services.OnboardingService)
+local ItemSounds = require(ReplicatedStorage.Shared.Config.ItemSounds)
 local OnboardingConfig = require(ReplicatedStorage.Shared.Config.OnboardingConfig)
 local TradeService = require(script.Parent.Services.TradeService)
 local WorldEventConfig = require(ReplicatedStorage.Shared.Config.WorldEventConfig)
@@ -2174,6 +2175,39 @@ local function runGadgetTests(player: Player)
 		PlacementService.Store(player, lampUid)
 	end
 	CarryService.Clear(player)
+
+	local silent: { string } = {}
+	for id, definition in ItemConfig.Items do
+		if definition.IsDebug ~= true and (ItemSounds.ForItem(id)) == nil then
+			table.insert(silent, id)
+		end
+	end
+	check("every item has its sound", #silent == 0, table.concat(silent, ", "))
+
+	-- Plasma toast
+	local toastConfig = ItemCapabilities.Get("plasma_toaster").Behavior.Ability
+	local humanoid = (player.Character :: Model):FindFirstChildOfClass("Humanoid") :: Humanoid
+	local jump = humanoid.JumpHeight
+	local feet = ((player.Character :: Model):GetPivot()).Position
+	AbilityBehavior.SpawnToasts({ feet + Vector3.new(60, 0, 0), feet - Vector3.new(0, 1, 0) }, toastConfig)
+	task.wait(0.6)
+	check("plasma toast: walking into one eats it", player:GetAttribute("ToastedUntil") ~= nil)
+	local left = 0
+	for _, part in workspace:GetChildren() do
+		left += if part.Name == "PlasmaToast" then 1 else 0
+	end
+	check("plasma toast: only the one that was reached is gone", left == 1, tostring(left))
+	check("plasma toast: higher jumps", humanoid.JumpHeight > jump * 2)
+	AbilityBehavior.Toast(player, toastConfig)
+	check("plasma toast: a second one does not stack", humanoid.JumpHeight < jump * 2.5)
+	AbilityBehavior.Toast(player, { BuffSeconds = 0.3, JumpFactor = 2 })
+	task.wait(1)
+	check("plasma toast: it wears off completely", math.abs(humanoid.JumpHeight - jump) < 0.01 and player:GetAttribute("ToastedUntil") == nil, tostring(humanoid.JumpHeight))
+	for _, part in workspace:GetChildren() do
+		if part.Name == "PlasmaToast" then
+			part:Destroy()
+		end
+	end
 
 	-- Teleport pads
 	local padA, padB = JunkService.NewUid(), JunkService.NewUid()

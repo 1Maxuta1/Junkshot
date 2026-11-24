@@ -107,7 +107,7 @@ local function animate(dt: number)
 				if engine ~= nil and engine:IsA("Sound") then
 					local maxSpeed = model:GetAttribute("MaxSpeed")
 					local ratio = if type(maxSpeed) == "number" and maxSpeed > 0 then math.abs(speed) / maxSpeed else 0
-					engine.PlaybackSpeed = 0.75 + ratio * 0.8
+					engine.PlaybackSpeed = (0.75 + ratio * 0.8) * (model:GetAttribute("EnginePitch") or 1)
 				end
 			end
 		end

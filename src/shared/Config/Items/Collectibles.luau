@@ -101,12 +101,12 @@ return {
 	}),
 
 	-- Epic
-	item("plasma_toaster", "Plasma Toaster", "Epic", {
+	withBehavior("Ability.PlasmaToast", item("plasma_toaster", "Plasma Toaster", "Epic", {
 		part(Block, V(2.2, 1.4, 1.4), rgb(120, 70, 200), M.Metal),
 		part(Block, V(1.6, 0.12, 0.35), rgb(220, 120, 255), M.Neon, V(0, 0.72, -0.25)),
 		part(Block, V(1.6, 0.12, 0.35), rgb(220, 120, 255), M.Neon, V(0, 0.72, 0.25)),
 		part(Block, V(0.35, 0.3, 0.35), rgb(255, 255, 255), M.Neon, V(0.75, 0.3, -0.72)),
-	}),
+	})),
 	item("crystal_snowman", "Crystal Snowman", "Epic", {
 		part(Ball, V(1.8, 1.8, 1.8), rgb(200, 170, 255), M.Glass),
 		part(Ball, V(1.3, 1.3, 1.3), rgb(200, 170, 255), M.Glass, V(0, 1.35, 0)),

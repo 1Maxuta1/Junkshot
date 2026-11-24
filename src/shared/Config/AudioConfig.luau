@@ -16,7 +16,7 @@ local AudioConfig = {
 		CrossFade = 2.5, -- seconds between two tracks
 		Tracks = {
 			{ Name = "Dancing Snowflakes", SoundId = "rbxassetid://9046743045" }, -- APM Music
-			{ Name = "Christmas Party", SoundId = "rbxassetid://9041771148" }, -- APM Music
+			-- Not 9041771148 "Christmas Party": the file is sleigh bells only (97% of its energy is high).
 			{ Name = "Holiday Bliss", SoundId = "rbxassetid://9046748008" }, -- APM Music
 			{ Name = "Favorite Time Of Year", SoundId = "rbxassetid://9046745950" }, -- APM Music
 			{ Name = "Snowman Song", SoundId = "rbxassetid://9046739139" }, -- APM Music

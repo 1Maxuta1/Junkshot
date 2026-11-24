@@ -52,7 +52,8 @@ local Behaviors = {
 			ReverseSpeed = 10,
 			TurnRate = 2.2,
 			PassengerCapacity = 0,
-			EngineSoundId = nil,
+			EngineSoundId = "rbxassetid://80317022777602",
+			EnginePitch = 1.45,
 			WheelRadius = 0.75,
 		},
 	},
@@ -173,7 +174,8 @@ local Behaviors = {
 			ReverseSpeed = 10,
 			TurnRate = 2.3,
 			PassengerCapacity = 0,
-			EngineSoundId = nil,
+			EngineSoundId = "rbxassetid://80317022777602",
+			EnginePitch = 1.8,
 			WheelRadius = 0.8,
 		},
 	},
@@ -202,7 +204,13 @@ local Behaviors = {
 		Mode = "Activate",
 		Ability = { Effect = "RocketJump", Name = "Rocket Jump", Cooldown = 8, Distance = 0 },
 	},
-	["Tool.Magnet"] = {
+	-- Plasma Toaster: launches plasma toasts that anybody can eat (see Behaviors/Ability).
+	["Ability.PlasmaToast"] = {
+		Kind = "Ability",
+		Mode = "Activate",
+		Ability = { Effect = "PlasmaToast", Name = "Plasma Toast", Cooldown = 30, Distance = 14, Toasts = 3, Lifetime = 15, EatDistance = 4.5, BuffSeconds = 10, JumpFactor = 2.2 },
+	},
+	["Tool.Magnet"]  = {
 		Kind = "Ability",
 		Mode = "Activate",
 		Ability = { Effect = "Magnet", Name = "Pull Scrap", Cooldown = 25, Distance = 0, Range = 28, Amount = 5 },

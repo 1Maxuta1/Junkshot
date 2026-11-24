@@ -543,7 +543,6 @@ end
 
 function Effects.Toast(ctx)
 	onFire(ctx, function(powered)
-		AudioController.PlayAt(AudioConfig.Machine.Start, ctx.Base, false, 80)
 		for index = 1, if powered then 5 else 2 do
 			task.delay(index * 0.12, rocket, top(ctx), 26, Vector3.new(1.3, 1.3, 0.35), rgb(222, 165, 90), { rgb(255, 220, 140), rgb(222, 165, 90) }, 24)
 		end
@@ -568,7 +567,6 @@ function Effects.HighFive(ctx)
 	local hitAt = -10
 	onFire(ctx, function()
 		hitAt = os.clock()
-		ping(ctx.Base, 1.8, 0.4)
 		burst(handHome.Position, { rgb(255, 205, 50), rgb(236, 74, 70), rgb(70, 160, 255) }, 36, 22)
 	end)
 	return function()
@@ -581,7 +579,6 @@ end
 
 function Effects.Snowman(ctx)
 	onFire(ctx, function(powered)
-		ping(ctx.Base, 1.4, 0.3)
 		burst(top(ctx), { rgb(255, 255, 255), rgb(190, 225, 255) }, if powered then 120 else 50, 28)
 	end)
 	return nothing

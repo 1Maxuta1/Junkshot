@@ -290,6 +290,7 @@ function Vehicle.Attach(entry: any)
 	state.Align = align
 	state.Home = model:GetPivot()
 	model:SetAttribute("MaxSpeed", config.MaxSpeed)
+	model:SetAttribute("EnginePitch", config.EnginePitch or 1)
 
 	local isBike = config.PassengerCapacity == 0
 	local driverSeat = model:FindFirstChild("DriverSeat") :: VehicleSeat?

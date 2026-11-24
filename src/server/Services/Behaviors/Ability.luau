@@ -12,6 +12,8 @@
 	  - the effect is broadcast to every client (AbilityFx) with the server-chosen position;
 	    clients draw it (ItemController/Abilities). Nothing is granted.
 	  - Rocket Boots ("RocketJump"): the owner's own client adds the jump.
+	  - Plasma Toaster ("PlasmaToast"): toasts land in front of the player; whoever walks into one
+	    (friend or stranger) eats it and glows and jumps higher for a while. Checked on the server.
 	  - Scrap Magnet ("Magnet"): the server slides a few loose yard items to the player's feet;
 	    only items the player may take (bases and machine trays are respected).
 ]]
@@ -22,6 +24,7 @@ local Workspace = game:GetService("Workspace")
 
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
+local EconomyService = require(script.Parent.Parent.EconomyService)
 local JunkService = require(script.Parent.Parent.JunkService)
 local CarryService = require(script.Parent.Parent.CarryService)
 local DataService = require(script.Parent.Parent.DataService)
@@ -102,6 +105,72 @@ function Ability.PullScrap(player: Player, center: Vector3, range: number, amoun
 	return moved
 end
 
+local eatenUntil: { [Player]: number } = setmetatable({}, { __mode = "k" }) :: any
+local TOAST_FLIGHT = 0.9 -- seconds; clients draw the flight (ItemController/Abilities)
+
+-- "Toasted": the player attribute ToastedUntil (clients draw the glow) and higher jumps.
+function Ability.Toast(player: Player, config: any): boolean
+	local root = CarryService.GetLiveRoot(player)
+	local humanoid = if root ~= nil then (root.Parent :: Instance):FindFirstChildOfClass("Humanoid") else nil
+	if humanoid == nil then
+		return false
+	end
+	local now = Workspace:GetServerTimeNow()
+	local fresh = (eatenUntil[player] or 0) <= now
+	local untilTime = now + config.BuffSeconds
+	eatenUntil[player] = untilTime
+	player:SetAttribute("ToastedUntil", untilTime)
+	if not fresh then
+		return true -- already jumping high: only longer
+	end
+	local power, height = humanoid.JumpPower, humanoid.JumpHeight
+	-- JumpHeight grows with the square of JumpPower.
+	humanoid.JumpPower = power * math.sqrt(config.JumpFactor)
+	humanoid.JumpHeight = height * config.JumpFactor
+	task.spawn(function()
+		repeat
+			task.wait(0.25)
+		until Workspace:GetServerTimeNow() >= (eatenUntil[player] or 0) or player.Parent == nil
+		player:SetAttribute("ToastedUntil", nil)
+		if humanoid.Parent ~= nil then
+			humanoid.JumpPower, humanoid.JumpHeight = power, height
+		end
+	end)
+	return true
+end
+
+-- The toasts lie there as glowing parts until somebody eats them or they go cold.
+function Ability.SpawnToasts(spots: { Vector3 }, config: any)
+	for _, spot in spots do
+		local toast = Instance.new("Part")
+		toast.Name = "PlasmaToast"
+		toast.Size = Vector3.new(1.5, 1.5, 0.4)
+		toast.Color = Color3.fromRGB(255, 130, 230)
+		toast.Material = Enum.Material.Neon
+		toast.Anchored = true
+		toast.CanCollide = false
+		toast.CanQuery = false
+		toast.CanTouch = false
+		toast.CFrame = CFrame.new(spot + Vector3.new(0, 1.4, 0))
+		toast.Parent = Workspace
+		task.spawn(function()
+			local deadline = os.clock() + config.Lifetime
+			while os.clock() < deadline and toast.Parent ~= nil do
+				for _, player in Players:GetPlayers() do
+					local root = CarryService.GetLiveRoot(player)
+					if root ~= nil and (root.Position - toast.Position).Magnitude <= config.EatDistance and Ability.Toast(player, config) then
+						toast:Destroy()
+						EconomyService.Message(player, "Mmm, plasma! You feel light.", "Success")
+						return
+					end
+				end
+				task.wait(0.2)
+			end
+			toast:Destroy()
+		end)
+	end
+end
+
 function Ability.Use(player: Player, _carried: any, behavior: any): (boolean, string?)
 	local config = behavior.Ability
 	local list = cooldowns(player)
@@ -136,7 +205,19 @@ function Ability.Use(player: Player, _carried: any, behavior: any): (boolean, st
 
 	list[config.Effect] = os.time() + config.Cooldown
 	publish(player)
+	local spots: { Vector3 }? = nil
+	if config.Effect == "PlasmaToast" then
+		local list2: { Vector3 } = {}
+		local side = Vector3.new(-flat.Z, 0, flat.X)
+		for index = 1, config.Toasts do
+			local offset = (index - (config.Toasts + 1) / 2) * 6
+			table.insert(list2, groundBelow(root.Position + flat * config.Distance + side * offset, exclude))
+		end
+		spots = list2
+		task.delay(TOAST_FLIGHT, Ability.SpawnToasts, list2, config)
+	end
 	Remotes.GetEvent("AbilityFx"):FireAllClients({
+		Spots = spots,
 		Effect = config.Effect,
 		UserId = player.UserId,
 		Position = target,

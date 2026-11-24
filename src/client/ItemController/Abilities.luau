@@ -19,11 +19,14 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local AudioConfig = require(ReplicatedStorage.Shared.Config.AudioConfig)
+local ItemSounds = require(ReplicatedStorage.Shared.Config.ItemSounds)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local AudioController = require(script.Parent.Parent.AudioController)
 
 local Abilities = {}
+
+local watchToasted: () -> ()
 
 local SPARKLE = "rbxasset://textures/particles/sparkles_main.dds"
 local SHAKE_RANGE = 90
@@ -240,6 +243,91 @@ local function rocketJump(userId: any, direction: Vector3)
 	end
 end
 
+local PLASMA = { Color3.fromRGB(255, 120, 230), Color3.fromRGB(140, 110, 255), Color3.fromRGB(255, 220, 140) }
+
+local function plasmaToast(userId: any, spots: { any })
+	local root = rootOf(userId)
+	local from = if root ~= nil then root.Position + Vector3.new(0, 1, 0) else nil
+	if from == nil then
+		return
+	end
+	sparkleBurst(from, PLASMA[1], 24)
+	local family, pitch = ItemSounds.ForItem("plasma_toaster")
+	AudioController.PlayItem(family, pitch, root, 1, 90)
+	for index, spot in spots do
+		if typeof(spot) ~= "Vector3" then
+			continue
+		end
+		task.delay((index - 1) * 0.1, function()
+			local pop, popPitch = ItemSounds.ForEvent("Toast")
+			AudioController.PlayItem(pop, popPitch, root, 0.6, 90)
+			local toast = glowPart(Vector3.new(1.5, 1.5, 0.4), PLASMA[1], Enum.PartType.Block)
+			toast.Position = from
+			addTrail(toast, PLASMA[1], PLASMA[2], 1.2, 0.5)
+			toast.Parent = effectsFolder()
+			local started = os.clock()
+			local flight = 0.9 - (index - 1) * 0.1
+			local connection: RBXScriptConnection
+			connection = RunService.Heartbeat:Connect(function()
+				local t = math.min((os.clock() - started) / flight, 1)
+				local position = from:Lerp(spot + Vector3.new(0, 1.4, 0), t) + Vector3.new(0, math.sin(t * math.pi) * 8, 0)
+				toast.CFrame = CFrame.new(position) * CFrame.Angles(t * 12, t * 7, 0)
+				if t >= 1 then
+					connection:Disconnect()
+					sparkleBurst(position, PLASMA[2], 18)
+					toast:Destroy()
+				end
+			end)
+		end)
+	end
+end
+
+-- Glow and sparkles on everybody who ate a plasma toast (Player attribute ToastedUntil).
+function watchToasted()
+	local effects: { [Player]: { Instance } } = {}
+	local function update(player: Player)
+		for _, instance in effects[player] or {} do
+			instance:Destroy()
+		end
+		effects[player] = nil
+		local root = rootOf(player.UserId)
+		if type(player:GetAttribute("ToastedUntil")) ~= "number" or root == nil then
+			return
+		end
+		local light = Instance.new("PointLight")
+		light.Color = PLASMA[1]
+		light.Range = 12
+		light.Brightness = 0.8
+		light.Parent = root
+		local emitter = Instance.new("ParticleEmitter")
+		emitter.Texture = SPARKLE
+		emitter.Color = ColorSequence.new(PLASMA[1], PLASMA[2])
+		emitter.LightEmission = 1
+		emitter.Size = NumberSequence.new(0.7, 0)
+		emitter.Lifetime = NumberRange.new(0.5, 0.9)
+		emitter.Speed = NumberRange.new(2, 5)
+		emitter.SpreadAngle = Vector2.new(180, 180)
+		emitter.Rate = 22
+		emitter.Parent = root
+		effects[player] = { light, emitter }
+		local bite, pitch = ItemSounds.ForEvent("Eat")
+		AudioController.PlayItem(bite, pitch, root, 1, 60)
+	end
+	local function watch(player: Player)
+		player:GetAttributeChangedSignal("ToastedUntil"):Connect(function()
+			update(player)
+		end)
+		update(player)
+	end
+	Players.PlayerAdded:Connect(watch)
+	Players.PlayerRemoving:Connect(function(player: Player)
+		effects[player] = nil
+	end)
+	for _, player in Players:GetPlayers() do
+		watch(player)
+	end
+end
+
 local function magnetPulse(userId: any)
 	local root = rootOf(userId)
 	if root == nil then
@@ -255,6 +343,7 @@ local function magnetPulse(userId: any)
 end
 
 function Abilities.Start()
+	watchToasted()
 	Remotes.GetEvent("AbilityFx").OnClientEvent:Connect(function(payload: any)
 		if type(payload) ~= "table" or typeof(payload.Position) ~= "Vector3" then
 			return
@@ -271,6 +360,8 @@ function Abilities.Start()
 			rocketJump(payload.UserId, direction)
 		elseif payload.Effect == "Magnet" then
 			magnetPulse(payload.UserId)
+		elseif payload.Effect == "PlasmaToast" and type(payload.Spots) == "table" then
+			plasmaToast(payload.UserId, payload.Spots)
 		end
 	end)
 end
