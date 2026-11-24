@@ -239,6 +239,7 @@ function LeaderboardService.Start()
 
 	local ok, result = pcall(DataStoreService.GetOrderedDataStore, DataStoreService, STORE_NAME)
 	local tests = game:GetService("RunService"):IsStudio() and (GameConfig.Debug.UseMockStore
+		or game:GetService("ServerScriptService"):GetAttribute("TestStore") == true
 		or game:GetService("ServerScriptService"):GetAttribute("RunDevTests") == true) -- never write test balances
 	if ok and not tests then
 		store = result

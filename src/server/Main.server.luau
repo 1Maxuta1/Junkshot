@@ -133,6 +133,22 @@ if runDevTests or (RunService:IsStudio() and ServerScriptService:GetAttribute("D
 		elseif action == "OpenRace" then
 			task.spawn(RaceService.Open, arg)
 			return true
+		elseif action == "SpawnItem" then
+			return JunkService.SpawnAt(arg.Id, arg.Position, { Yaw = 0 })
+		elseif action == "TestProfile" then -- only for a TestStore session: everything unlocked
+			if ServerScriptService:GetAttribute("TestStore") ~= true then
+				return false
+			end
+			local data = DataService.GetData(player) :: any
+			data.Progress.Level = 50
+			data.Machine.Upgrades = { Speed = 6, Storage = 3, Level = 3 }
+			OnboardingService.Skip(player)
+			CurrencyService.AddKlunks(player, arg or 100000)
+			ProgressionService.AddXP(player, 1, "Test")
+			player:SetAttribute("Level", 50)
+			MachineService.Unload(player)
+			MachineService.Load(player)
+			return true
 		elseif action == "ResetOnboarding" then
 			local data = DataService.GetData(player) :: any
 			data.Onboarding = { Step = 1, Progress = 0, Done = false }

@@ -588,6 +588,7 @@ function RaceService.Start()
 
 	-- DevTests never write real records.
 	local tests = RunService:IsStudio() and (GameConfig.Debug.UseMockStore
+		or game:GetService("ServerScriptService"):GetAttribute("TestStore") == true
 		or game:GetService("ServerScriptService"):GetAttribute("RunDevTests") == true)
 	if not tests then
 		local ok, result = pcall(DataStoreService.GetOrderedDataStore, DataStoreService, "RaceBest_v1")
