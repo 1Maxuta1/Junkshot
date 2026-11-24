@@ -270,6 +270,11 @@ return {
 		part(Block, V(0.1, 0.25, 2.6), rgb(220, 230, 240), M.Metal, V(0.4, -0.25, 0)),
 		part(Cylinder, V(0.9, 0.5, 0.5), rgb(60, 66, 90), M.Metal, V(0, 0.35, 1.2), V(0, 90, 0)),
 	}),
+	crafted("teleport_pad", "Teleport Pad", "Epic", "Crafted", "Deployable", "Deploy.Teleport", "Place two: travel from one to the other.", {
+		part(Cylinder, V(0.35, 2.6, 2.6), rgb(40, 50, 80), M.Metal, nil, UPRIGHT),
+		part(Cylinder, V(0.1, 2.1, 2.1), rgb(120, 90, 255), M.Neon, V(0, 0.2, 0), UPRIGHT),
+		part(Cylinder, V(0.45, 0.5, 0.5), rgb(90, 220, 255), M.Neon, V(0, 0.1, 0), UPRIGHT),
+	}),
 	crafted("golden_throne", "Golden Throne", "Legendary", "Crafted", "Deployable", "Deploy.Throne", "For the ruler of the junkyard.", {
 		part(Block, V(1.8, 0.8, 1.6), rgb(255, 205, 50), M.Metal, V(0, -0.8, 0)),
 		part(Block, V(1.6, 2.2, 0.3), rgb(255, 205, 50), M.Metal, V(0, 0.6, 0.65)),

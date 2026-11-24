@@ -212,6 +212,8 @@ local Behaviors = {
 	-- Cycle: the prompt always offers the next entry of Modes; Modes[1] = the idle state.
 	["Deploy.Throne"] = { Kind = "Gadget", Mode = "Place", Model = "GoldenThrone", Storable = true, FacePlayer = true,
 		Gadget = { Effect = "Throne", Action = "Sit", Label = "Sit" } },
+	["Deploy.Teleport"] = { Kind = "Gadget", Mode = "Place", Model = "Item:teleport_pad:2", Storable = true, FacePlayer = true,
+		Gadget = { Effect = "Teleporter", Action = "Teleport", Label = "Teleport", TravelCooldown = 5 } },
 	["Deploy.Panel"] = { Kind = "Gadget", Mode = "Place", Model = "Item:glass_panel:2.4", Storable = true, FacePlayer = true,
 		Gadget = { Effect = "Panel", Action = "Cycle", Modes = { "Clear", "Blue", "Red", "Gold", "Green", "Dark" } } },
 	["Deploy.Television"] = { Kind = "Gadget", Mode = "Place", Model = "Item:neon_tv:2", Storable = true, FacePlayer = true,

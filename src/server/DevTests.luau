@@ -282,7 +282,7 @@ local function runCatalogTests()
 			end
 		end
 	end
-	check("the item catalog has 84 buildable items", count == 84, tostring(count))
+	check("the item catalog has 85 buildable items", count == 85, tostring(count))
 	check("every catalog item builds in World and Cosmetic mode", #failures == 0, table.concat(failures, ", "))
 	check("there are 40 recipes or more", #Recipes.List >= 40, tostring(#Recipes.List))
 	local badRecipes: { string } = {}
@@ -2172,6 +2172,32 @@ local function runGadgetTests(player: Player)
 			and again.Model:GetPivot().LookVector:Dot(before.LookVector) > 0.99)
 		check("and keeps its mode", again ~= nil and again.Model:GetAttribute("GadgetMode") == 3)
 		PlacementService.Store(player, lampUid)
+	end
+	CarryService.Clear(player)
+
+	-- Teleport pads
+	local padA, padB = JunkService.NewUid(), JunkService.NewUid()
+	CarryService.AddJunk(player, "teleport_pad", padA)
+	CarryService.AddJunk(player, "teleport_pad", padB)
+	local spotA, spotB = (base * CFrame.new(-6, 0, -15)).Position, (base * CFrame.new(5, 0, -15)).Position
+	check("teleport: the first pad can be placed", (PlacementService.Place(player, padA, spotA, 0)))
+	local entryA = PlacementService.GetEntry(padA)
+	if entryA ~= nil then
+		check("teleport: one pad goes nowhere", not GadgetBehavior.Teleport(entryA, player))
+		check("teleport: the second pad can be placed", (PlacementService.Place(player, padB, spotB, 0)))
+		teleportNear(player, CFrame.new(spotA + Vector3.new(0, 4, 0)))
+		task.wait(0.2)
+		check("teleport: travels to the other pad", (GadgetBehavior.Teleport(entryA, player)))
+		local here2 = (player.Character :: Model):GetPivot().Position
+		check("teleport: arrives there", ((here2 - spotB) * Vector3.new(1, 0, 1)).Magnitude < 3, tostring(here2 - spotB))
+		local entryB = PlacementService.GetEntry(padB)
+		check("teleport: recharges", entryB ~= nil and not GadgetBehavior.Teleport(entryB, player))
+		player:SetAttribute("RaceLap", 1)
+		check("teleport: not during a race", (select(2, GadgetBehavior.Teleport(entryA, player))) == "Not during a race")
+		player:SetAttribute("RaceLap", nil)
+		check("teleport: only for its owner", not GadgetBehavior.Teleport({ Owner = nil, Behavior = entryA.Behavior }, player))
+		PlacementService.Store(player, padA)
+		PlacementService.Store(player, padB)
 	end
 	CarryService.Clear(player)
 

@@ -157,6 +157,9 @@ local list: { Types.Recipe } = {
 	recipe("Deployables", "arcade_machine", 1, "A joystick, a monitor and a crate.", {
 		ing("arcade_joystick"), ing("cracked_monitor"), ing("circuit_board"), ing("wooden_crate"),
 	}),
+	recipe("Deployables", "teleport_pad", 2, "A crystal finds its twin. Make two.", {
+		ing("crystal_shard"), ing("circuit_board"), ing("copper_wire"),
+	}),
 	recipe("Deployables", "crystal_beacon", 2, "Crystals on a powered base.", {
 		ing("crystal_snowman"), ing("crystal_shard"), ing("battery_pack"),
 	}),

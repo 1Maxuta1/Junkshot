@@ -36,7 +36,7 @@ function MythicTab.Mount(container: Frame, actions: Widgets.Actions): Widgets.Ta
 		Position = UDim2.fromScale(0, 0.52),
 		Color = Theme.Colors.InkSoft,
 		Font = Theme.FontBody,
-		MinTextSize = 9,
+		MinTextSize = 10,
 		MaxTextSize = 14,
 		XAlignment = Enum.TextXAlignment.Left,
 		Parent = container,

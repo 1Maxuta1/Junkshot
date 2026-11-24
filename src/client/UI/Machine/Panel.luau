@@ -200,6 +200,28 @@ function Panel.Mount(screenGui: ScreenGui, actions: Widgets.Actions, durationFor
 	content.BackgroundTransparency = 1
 	content.Parent = root
 
+	-- Phones: almost the whole screen, one compact header line, the rest for the tab.
+	local function fit()
+		local small = screenGui.AbsoluteSize.Y < 500
+		root.Size = if small then UDim2.fromScale(0.94, 0.98) else UDim2.fromScale(0.66, 0.78)
+		root.Position = UDim2.fromScale(0.5, if small then 0.5 else 0.47)
+		local function place(gui: GuiObject, position: UDim2, size: UDim2, smallPosition: UDim2, smallSize: UDim2)
+			gui.Position = if small then smallPosition else position
+			gui.Size = if small then smallSize else size
+		end
+		place(title, UDim2.new(), UDim2.fromScale(0.6, 0.09), UDim2.new(), UDim2.new(0.5, 0, 0, 22))
+		place(statusLabel, UDim2.fromScale(0, 0.11), UDim2.fromScale(0.55, 0.08), UDim2.fromOffset(0, 22), UDim2.new(0.42, 0, 0, 20))
+		place(timeLabel, UDim2.fromScale(0.56, 0.11), UDim2.fromScale(0.15, 0.08), UDim2.new(0.43, 0, 0, 22), UDim2.new(0.12, 0, 0, 20))
+		place(barBack, UDim2.fromScale(0, 0.2), UDim2.fromScale(0.71, 0.045), UDim2.fromOffset(0, 46), UDim2.new(0.55, 0, 0, 12))
+		place(speedButton, UDim2.fromScale(1, 0.1), UDim2.fromScale(0.13, 0.16), UDim2.new(1, -52, 0, 0), UDim2.fromOffset(96, 56))
+		place(skipButton, UDim2.fromScale(0.86, 0.1), UDim2.fromScale(0.13, 0.16), UDim2.new(1, -154, 0, 0), UDim2.fromOffset(84, 56))
+		place(tray, UDim2.fromScale(0, 0.28), UDim2.fromScale(1, 0.1), UDim2.fromOffset(0, 64), UDim2.new(1, 0, 0, 38))
+		place(tabRow, UDim2.fromScale(0, 0.4), UDim2.fromScale(1, 0.09), UDim2.fromOffset(0, 106), UDim2.new(1, 0, 0, 40))
+		place(content, UDim2.fromScale(0, 0.52), UDim2.fromScale(1, 0.48), UDim2.fromOffset(0, 152), UDim2.new(1, 0, 1, -152))
+	end
+	screenGui:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
+	fit()
+
 	local tabFrames: { [string]: Frame } = {}
 	local tabButtons: { [string]: TextButton } = {}
 	local tabs: { [string]: Widgets.Tab } = {}
@@ -304,7 +326,7 @@ function Panel.Mount(screenGui: ScreenGui, actions: Widgets.Actions, durationFor
 				Size = UDim2.new(0.8, 0, 0.7, 0),
 				Color = Theme.Colors.InkSoft,
 				Font = Theme.FontBody,
-				MinTextSize = 9,
+				MinTextSize = 10,
 				MaxTextSize = 14,
 				XAlignment = Enum.TextXAlignment.Left,
 				Parent = tray,
@@ -371,6 +393,7 @@ function Panel.Mount(screenGui: ScreenGui, actions: Widgets.Actions, durationFor
 			if not open then
 				open = true
 				root.Visible = true
+				Theme.PopIn(root)
 				ContextActionService:BindAction(CLOSE_ACTION, function(_, inputState)
 					if inputState == Enum.UserInputState.Begin then
 						close()

@@ -35,14 +35,23 @@ local function hasAll(recipe: Types.Recipe, have: { [string]: number }): boolean
 	return true
 end
 
--- Five chips share a narrow row; long category names would shrink to unreadable text.
+local function isListed(recipe: Types.Recipe, category: string, have: { [string]: number }, level: number): boolean
+	if category == "Ready" then
+		return recipe.RequiredLevel <= level and hasAll(recipe, have)
+	end
+	return recipe.Category == category
+end
+
+-- Six chips share a narrow row; long category names would shrink to unreadable text.
 local CHIP_LABELS: { [string]: string } = {
 	Components = "Parts",
 	Vehicles = "Rides",
 	Tools = "Tools",
 	Deployables = "Build",
 	Special = "Special",
+	Ready = "Ready",
 }
+local READY = "Ready" -- not a category: every recipe the carried items are enough for
 
 function CraftTab.Mount(container: Frame, actions: Widgets.Actions, durationFor: (base: number) -> number): Widgets.Tab
 	-- Left: categories + recipe list
@@ -156,11 +165,13 @@ function CraftTab.Mount(container: Frame, actions: Widgets.Actions, durationFor:
 	local categoryButtons: { [string]: TextButton } = {}
 	local render: (view: Widgets.View) -> ()
 
-	for index, name in Recipes.Categories do
+	local names = table.clone(Recipes.Categories) :: { string }
+	table.insert(names, READY)
+	for index, name in names do
 		local chip = Instance.new("TextButton")
 		chip.Name = name
 		chip.LayoutOrder = index
-		chip.Size = UDim2.fromScale(0.19, 1)
+		chip.Size = UDim2.fromScale(0.158, 1)
 		chip.BackgroundColor3 = Theme.Colors.PanelTint
 		chip.Text = ""
 		Theme.Corner(chip, UDim.new(0, 8))
@@ -183,7 +194,7 @@ function CraftTab.Mount(container: Frame, actions: Widgets.Actions, durationFor:
 			category = name
 			listKey = ""
 			for _, entry in Recipes.List do
-				if entry.Category == name then
+				if entry.Category == name or (name == READY and lastView ~= nil and isListed(entry, name, counts(lastView.Carried), lastView.MachineLevel)) then
 					selectedId = entry.RecipeId
 					break
 				end
@@ -212,7 +223,7 @@ function CraftTab.Mount(container: Frame, actions: Widgets.Actions, durationFor:
 		-- Rebuild the list only when the category or the craftable set changes.
 		local marks = {}
 		for _, entry in Recipes.List do
-			if entry.Category == category then
+			if isListed(entry, category, have, view.MachineLevel) then
 				table.insert(marks, entry.RecipeId .. (if hasAll(entry, have) then "+" else "-"))
 			end
 		end
@@ -220,8 +231,20 @@ function CraftTab.Mount(container: Frame, actions: Widgets.Actions, durationFor:
 		if newKey ~= listKey then
 			listKey = newKey
 			Widgets.Clear(list)
+			if #marks == 0 then
+				Theme.Label({
+					Name = "Empty",
+					Text = "Pick up more junk: nothing can be crafted right now",
+					Size = UDim2.new(1, -8, 0, 48),
+					Color = Theme.Colors.InkSoft,
+					Font = Theme.FontBody,
+					MinTextSize = 11,
+					MaxTextSize = 15,
+					Parent = list,
+				}).TextWrapped = true
+			end
 			for index, entry in Recipes.List do
-				if entry.Category == category then
+				if isListed(entry, category, have, view.MachineLevel) then
 					local row = Instance.new("TextButton")
 					row.Name = entry.RecipeId
 					row.LayoutOrder = index

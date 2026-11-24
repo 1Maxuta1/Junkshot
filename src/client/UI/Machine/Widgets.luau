@@ -133,7 +133,7 @@ function Widgets.ItemCard(parent: Instance, itemId: string, layoutOrder: number,
 		Position = UDim2.fromScale(0.03, 0.7),
 		Color = Theme.Colors.Ink,
 		Font = Theme.FontBody,
-		MinTextSize = 9,
+		MinTextSize = 10,
 		MaxTextSize = 15,
 		Parent = card,
 	})

@@ -118,7 +118,7 @@ function Window.Row(parent: Instance, order: number, title: string, subtitle: st
 		Position = UDim2.new(0, 18, 0, 28),
 		Font = Theme.FontBody,
 		Color = Theme.Colors.InkSoft,
-		MinTextSize = 9,
+		MinTextSize = 10,
 		MaxTextSize = 13,
 		XAlignment = Enum.TextXAlignment.Left,
 		Parent = frame,
@@ -309,6 +309,7 @@ function Window.Mount(screenGui: ScreenGui, name: string, title: string, tabs: {
 			end
 			open = true
 			root.Visible = true
+			Theme.PopIn(root)
 			ContextActionService:BindAction(closeAction, function(_, inputState)
 				if inputState == Enum.UserInputState.Begin then
 					close()

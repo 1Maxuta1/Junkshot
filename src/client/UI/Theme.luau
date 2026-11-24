@@ -4,6 +4,8 @@
 	keeps one look (bright winter junkyard: white panels, deep blue outlines, warm accents).
 ]]
 
+local TweenService = game:GetService("TweenService")
+
 local Theme = {}
 
 local function rgb(r: number, g: number, b: number): Color3
@@ -86,6 +88,18 @@ function Theme.Label(props: {
 
 	label.Parent = props.Parent
 	return label
+end
+
+-- A short pop for a window that has just become visible.
+function Theme.PopIn(frame: GuiObject)
+	local scale = frame:FindFirstChildOfClass("UIScale")
+	if scale == nil then
+		scale = Instance.new("UIScale")
+		scale.Parent = frame
+	end
+	local s = scale :: UIScale
+	s.Scale = 0.9
+	TweenService:Create(s, TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
 end
 
 return table.freeze(Theme)

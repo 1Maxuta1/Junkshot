@@ -522,6 +522,25 @@ function Effects.Incubator(ctx)
 	end
 end
 
+function Effects.Teleporter(ctx)
+	local center = part(ctx, 2).Position
+	local rings = {}
+	for index = 1, 3 do
+		rings[index] = piece(ctx.Folder, Enum.PartType.Cylinder, Vector3.new(0.12, 3, 3), rgb(140, 110, 255), 0.6)
+	end
+	onFire(ctx, function()
+		AudioController.PlayAt(AudioConfig.Abilities.CometWhoosh, ctx.Base, false, 60)
+		burst(center + Vector3.new(0, 2.5, 0), { rgb(140, 110, 255), rgb(90, 220, 255) }, 60, 18)
+	end)
+	return function(t)
+		for index, ring in rings do
+			local height = (t * 0.6 + index / 3) % 1
+			ring.CFrame = CFrame.new(center + Vector3.new(0, 0.3 + height * 4, 0)) * CFrame.Angles(0, 0, math.pi / 2)
+			ring.Transparency = 0.6 + height * 0.4
+		end
+	end
+end
+
 function Effects.Toast(ctx)
 	onFire(ctx, function(powered)
 		AudioController.PlayAt(AudioConfig.Machine.Start, ctx.Base, false, 80)

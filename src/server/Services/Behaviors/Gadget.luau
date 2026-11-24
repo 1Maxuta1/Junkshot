@@ -11,6 +11,7 @@
 	  "Hologram"  owner: E = copy the look of the item in the hand (attribute HoloId, Record.Holo).
 	              Only a picture; the item stays in the hand
 	  "Sit"       E = sit down (the model needs a "ThroneSeat")
+	  "Teleport"  owner: E = travel to their next teleport pad. Not while seated, trading or racing
 	  "None"      no prompt (the spring launcher works by stepping on it)
 ]]
 
@@ -21,6 +22,7 @@ local Rarities = require(ReplicatedStorage.Shared.Config.Rarities)
 
 local CarryService = require(script.Parent.Parent.CarryService)
 local JunkService = require(script.Parent.Parent.JunkService)
+local TradeService = require(script.Parent.Parent.TradeService)
 
 local Gadget = {}
 
@@ -156,6 +158,54 @@ function Gadget.SetHologram(entry: any, player: Player): boolean
 	return false
 end
 
+local lastTeleport: { [Player]: number } = setmetatable({}, { __mode = "k" }) :: any
+
+-- Returns true when the player was moved.
+function Gadget.Teleport(entry: any, player: Player): (boolean, string?)
+	if player ~= entry.Owner then
+		return false, "Only its owner can use this teleport"
+	end
+	local character = player.Character
+	local humanoid = if character ~= nil then character:FindFirstChildOfClass("Humanoid") else nil
+	if character == nil or humanoid == nil or CarryService.GetLiveRoot(player) == nil then
+		return false, nil
+	end
+	if humanoid.Sit then
+		return false, "Get out of the vehicle first"
+	end
+	if player:GetAttribute("RaceLap") ~= nil or player:GetAttribute("RaceJoined") == true then
+		return false, "Not during a race"
+	end
+	if TradeService.GetSession(player) ~= nil then
+		return false, "Not while trading"
+	end
+	local pads: { any } = {}
+	for _, other in api.GetEntries(player) do
+		if other.Behavior.Gadget ~= nil and other.Behavior.Gadget.Effect == "Teleporter" then
+			table.insert(pads, other)
+		end
+	end
+	if #pads < 2 then
+		return false, "Place a second Teleport Pad to travel between them"
+	end
+	local now = os.clock()
+	local left = (lastTeleport[player] or -math.huge) + entry.Behavior.Gadget.TravelCooldown - now
+	if left > 0 then
+		return false, `The teleport recharges: {math.ceil(left)} s`
+	end
+	table.sort(pads, function(a, b)
+		return a.Uid < b.Uid
+	end)
+	local index = table.find(pads, entry) :: number
+	local target = pads[index % #pads + 1]
+	lastTeleport[player] = now
+	local pivot = target.Model:GetPivot()
+	character:PivotTo(pivot * CFrame.new(0, 4.5, 0))
+	Gadget.Fire(entry)
+	Gadget.Fire(target)
+	return true, nil
+end
+
 local function seatOf(entry: any): Seat?
 	local seat = entry.Model:FindFirstChild("ThroneSeat")
 	return if seat ~= nil and seat:IsA("Seat") then seat else nil
@@ -194,7 +244,7 @@ function Gadget.Attach(entry: any)
 			Name = "GadgetPrompt",
 			Action = config.Label or "Use",
 			Slot = "Primary",
-			OwnerOnly = config.Action == "Hologram",
+			OwnerOnly = config.Action == "Hologram" or config.Action == "Teleport",
 			Row = 1,
 		}, function(player: Player)
 			if not pressed(entry) then
@@ -210,6 +260,11 @@ function Gadget.Attach(entry: any)
 				Gadget.Robot(entry, player)
 			elseif config.Action == "Hologram" then
 				Gadget.SetHologram(entry, player)
+			elseif config.Action == "Teleport" then
+				local _, message = Gadget.Teleport(entry, player)
+				if message ~= nil then
+					api.Notify(player, message)
+				end
 			elseif config.Action == "Sit" then
 				sit(entry, player)
 			end

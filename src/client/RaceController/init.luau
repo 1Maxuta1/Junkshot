@@ -62,7 +62,7 @@ local function mount()
 		Position = UDim2.fromScale(0.5, 0.5),
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Color = Theme.Colors.White,
-		MinTextSize = 8,
+		MinTextSize = 10,
 		MaxTextSize = 20,
 		Parent = bar,
 	})

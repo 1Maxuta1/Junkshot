@@ -32,7 +32,7 @@ function RecycleTab.Mount(container: Frame, actions: Widgets.Actions, durationFo
 	local odds = Theme.Label({
 		Name = "Odds",
 		Text = "",
-		Size = UDim2.fromScale(0.28, 0.5),
+		Size = UDim2.fromScale(0.28, 0.62),
 		Position = UDim2.fromScale(0.72, 0),
 		Color = Theme.Colors.InkSoft,
 		Font = Theme.FontBody,
