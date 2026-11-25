@@ -33,6 +33,7 @@ local CarryService = require(script.Parent.CarryService)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
 local RemoteGuard = require(script.Parent.RemoteGuard)
+local Station = require(script.Parent.Trade.Station)
 
 local TradeService = {}
 
@@ -313,51 +314,7 @@ local ACTION_TEXT: { [string]: string } = {
 local function build()
 	local site = CollectionService:GetTagged("RecyclerSite")[1]
 	local y = if site ~= nil and site:IsA("BasePart") then site.Position.Y - site.Size.Y / 2 else 0.4
-	local ground = CFrame.new(0, y, 29)
-	local model = Instance.new("Model")
-	model.Name = "TradeStation"
-	local function part(name: string, size: Vector3, offset: CFrame, color: Color3, material: Enum.Material?, shape: Enum.PartType?): Part
-		local p = Instance.new("Part")
-		p.Name = name
-		p.Shape = shape or Enum.PartType.Block
-		p.Size = size
-		p.CFrame = ground * offset
-		p.Color = color
-		p.Material = material or Enum.Material.SmoothPlastic
-		p.Anchored = true
-		p.TopSurface = Enum.SurfaceType.Smooth
-		p.BottomSurface = Enum.SurfaceType.Smooth
-		p.Parent = model
-		return p
-	end
-	local ink, orange, teal, steel = Color3.fromRGB(44, 56, 82), Color3.fromRGB(255, 150, 30), Color3.fromRGB(36, 188, 186), Color3.fromRGB(176, 188, 204)
-	part("Base", Vector3.new(18, 0.5, 8), CFrame.new(0, 0.25, 0), ink)
-	for _, x in { -6, 6 } do
-		local color = if x < 0 then orange else teal
-		part("Pad", Vector3.new(0.3, 5, 5), CFrame.new(x, 0.6, 0) * CFrame.Angles(0, 0, math.rad(90)), color, nil, Enum.PartType.Cylinder)
-		part("Tube", Vector3.new(0.8, 7, 0.8), CFrame.new(x, 4, 3.2), steel, Enum.Material.Metal)
-		part("Lamp", Vector3.new(1.4, 1.4, 1.4), CFrame.new(x, 8, 3.2), color, Enum.Material.Neon, Enum.PartType.Ball)
-	end
-	local console = part("Console", Vector3.new(4, 3.4, 2), CFrame.new(0, 2.2, 0), steel, Enum.Material.Metal)
-	part("Screen", Vector3.new(3.2, 1.6, 0.3), CFrame.new(0, 4.4, 0.2) * CFrame.Angles(math.rad(-20), 0, 0), teal, Enum.Material.Neon)
-	part("Beam", Vector3.new(12.8, 0.6, 0.6), CFrame.new(0, 7.2, 3.2), steel, Enum.Material.Metal)
-	local sign = part("Sign", Vector3.new(11, 2.4, 0.5), CFrame.new(0, 9, 3.2), ink)
-	part("SignFrame", Vector3.new(11.6, 3, 0.3), CFrame.new(0, 9, 3.2), Color3.fromRGB(255, 205, 50))
-	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
-		local gui = Instance.new("SurfaceGui")
-		gui.Face = face
-		gui.CanvasSize = Vector2.new(440, 96)
-		gui.LightInfluence = 0
-		local label = Instance.new("TextLabel")
-		label.Size = UDim2.fromScale(1, 1)
-		label.BackgroundTransparency = 1
-		label.Font = Enum.Font.FredokaOne
-		label.Text = "TRADE STATION"
-		label.TextColor3 = Color3.fromRGB(255, 210, 60)
-		label.TextScaled = true
-		label.Parent = gui
-		gui.Parent = sign
-	end
+	local _, console = Station.Build(CFrame.new(0, y, 29))
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "TradePrompt"
 	prompt.ActionText = "Trade with a player"
@@ -370,7 +327,6 @@ local function build()
 	prompt.Style = Enum.ProximityPromptStyle.Custom
 	prompt:SetAttribute("PromptKind", "Trade")
 	prompt.Parent = console
-	model.Parent = Workspace
 	anchor = console
 end
 

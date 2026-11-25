@@ -1,6 +1,6 @@
 --!strict
 --[[
-	RaceConfig: the hourly JUNKSHOT RACEWAY race (server/Services/RaceService).
+	RaceConfig: the JUNKSHOT RACEWAY race every 30 minutes (server/Services/RaceService).
 
 	Everybody races in their OWN placed vehicle. To keep it fair every vehicle's top speed is
 	pulled towards BaseSpeed during the race (SpeedShare = how much of the difference stays), so
@@ -11,7 +11,7 @@
 ]]
 
 local RaceConfig = {
-	Interval = 3600, -- seconds; races start on the full hour on every server
+	Interval = 1800, -- seconds; races start at :00 and :30 on every server
 	OpenBefore = 180, -- seconds before the start when joining opens
 	MaxRacers = 8, -- grid slots on the map
 	Laps = 3,

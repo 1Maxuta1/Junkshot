@@ -203,11 +203,12 @@ local function wreathTree(parent, position, seed)
 end
 
 -- A post with one arrow plank pointing along `direction`.
+-- (Yaw by hand: Lune's CFrame.lookAt mirrors Z, which made arrows point the wrong way.)
 local function arrow(parent, position, direction, text, color)
 	local m = model(parent, "Pointer")
 	local flat = CFrame.new(position)
 	Part(m, { Name = "Post", Size = Vector3.new(0.7, 5.5, 0.7), CFrame = flat * CFrame.new(0, 2.75, 0), Color = C.Trunk, CastShadow = true })
-	local board = Part(m, { Name = "Plank", Size = Vector3.new(0.5, 2.2, 8), CFrame = CFrame.lookAt(position + Vector3.new(0, 6.6, 0), position + Vector3.new(0, 6.6, 0) + direction) * CFrame.new(0, 0, -2.2), Color = color })
+	local board = Part(m, { Name = "Plank", Size = Vector3.new(0.5, 2.2, 8), CFrame = CFrame.new(position + Vector3.new(0, 6.6, 0)) * CFrame.Angles(0, math.atan2(-direction.X, -direction.Z), 0) * CFrame.new(0, 0, -2.2), Color = color })
 	Part(m, { Name = "Tip", Size = Vector3.new(0.5, 1.55, 1.55), CFrame = board.CFrame * CFrame.new(0, 0, -4) * CFrame.Angles(math.rad(45), 0, 0), Color = color, CanCollide = false })
 	Part(m, { Name = "Snow", Size = Vector3.new(0.9, 0.35, 8), CFrame = board.CFrame * CFrame.new(0, 1.25, 0), Color = C.Snow, CanCollide = false })
 	for _, face in { Enum.NormalId.Left, Enum.NormalId.Right } do
@@ -251,8 +252,7 @@ function Plaza.Build(map)
 	end
 	arrow(folder, Vector3.new(33, FLOOR, -9), Vector3.new(1, 0, 0), "BASES", C.Red)
 	arrow(folder, Vector3.new(-33, FLOOR, -9), Vector3.new(-1, 0, 0), "BASES", C.Blue)
-	arrow(folder, Vector3.new(24, FLOOR, -33), Vector3.new(0.35, 0, -1).Unit, "RACEWAY", C.Orange)
-	arrow(folder, Vector3.new(13, FLOOR, 24), Vector3.new(-1, 0, 0.35).Unit, "TRADE", C.Purple)
+	arrow(folder, Vector3.new(24, FLOOR, -33), Vector3.new(0.26, 0, -1).Unit, "RACEWAY", C.Orange)
 end
 
 return Plaza

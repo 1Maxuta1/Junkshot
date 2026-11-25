@@ -234,18 +234,67 @@ local zones = {
 	},
 	{
 		Name = "Pine Hollow",
+		SpawnArea = { X = 30, Z = 30, CenterZ = 0 }, -- the clearing
 		Degrees = 225,
 		Accent = C.Green,
 		Build = function(parent, at)
-			Prefabs.Pine(parent, at(-24, 0, -30), 1)
-			Prefabs.Pine(parent, at(-6, 0, -33), 1.15)
-			Prefabs.Pine(parent, at(12, 0, -30), 0.9)
-			Prefabs.Pine(parent, at(28, 0, -29), 1.05)
-			Prefabs.Pine(parent, at(-34, 0, -12), 0.85)
-			Prefabs.Pine(parent, at(34, 0, -8), 0.9)
-			Prefabs.LogPile(parent, at(-15, 0, -25))
-			Prefabs.SnowPile(parent, at(20, 0, -26), 0.45)
-			Prefabs.Lamp(parent, at(-34, 0, 6), true)
+			-- A small forest: trees in rows all around a clearing (the JunkSpawn area, SpawnArea
+			-- below), open towards the plaza. `toPlaza` = local direction of the way in.
+			local toPlaza = at(0, 0, 0):VectorToObjectSpace(ORIGIN - at(0, 0, 0).Position).Unit
+			local side = Vector3.new(-toPlaza.Z, 0, toPlaza.X)
+			local seed = 7
+			local function random(min, max)
+				seed = (seed * 1103515245 + 12345) % 2147483648
+				return min + (max - min) * (seed / 2147483648)
+			end
+			for ring, radius in { 24.5, 31, 37 } do
+				local count = ({ 15, 20, 22 })[ring]
+				for index = 0, count - 1 do
+					local angle = (index + (ring % 2) * 0.5) / count * math.pi * 2
+					local x, z = math.cos(angle) * radius + random(-1.6, 1.6), math.sin(angle) * radius + random(-1.6, 1.6)
+					local here = Vector3.new(x, 0, z)
+					local ahead, across = here:Dot(toPlaza), math.abs(here:Dot(side))
+					local inWay = ahead > 0 and across < 8
+					local camp = (here - side * 27):Dot(here - side * 27) < 90 -- the tent's corner
+					if not inWay and not camp and math.abs(x) < 39 and math.abs(z) < 39 then
+						if ring == 1 then
+							Prefabs.ForestPine(parent, at(x, 0, z, random(0, 90)), random(0.62, 0.95), true)
+						else
+							Prefabs.Pine(parent, at(x, 0, z, random(0, 90)), random(0.75, 1.2))
+						end
+					end
+				end
+			end
+			local function spot(forward, across, turn)
+				local p = toPlaza * forward + side * across
+				return at(p.X, 0, p.Z, turn)
+			end
+			-- Camp: tent, fire, log seats
+			Prefabs.Tent(parent, spot(-3, 27, 20), C.Red)
+			Prefabs.Campfire(parent, spot(4, 23.5))
+			Prefabs.FallenTrunk(parent, spot(9, 23, 70), 6)
+			Prefabs.Stump(parent, spot(5, 19.8), 0.8)
+			-- Undergrowth between the trees
+			Prefabs.FallenTrunk(parent, spot(-18, -15, 35), 10)
+			Prefabs.FallenTrunk(parent, spot(6, -24, 100), 8)
+			Prefabs.LogPile(parent, spot(-22, 4, 60))
+			for index, p in { { -21, -6 }, { -14, 18 }, { 14, -20 }, { -6, -21.5 }, { 18, 18 } } do
+				Prefabs.Stump(parent, spot(p[1], p[2], index * 40), 0.8 + index % 3 * 0.15)
+			end
+			for index, p in { { 24, -11 }, { 24, 11 }, { 33, -11 }, { 33, 11 }, { -20, 12 }, { -20, -14 }, { 10, 21 }, { 0, -22 }, { -27, 0 } } do
+				Prefabs.Bush(parent, spot(p[1], p[2], index * 50), 0.8 + index % 3 * 0.25)
+			end
+			for index, p in { { 19, -13 }, { -21, 17 }, { -10, -20 }, { 28, 13 } } do
+				Prefabs.Rock(parent, spot(p[1], p[2], index * 70), 0.8 + index % 2 * 0.5)
+			end
+			for index, p in { { 16, 16 }, { -18, -10 }, { -16, 15.5 }, { 8, -20 }, { 20, -16 }, { -4, 21 } } do
+				Prefabs.Mushrooms(parent, spot(p[1], p[2], index * 60))
+			end
+			Prefabs.SnowPile(parent, spot(-24, -20), 0.4)
+			Prefabs.SnowPile(parent, spot(13, -27), 0.35)
+			-- Way in: lamps on both sides
+			Prefabs.Lamp(parent, spot(36, -9.5), true)
+			Prefabs.Lamp(parent, spot(36, 9.5), false)
 		end,
 	},
 	{
@@ -282,7 +331,8 @@ for index, zone in zones do
 		Color = C.Snow:Lerp(zone.Accent, 0.1),
 		CastShadow = false,
 	})
-	Prefabs.JunkSpawnArea(zoneFolder, at(0, 0.1, SPAWN_AREA.CenterZ), SPAWN_AREA.X, SPAWN_AREA.Z, "JunkSpawnArea")
+	local area = zone.SpawnArea or SPAWN_AREA
+	Prefabs.JunkSpawnArea(zoneFolder, at(0, 0.1, area.CenterZ), area.X, area.Z, "JunkSpawnArea")
 	-- Sign at the inner corner, readable from the plaza.
 	Prefabs.Sign(zoneFolder, at(-22, 0, 35, 180), string.upper(zone.Name), zone.Accent)
 

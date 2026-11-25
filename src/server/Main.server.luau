@@ -16,7 +16,7 @@
 	                             EconomyService has no Start (it is a library over CurrencyService)
 	  8d. Bases & audio (4)      BaseService (chest, slots, buildings, Bases/Conveyor), AudioService
 	  8e. World & looks          WorldService (day cycle, sky), LeaderboardService, Cosmetics, Companions
-	  8f. World events         WorldEventService (Rare Creature every 5 min), RaceService (hourly), TradeService
+	  8f. World events         WorldEventService (Rare Creature every 5 min), RaceService (every 30 min), TradeService
 	  8g. OnboardingService     the tutorial of new players; DailyService daily reward and quests
 	  9. DataService.Start()     LAST: begins loading profiles, which fires PlayerLoaded, and
 	                             every listener above must already be connected

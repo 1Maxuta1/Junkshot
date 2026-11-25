@@ -289,6 +289,109 @@ function Prefabs.Pine(parent, cf, scale)
 	return m
 end
 
+-- A fuller pine for the forest: eight-pointed tiers (two crossed blocks), snow on the boughs.
+function Prefabs.ForestPine(parent, cf, scale, shadow)
+	scale = scale or 1
+	local m = model(parent, "ForestPine")
+	Prefabs.Part(m, {
+		Name = "Trunk", Shape = Enum.PartType.Cylinder, Size = Vector3.new(6, 1.7, 1.7) * scale,
+		CFrame = cf * CFrame.new(0, 3 * scale, 0) * UPRIGHT, Color = C.Trunk,
+	})
+	local tiers = { { 9.6, 2.6, 5.4 }, { 8, 2.6, 8 }, { 6.2, 2.6, 10.6 }, { 4.4, 2.6, 13.2 }, { 2.6, 2.4, 15.6 } }
+	for index, tier in tiers do
+		local color = C.PineDark:Lerp(C.Pine, (index - 1) / 4)
+		for turn = 0, 1 do
+			Prefabs.Part(m, {
+				Name = "Bough", Size = Vector3.new(tier[1], tier[2], tier[1] * 0.72) * scale,
+				CFrame = cf * CFrame.new(0, tier[3] * scale, 0) * CFrame.Angles(0, math.rad(index * 27 + turn * 90), 0),
+				Color = color, CanCollide = turn == 0 and index <= 2, CanQuery = false, CastShadow = shadow == true and turn == 0,
+			})
+		end
+		if index <= 4 then
+			Prefabs.Part(m, {
+				Name = "Snow", Size = Vector3.new(tier[1] * 0.74, 0.5, tier[1] * 0.74) * scale,
+				CFrame = cf * CFrame.new(0, (tier[3] + 1.45) * scale, 0) * CFrame.Angles(0, math.rad(index * 27 + 45), 0),
+				Color = C.Snow, CanCollide = false, CanQuery = false, CastShadow = false,
+			})
+		end
+	end
+	return m
+end
+
+-- Forest floor pieces: stump, fallen trunk, bush, rock, mushrooms, tent, campfire.
+function Prefabs.Stump(parent, cf, size)
+	local m = model(parent, "Stump")
+	Prefabs.Part(m, { Name = "Wood", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.6, 2.4, 2.4) * size, CFrame = cf * CFrame.new(0, 0.8 * size, 0) * UPRIGHT, Color = C.Trunk })
+	Prefabs.Part(m, { Name = "Cut", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.1, 2, 2) * size, CFrame = cf * CFrame.new(0, 1.62 * size, 0) * UPRIGHT, Color = C.Wood, CanCollide = false, CastShadow = false })
+	Prefabs.Part(m, { Name = "Ring", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.12, 0.9, 0.9) * size, CFrame = cf * CFrame.new(0, 1.63 * size, 0) * UPRIGHT, Color = C.Trunk, CanCollide = false, CastShadow = false })
+end
+
+function Prefabs.FallenTrunk(parent, cf, length)
+	local m = model(parent, "FallenTrunk")
+	Prefabs.Part(m, { Name = "Log", Shape = Enum.PartType.Cylinder, Size = Vector3.new(length, 2, 2), CFrame = cf * CFrame.new(0, 0.9, 0), Color = C.Trunk })
+	Prefabs.Part(m, { Name = "Snow", Size = Vector3.new(length * 0.8, 0.4, 1.3), CFrame = cf * CFrame.new(0, 1.85, 0), Color = C.Snow, CanCollide = false, CastShadow = false })
+	for _, x in { -1, 1 } do
+		Prefabs.Part(m, { Name = "End", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.1, 1.7, 1.7), CFrame = cf * CFrame.new(x * length / 2, 0.9, 0), Color = C.Wood, CanCollide = false, CastShadow = false })
+	end
+	Prefabs.Part(m, { Name = "Branch", Shape = Enum.PartType.Cylinder, Size = Vector3.new(2.6, 0.5, 0.5), CFrame = cf * CFrame.new(length * 0.2, 2, 0.6) * CFrame.Angles(0, 0.4, 1), Color = C.Trunk, CanCollide = false, CastShadow = false })
+end
+
+function Prefabs.Bush(parent, cf, size)
+	local m = model(parent, "Bush")
+	for index, ball in { { 0, 1, 0, 3 }, { 1.6, 0.8, 0.5, 2.4 }, { -1.5, 0.7, -0.3, 2.2 } } do
+		Prefabs.Part(m, { Name = "Leaves", Shape = Enum.PartType.Ball, Size = Vector3.one * ball[4] * size, CFrame = cf * CFrame.new(ball[1] * size, ball[2] * size, ball[3] * size), Color = if index == 1 then C.Pine else C.PineDark, CanCollide = false, CanQuery = false, CastShadow = false })
+	end
+	Prefabs.Part(m, { Name = "Snow", Shape = Enum.PartType.Ball, Size = Vector3.one * 2.2 * size, CFrame = cf * CFrame.new(0.2 * size, 1.6 * size, 0), Color = C.Snow, CanCollide = false, CanQuery = false, CastShadow = false })
+end
+
+function Prefabs.Rock(parent, cf, size)
+	local m = model(parent, "Rock")
+	Prefabs.Part(m, { Name = "Stone", Size = Vector3.new(3, 2, 2.4) * size, CFrame = cf * CFrame.new(0, 0.7 * size, 0) * CFrame.Angles(0.2, 0.6, 0.15), Color = Color3.fromRGB(128, 138, 158) })
+	Prefabs.Part(m, { Name = "Stone", Size = Vector3.new(1.7, 1.3, 1.6) * size, CFrame = cf * CFrame.new(1.6 * size, 0.4 * size, 0.6 * size) * CFrame.Angles(-0.2, 1.2, 0.3), Color = Color3.fromRGB(108, 118, 140), CanCollide = false })
+	Prefabs.Part(m, { Name = "Snow", Size = Vector3.new(2.2, 0.4, 1.8) * size, CFrame = cf * CFrame.new(0, 1.75 * size, 0) * CFrame.Angles(0.2, 0.6, 0.15), Color = C.Snow, CanCollide = false, CastShadow = false })
+end
+
+function Prefabs.Mushrooms(parent, cf)
+	local m = model(parent, "Mushrooms")
+	for _, spot in { { 0, 0, 1 }, { 0.9, 0.5, 0.7 }, { -0.7, 0.6, 0.55 } } do
+		local s = spot[3]
+		Prefabs.Part(m, { Name = "Stem", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.9, 0.35, 0.35) * s, CFrame = cf * CFrame.new(spot[1], 0.45 * s, spot[2]) * UPRIGHT, Color = C.Snow, CanCollide = false, CanQuery = false, CastShadow = false })
+		Prefabs.Part(m, { Name = "Cap", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.4, 1.2, 1.2) * s, CFrame = cf * CFrame.new(spot[1], 1 * s, spot[2]) * UPRIGHT, Color = C.Red, CanCollide = false, CanQuery = false, CastShadow = false })
+	end
+end
+
+function Prefabs.Campfire(parent, cf)
+	local m = model(parent, "Campfire")
+	for index = 0, 7 do
+		Prefabs.Part(m, { Name = "Stone", Size = Vector3.new(0.9, 0.7, 0.7), CFrame = cf * CFrame.Angles(0, math.rad(index * 45), 0) * CFrame.new(1.7, 0.3, 0), Color = Color3.fromRGB(110, 118, 136), CanCollide = false, CastShadow = false })
+	end
+	for index = 0, 2 do
+		Prefabs.Part(m, { Name = "Log", Shape = Enum.PartType.Cylinder, Size = Vector3.new(2.4, 0.45, 0.45), CFrame = cf * CFrame.Angles(0, math.rad(index * 60), 0) * CFrame.new(0, 0.5, 0) * CFrame.Angles(0, 0, 0.25), Color = C.Trunk, CanCollide = false, CastShadow = false })
+	end
+	local flame = Prefabs.Part(m, { Name = "Embers", Shape = Enum.PartType.Ball, Size = Vector3.new(1.1, 1.1, 1.1), CFrame = cf * CFrame.new(0, 0.7, 0), Color = C.Orange, Material = Enum.Material.Neon, CanCollide = false, CanQuery = false, CastShadow = false })
+	local fire = Instance.new("Fire")
+	fire.Size = 4
+	fire.Heat = 6
+	fire.Parent = flame
+	local glow = Instance.new("PointLight")
+	glow.Color = C.Warm
+	glow.Range = 22
+	glow.Brightness = 1.4
+	glow.Parent = flame
+end
+
+function Prefabs.Tent(parent, cf, color)
+	local m = model(parent, "Tent")
+	for _, side in { -1, 1 } do
+		Prefabs.Part(m, { Name = "Cloth", Size = Vector3.new(0.3, 6.4, 8), CFrame = cf * CFrame.new(side * 1.9, 2.5, 0) * CFrame.Angles(0, 0, math.rad(side * 36)), Color = color })
+		Prefabs.Part(m, { Name = "Snow", Size = Vector3.new(0.4, 2.2, 8.2), CFrame = cf * CFrame.new(side * 0.75, 4.3, 0) * CFrame.Angles(0, 0, math.rad(side * 36)), Color = C.Snow, CanCollide = false, CastShadow = false })
+		Prefabs.Part(m, { Name = "Peg", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.2, 0.2, 0.2), CFrame = cf * CFrame.new(side * 4.2, 0.4, 3.4) * UPRIGHT, Color = C.Wood, CanCollide = false, CastShadow = false })
+	end
+	Prefabs.Part(m, { Name = "Pole", Shape = Enum.PartType.Cylinder, Size = Vector3.new(8.6, 0.3, 0.3), CFrame = cf * CFrame.new(0, 5, 0) * CFrame.Angles(0, math.rad(90), 0), Color = C.Wood, CanCollide = false, CastShadow = false })
+	Prefabs.Part(m, { Name = "Mat", Size = Vector3.new(5, 0.2, 7.4), CFrame = cf * CFrame.new(0, 0.15, 0), Color = C.Orange, CanCollide = false, CastShadow = false })
+	Prefabs.Part(m, { Name = "Bag", Shape = Enum.PartType.Cylinder, Size = Vector3.new(5, 1.2, 1.2), CFrame = cf * CFrame.new(-0.8, 0.7, 0.3) * CFrame.Angles(0, math.rad(90), 0), Color = C.Blue, CanCollide = false, CastShadow = false })
+end
+
 -- Soft snow mound made of spheres sunk into the ground (domes; collision matches the look).
 function Prefabs.SnowPile(parent, cf, size)
 	size = size or 1

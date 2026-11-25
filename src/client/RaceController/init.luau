@@ -1,6 +1,6 @@
 --!strict
 --[[
-	RaceController: what a player sees of the hourly race (server: RaceService). Display only.
+	RaceController: what a player sees of the race (server: RaceService). Display only.
 
 	  Open       "Race in 1:32 ..." for everyone
 	  Countdown  3 - 2 - 1 - GO!, the start lights on the arch turn on one by one

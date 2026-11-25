@@ -1,6 +1,6 @@
 --!strict
 --[[
-	RaceService: the hourly race at the JUNKSHOT RACEWAY (map: tools/map/RaceZone, found by tags).
+	RaceService: the race every RaceConfig.Interval at the JUNKSHOT RACEWAY (map: tools/map/RaceZone, found by tags).
 
 	  Idle       nothing; Workspace attribute RaceStartsAt = the next full hour
 	  Open       OpenBefore seconds before it: players join at the pad (they need a placed vehicle)

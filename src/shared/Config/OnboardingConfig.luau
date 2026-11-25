@@ -20,7 +20,7 @@ local OnboardingConfig = {
 		{ Id = "Take", Title = "Take your reward", Hint = "Tap SPEED UP, then take it from the tray", Goal = 1, Reward = 20, Target = "Machine" },
 		{ Id = "Sell", Title = "Sell something", Hint = "The Scrap Dealer pays Klunks for items in your hands", Goal = 1, Reward = 25, Target = "Dealer" },
 		{ Id = "Upgrade", Title = "Make your base better", Hint = "Build a Warm Lantern on your base or buy any upgrade", Goal = 1, Reward = 25, Target = "Base" },
-		{ Id = "Explore", Title = "Visit the Raceway", Hint = "Craft a vehicle and race other players every hour", Goal = 1, Reward = 50, Target = "Raceway" },
+		{ Id = "Explore", Title = "Visit the Raceway", Hint = "Craft a vehicle and race other players every 30 minutes", Goal = 1, Reward = 50, Target = "Raceway" },
 	} :: { Step },
 	RacewaySpot = Vector3.new(73, 4, -264),
 	RacewayDistance = 45,
