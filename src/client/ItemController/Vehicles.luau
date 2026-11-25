@@ -33,7 +33,7 @@ local ANIMATE_DISTANCE = 220 -- studs from the camera within which vehicles are 
 
 -- Radius 0 = it only steers. Axis (in the Base's space, -Y = the steering tube's foot) and Ratio
 -- (degrees at full lock) only for steering parts.
-type Spinner = { Weld: Weld, BaseC0: CFrame, Radius: number, Axis: CFrame?, Ratio: number }
+type Spinner = { Weld: Weld, BaseC0: CFrame, Radius: number, Center: CFrame?, Axis: CFrame?, Ratio: number }
 type View = { Model: Model, Spinners: { Spinner }, Angle: number, Steer: number, Shown: number }
 
 local localPlayer = Players.LocalPlayer
@@ -72,12 +72,14 @@ local function viewOf(model: Model): View
 		if weld:IsA("Weld") and (weld.Name == "SpinWeld" or weld.Name == "SteerWeld") and weld.Part1 ~= nil then
 			local radius = weld.Part1:GetAttribute("Spin")
 			local ratio = weld.Part1:GetAttribute("Steer")
+			local center = weld.Part1:GetAttribute("SpinCenter")
 			local axis = model:GetAttribute("SteerAxis")
 			local steers = type(ratio) == "number" and typeof(axis) == "CFrame" and model.PrimaryPart ~= nil
 			table.insert(spinners, {
 				Weld = weld,
 				BaseC0 = weld.C0,
 				Radius = if type(radius) == "number" then radius else 0,
+				Center = if typeof(center) == "Vector3" and model.PrimaryPart ~= nil then model.PrimaryPart.PivotOffset * CFrame.new(center) else nil,
 				Axis = if steers then (model.PrimaryPart :: BasePart).PivotOffset * (axis :: CFrame) else nil,
 				Ratio = if type(ratio) == "number" then ratio else 0,
 			})
@@ -125,7 +127,8 @@ local function animate(dt: number)
 				for _, spinner in if moved then view.Spinners else {} do
 					local c0 = spinner.BaseC0
 					if spinner.Radius > 0 then
-						c0 = c0 * CFrame.Angles(-view.Angle / spinner.Radius, 0, 0)
+						local turn = CFrame.Angles(-view.Angle / spinner.Radius, 0, 0)
+						c0 = if spinner.Center ~= nil then spinner.Center * turn * spinner.Center:Inverse() * c0 else c0 * turn
 					end
 					if spinner.Axis ~= nil then
 						local axis = spinner.Axis

@@ -13,7 +13,8 @@
 	  - "Base" is the root (PrimaryPart): the main body.
 	  - Vehicles rest on invisible "Collider" balls at the wheels (they roll over curbs).
 	  - Parts with attribute Spin = <radius> spin around their X axis while driving (wheels);
-	    Crank parts have Spin too (pedals). Clients animate them.
+	    Crank parts have Spin too (pedals). Clients animate them. SpinCenter (Vector3 relative to
+    the pivot) = they circle around that point instead of their own middle.
   - Parts with attribute Steer = <degrees at full lock> turn with the steering around the model
     attribute SteerAxis (CFrame relative to the pivot; its Y axis is the steering axis).
 	  - Seats ("DriverSeat" VehicleSeat, "PassengerSeat" Seat) exist only when real = true.
@@ -146,6 +147,7 @@ local builders: { [string]: Builder } = {
 				local angle = math.rad(piece * 30)
 				local tyre = turning(addPart(model, "Wheel", Block, V(0.24, 0.24, 0.72), rubber, M.Slate, V(0, 0, 0)))
 				tyre.CFrame = CFrame.new(center) * CFrame.Angles(angle, 0, 0) * CFrame.new(0, 1.2, 0)
+				tyre:SetAttribute("SpinCenter", center)
 			end
 			for spoke = 0, 3 do
 				turning(addPart(model, "Spoke", Block, V(0.04, 2.1, 0.04), chrome, metal, center, V(spoke * 45, 0, 0)))
@@ -187,9 +189,16 @@ local builders: { [string]: Builder } = {
 		tube("Chain", CRANK + V(0.26, 0.4, 0), REAR + V(0.22, 0.26, 0), 0.06, black)
 		tube("Chain", CRANK + V(0.26, -0.4, 0), REAR + V(0.22, -0.26, 0), 0.06, black)
 		for _, side in { -1, 1 } do
-			-- Cranks and pedals circle with the pedals' axle (their weld turns around its own part,
-			-- so each is a bar through the axle).
-			addPart(model, "Crank", Block, V(0.1, 1.3, 0.14), chrome, metal, CRANK + V(0.4 * side, 0, 0), V(25, 0, 0)):SetAttribute("Spin", 2.6)
+			-- The arms point opposite ways and circle around the axle with their pedals.
+			local turn = CFrame.new(CRANK) * CFrame.Angles(math.rad(if side > 0 then 25 else 205), 0, 0)
+			local arm = addPart(model, "Crank", Block, V(0.1, 0.75, 0.14), chrome, metal, V(0, 0, 0))
+			arm.CFrame = turn * CFrame.new(0.4 * side, 0.34, 0)
+			local pedal = addPart(model, "Pedal", Block, V(0.5, 0.12, 0.4), black, M.Slate, V(0, 0, 0))
+			pedal.CFrame = turn * CFrame.new(0.66 * side, 0.68, 0)
+			for _, part in { arm, pedal } do
+				part:SetAttribute("Spin", 2.6)
+				part:SetAttribute("SpinCenter", CRANK)
+			end
 		end
 		addPart(model, "Axle", Cylinder, V(0.9, 0.2, 0.2), black, metal, CRANK)
 
