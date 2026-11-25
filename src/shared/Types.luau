@@ -194,7 +194,9 @@ export type ThrowFx = {
 	Origin: Vector3,
 	Velocity: Vector3,
 	Gravity: number,
-	FlightTime: number,
+	FlightTime: number, -- real seconds, slow fields included
+	-- Only when the arc crosses a slow field: { real seconds, arc seconds } points in order.
+	SlowPoints: { { number } }?,
 	FinalPivot: CFrame,
 }
 

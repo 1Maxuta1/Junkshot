@@ -46,6 +46,7 @@ local NotifyController = require(script.Parent.NotifyController)
 -- A throw the client knows about. Model is nil until the world object has replicated.
 type Flight = {
 	Fx: Types.ThrowFx,
+	ArcEnd: number, -- length of the arc at normal speed (seconds)
 	Model: Model?,
 	Correction: Vector3, -- FinalPivot minus the arc's end point, blended in over the flight
 	SpinAxis: Vector3,
@@ -389,7 +390,10 @@ local function placeAlongArc(flight: Flight, t: number)
 		return
 	end
 	local fx = flight.Fx
-	local alpha = t / fx.FlightTime
+	if fx.SlowPoints ~= nil then
+		t = Ballistics.ArcTime(fx.SlowPoints, t) -- slower inside a slow field
+	end
+	local alpha = t / flight.ArcEnd
 	local position = Ballistics.PositionAt(fx.Origin, fx.Velocity, fx.Gravity, t) + flight.Correction * alpha
 	local spin = CFrame.fromAxisAngle(flight.SpinAxis, flight.SpinTotal * alpha)
 	model:PivotTo(CFrame.new(position) * spin * fx.FinalPivot.Rotation)
@@ -434,7 +438,7 @@ local function isValidFx(fx: any): boolean
 		and Validate.IsFiniteNumber(fx.Gravity)
 		and Validate.IsFiniteNumber(fx.FlightTime)
 		and fx.FlightTime > 0
-		and fx.FlightTime <= GameConfig.Throw.MaxFlightTime + 0.1
+		and fx.FlightTime <= GameConfig.Throw.MaxFlightTime * 10 + 0.1 -- a slow field is never below 0.1
 end
 
 local function onThrowFx(fx: Types.ThrowFx)
@@ -454,11 +458,14 @@ local function onThrowFx(fx: Types.ThrowFx)
 		return
 	end
 
-	local arcEnd = Ballistics.PositionAt(fx.Origin, fx.Velocity, fx.Gravity, fx.FlightTime)
+	local points = fx.SlowPoints
+	local arcTime = if points ~= nil then points[#points][2] else fx.FlightTime
+	local arcEnd = Ballistics.PositionAt(fx.Origin, fx.Velocity, fx.Gravity, arcTime)
 	local flat = Vector3.new(fx.Velocity.X, 0, fx.Velocity.Z)
-	local turns = math.max(1, math.floor(fx.FlightTime * SPIN_SPEED / (2 * math.pi) + 0.5))
+	local turns = math.max(1, math.floor(arcTime * SPIN_SPEED / (2 * math.pi) + 0.5))
 	local flight: Flight = {
 		Fx = fx,
+		ArcEnd = arcTime,
 		Model = nil,
 		Correction = fx.FinalPivot.Position - arcEnd,
 		SpinAxis = if flat.Magnitude > 1e-3 then flat.Unit:Cross(Vector3.new(0, 1, 0)) else Vector3.new(1, 0, 0),

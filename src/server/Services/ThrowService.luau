@@ -10,6 +10,8 @@
 	     The client never sends a velocity or an origin.
 	  4. The arc is raycast once (Ballistics.Simulate) to find the landing point. No engine
 	     physics is involved, so nothing can be pushed, flung or duplicated.
+	     Inside an Aurora Reactor's aura the same arc is flown slower (Ballistics.SlowPoints):
+	     only the flight time changes, the landing point does not.
 	  5. Lifecycle, in this order and without yielding:
 	       carry list --TakeByUid--> record --JunkService.SpawnAt--> ONE world object
 	     The world object is created at once at its FINAL pivot and stays locked (no prompt,
@@ -40,6 +42,7 @@ local Validate = require(ReplicatedStorage.Shared.Util.Validate)
 local CarryService = require(script.Parent.CarryService)
 local JunkService = require(script.Parent.JunkService)
 local RemoteGuard = require(script.Parent.RemoteGuard)
+local SlowFieldService = require(script.Parent.SlowFieldService)
 
 local WALL_BACKOFF = 1.5 -- studs a wall hit is moved back before searching the ground below it
 
@@ -166,7 +169,8 @@ function ThrowService.TryThrow(player: Player, uid: any, aimTarget: any): (boole
 		return false, ThrowService.Errors.NotCarried
 	end
 
-	local flightTime = hit.Time
+	local slowPoints = Ballistics.SlowPoints(origin, velocity, Ballistics.GetGravity(), hit.Time, SlowFieldService.FactorAt)
+	local flightTime = if slowPoints ~= nil then slowPoints[#slowPoints][1] else hit.Time
 	local options = {
 		Uid = record.Uid,
 		Lifetime = GameConfig.Junk.DroppedLifetime,
@@ -181,6 +185,7 @@ function ThrowService.TryThrow(player: Player, uid: any, aimTarget: any): (boole
 				Velocity = velocity,
 				Gravity = Ballistics.GetGravity(),
 				FlightTime = flightTime,
+				SlowPoints = slowPoints,
 				FinalPivot = model:GetPivot(),
 			}, player)
 		end,

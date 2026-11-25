@@ -2037,6 +2037,24 @@ local function runFixTests(player: Player)
 			SlowFieldService.Update()
 			task.wait(0.3)
 			check("aurora: inside you walk slower", humanoid.WalkSpeed < normal * 0.6, tostring(humanoid.WalkSpeed))
+			do
+				local Ballistics = require(ReplicatedStorage.Shared.Util.Ballistics) :: any
+				local from, v = entry.Model:GetPivot().Position, Vector3.new(0, 20, 30)
+				local points = Ballistics.SlowPoints(from, v, 50, 0.5, SlowFieldService.FactorAt)
+				check("aurora: a throw inside takes longer", points ~= nil and math.abs(points[#points][1] - 0.5 / 0.45) < 0.01)
+				check("aurora: ... and ends at the same place", points ~= nil and math.abs(Ballistics.ArcTime(points, points[#points][1]) - 0.5) < 1e-6)
+				check("aurora: a throw outside is unchanged", Ballistics.SlowPoints(from + Vector3.new(0, 200, 0), v, 50, 0.5, SlowFieldService.FactorAt) == nil)
+				local half = Ballistics.SlowPoints(from, Vector3.new(0, 0, 44), 0, 1, function(p: Vector3)
+					return if p.Z - from.Z < 22 then 0.5 else 1
+				end)
+				check("aurora: leaving it gives the normal speed back", half ~= nil and math.abs(half[#half][1] - 1.5) < 0.05
+					and math.abs(Ballistics.ArcTime(half, half[#half][1] - 0.25) - 0.75) < 1e-6)
+				local thrownUid = JunkService.NewUid()
+				CarryService.AddJunk(player, "rusty_can", thrownUid)
+				local throwOk = ThrowService.TryThrow(player, thrownUid, from)
+				task.wait(0.05)
+				check("aurora: a can thrown inside flies", throwOk and ThrowService.IsInFlight(thrownUid))
+			end
 			teleportNear(player, CFrame.new(0, 4, 20))
 			task.wait(0.5)
 			check("aurora: outside the normal speed is back", humanoid.WalkSpeed == normal, tostring(humanoid.WalkSpeed))

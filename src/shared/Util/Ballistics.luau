@@ -8,6 +8,10 @@
 	      the horizontal distance clamped to [MinRange, MaxRange] and the speed clamped to what
 	      MaxRange needs on flat ground. The caller never chooses the speed directly.
 	  PositionAt(origin, velocity, gravity, t) -> Vector3
+	  SlowPoints(origin, velocity, gravity, time, factorAt) -> points?
+	      The same arc flown through slow fields: { real seconds, arc seconds } points, the last
+	      one is the end of the flight. nil when nothing slows it.
+	  ArcTime(points, realTime) -> arc seconds at that real time
 	  Simulate(origin, velocity, params) -> Hit
 	      Walks the arc in SimulationStep segments with one raycast each, up to MaxFlightTime.
 ]]
@@ -76,6 +80,48 @@ end
 
 function Ballistics.PositionAt(origin: Vector3, velocity: Vector3, gravity: number, t: number): Vector3
 	return origin + velocity * t + Vector3.new(0, -0.5 * gravity * t * t, 0)
+end
+
+-- The path never changes, only how fast it is flown: factorAt gives the share of normal speed.
+function Ballistics.SlowPoints(
+	origin: Vector3,
+	velocity: Vector3,
+	gravity: number,
+	time: number,
+	factorAt: (Vector3) -> number
+): { { number } }?
+	local step = math.max(config().SimulationStep, 1 / 120)
+	local points: { { number } } = { { 0, 0 } }
+	local real, arc = 0, 0
+	local last: number? = nil
+	local slowed = false
+	while arc < time - 1e-6 do
+		local dt = math.min(step, time - arc)
+		local factor = math.clamp(factorAt(Ballistics.PositionAt(origin, velocity, gravity, arc + dt / 2)), 0.1, 1)
+		slowed = slowed or factor < 1
+		if last ~= nil and factor ~= last then
+			table.insert(points, { real, arc })
+		end
+		last = factor
+		arc += dt
+		real += dt / factor
+	end
+	if not slowed then
+		return nil
+	end
+	table.insert(points, { real, arc })
+	return points
+end
+
+function Ballistics.ArcTime(points: { { number } }, realTime: number): number
+	for i = 2, #points do
+		local a, b = points[i - 1], points[i]
+		if realTime <= b[1] then
+			local span = b[1] - a[1]
+			return if span > 0 then a[2] + (b[2] - a[2]) * math.max(realTime - a[1], 0) / span else b[2]
+		end
+	end
+	return points[#points][2]
 end
 
 function Ballistics.Simulate(origin: Vector3, velocity: Vector3, params: RaycastParams): Hit
