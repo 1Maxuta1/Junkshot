@@ -84,7 +84,7 @@ function SellService.Quote(player: Player, uids: any): ({ Pick }?, number?, stri
 		table.insert(picks, { Uid = uid, Id = itemId, Price = price })
 		total += price
 	end
-	local bonus = math.floor(total * PlayerUpgradeService.GetSellBonus(player))
+	local bonus = ItemValue.HagglerBonus(total, PlayerUpgradeService.GetSellBonus(player))
 	return picks, total + bonus, nil
 end
 

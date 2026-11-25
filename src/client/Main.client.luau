@@ -48,6 +48,7 @@ local CONTROLLER_NAMES = {
 	"BuffController",
 	"BackpackController",
 	"FirstPersonController",
+	"SlowFieldController",
 	"LeaderboardController",
 	"UpgradeController",
 	"ContainerController",

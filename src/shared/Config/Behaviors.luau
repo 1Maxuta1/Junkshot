@@ -257,7 +257,8 @@ local Behaviors = {
 	["Deploy.Beacon"] = { Kind = "Gadget", Mode = "Place", Model = "Item:crystal_beacon:2", Storable = true, FacePlayer = true,
 		Gadget = { Effect = "Beacon", Action = "Cycle", Modes = { "Turn off", "Violet beam", "Blue beam", "Gold beam" } } },
 	["Deploy.Reactor"] = { Kind = "Gadget", Mode = "Place", Model = "Item:aurora_reactor:1.8", Storable = true, FacePlayer = true,
-		Gadget = { Effect = "Reactor", Action = "Cycle", Modes = { "Shut down", "Start aurora" } } },
+		Gadget = { Effect = "Reactor", Action = "Cycle", Modes = { "Shut down", "Start aurora" },
+			SlowField = { Radius = 22, Factor = 0.45 } } }, -- aura (SlowFieldService): share of the normal speed inside
 	["Deploy.Generator"] = { Kind = "Gadget", Mode = "Place", Model = "Item:generator:1.8", Storable = true, FacePlayer = true,
 		Gadget = { Effect = "Generator", Action = "Cycle", Modes = { "Shut down", "Start" } } },
 	["Deploy.CosmicGate"] = { Kind = "Gadget", Mode = "Place", Model = "Item:cosmic_gate:2.4", Storable = true, FacePlayer = true,

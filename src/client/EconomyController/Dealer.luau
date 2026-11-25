@@ -101,8 +101,8 @@ function Dealer.Mount(screenGui: ScreenGui, source: Source): Dealer
 		return list -- only what you carry: chest items have to be brought here
 	end
 
-	local function bonusFactor(): number
-		return 1 + PlayerUpgrades.ValueAt("Haggler", upgradeLevel("Haggler"))
+	local function bonusOf(total: number): number
+		return ItemValue.HagglerBonus(total, PlayerUpgrades.ValueAt("Haggler", upgradeLevel("Haggler")))
 	end
 
 	local function renderSell()
@@ -139,8 +139,8 @@ function Dealer.Mount(screenGui: ScreenGui, source: Source): Dealer
 		if #entries == 0 then
 			Window.Header(list, 1, "Your hands are empty - bring items from the yard or your chest!")
 		end
-		local payout = math.floor(total * bonusFactor())
-		summary.Text = `{count} selected  ·  you get {KlunksFormat.Format(payout)}`
+		local bonus = bonusOf(total)
+		summary.Text = `{count} selected  ·  you get {KlunksFormat.Format(total + bonus)}` .. (if bonus > 0 then `  (+{KlunksFormat.Format(bonus)} Haggler)` else "")
 		sellButton.AutoButtonColor = count > 0
 		sellLabel.Text = "SELL"
 		if os.clock() > confirmUntil then
@@ -172,7 +172,7 @@ function Dealer.Mount(screenGui: ScreenGui, source: Source): Dealer
 				total += entry.Price
 			end
 			confirmUntil = now + CONFIRM_SECONDS
-			sellAllLabel.Text = `SURE? {KlunksFormat.Format(math.floor(total * bonusFactor()))}`
+			sellAllLabel.Text = `SURE? {KlunksFormat.Format(total + bonusOf(total))}`
 			task.delay(CONFIRM_SECONDS, function()
 				if os.clock() >= confirmUntil then
 					sellAllLabel.Text = "SELL ALL"

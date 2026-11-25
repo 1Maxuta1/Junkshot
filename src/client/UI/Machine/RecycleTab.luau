@@ -1,7 +1,7 @@
 --!strict
 --[[
 	RecycleTab: pick one carried item and recycle it into a random reward
-	(rarity chances: DropTables.Recycle, rolled on the server).
+	(rarity chances: DropTables.RecycleFor the chosen item, rolled on the server).
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -43,12 +43,21 @@ function RecycleTab.Mount(container: Frame, actions: Widgets.Actions, durationFo
 	})
 	odds.TextYAlignment = Enum.TextYAlignment.Top
 	odds.RichText = true
-	local lines = { "<b>Possible rewards</b>" }
-	for _, rarity in Rarities.Order do
-		local color = Rarities.GetColor(rarity)
-		table.insert(lines, string.format('<font color="#%s">%s</font> %g%%', color:ToHex(), rarity, DropTables.Recycle[rarity]))
+	-- The odds of the chosen item; better than a Common's are marked with an arrow.
+	local function showOdds(itemId: string?)
+		local inputRarity = if itemId ~= nil then ItemConfig.GetRarity(itemId) or "Common" else "Common"
+		local chances = DropTables.RecycleFor(inputRarity)
+		local lines = {
+			string.format('<b>Rewards</b> for <font color="#%s"><b>%s</b></font>', Rarities.GetColor(inputRarity):ToHex(), inputRarity),
+		}
+		for _, rarity in Rarities.Order do
+			local chance = chances[rarity] or 0
+			local better = rarity ~= "Common" and chance > (DropTables.Recycle[rarity] or 0)
+			table.insert(lines, string.format('<font color="#%s">%s</font> %g%%%s', Rarities.GetColor(rarity):ToHex(), rarity, chance, if better then ' <font color="#3cc860">▲</font>' else ""))
+		end
+		odds.Text = table.concat(lines, "\n")
 	end
-	odds.Text = table.concat(lines, "\n")
+	showOdds(nil)
 
 	local button, label = Widgets.Button({
 		Name = "Recycle",
@@ -87,6 +96,7 @@ function RecycleTab.Mount(container: Frame, actions: Widgets.Actions, durationFo
 				local uid = entry.Uid
 				cards[uid] = Widgets.ItemCard(grid, entry.Id, index, function()
 					selected = uid
+					showOdds(entry.Id)
 					for cardUid, card in cards do
 						card.SetSelected(cardUid == selected)
 					end
@@ -99,6 +109,13 @@ function RecycleTab.Mount(container: Frame, actions: Widgets.Actions, durationFo
 		for cardUid, card in cards do
 			card.SetSelected(cardUid == selected)
 		end
+		local chosen: string? = nil
+		for _, entry in recyclable do
+			if entry.Uid == selected then
+				chosen = entry.Id
+			end
+		end
+		showOdds(chosen)
 		empty.Visible = #recyclable == 0
 
 		local busy = view.State == "Processing"

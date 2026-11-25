@@ -125,6 +125,7 @@ local Events: { [string]: { any } } = {
 	Button = { "Click", 1 },
 	PackUpgrade = { "Shimmer", 1.1 },
 	Paint = { "Slosh", 1.2 },
+	SlowField = { "Shimmer", 0.6 },
 	ChestOpen = { "Chest", 1 },
 	Window = { "Swish", 1.3 },
 	Toast = { "Lever", 1.2 },

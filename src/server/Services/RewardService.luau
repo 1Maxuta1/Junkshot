@@ -4,7 +4,8 @@
 
 	  RollRarity(chances)     -> rarityId   chances = a DropTables table (percent per rarity)
 	  RollItem(rarityId)      -> itemId     uniform pick from ItemConfig.GetRewardPool
-	  RollRecycle()           -> (itemId, rarityId)   the Recycling mode result
+	  RollRecycle(inputId?)   -> (itemId, rarityId)   the Recycling mode result; rarer junk has
+	                          better odds (DropTables.RecycleFor)
 
 	Balancing lives in DropTables (chances) and ItemConfig (pools); nothing here needs to change.
 ]]
@@ -29,8 +30,9 @@ function RewardService.RollItem(rarityId: string): string
 	return pool[random:NextInteger(1, #pool)]
 end
 
-function RewardService.RollRecycle(): (string, string)
-	local rarityId = RewardService.RollRarity(DropTables.Recycle)
+function RewardService.RollRecycle(inputId: string?): (string, string)
+	local inputRarity = if inputId ~= nil then ItemConfig.GetRarity(inputId) else nil
+	local rarityId = RewardService.RollRarity(DropTables.RecycleFor(inputRarity))
 	return RewardService.RollItem(rarityId), rarityId
 end
 

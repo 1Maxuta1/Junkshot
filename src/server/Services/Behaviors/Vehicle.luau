@@ -34,6 +34,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Validate = require(ReplicatedStorage.Shared.Util.Validate)
 
 local RemoteGuard = require(script.Parent.Parent.RemoteGuard)
+local SlowFieldService = require(script.Parent.Parent.SlowFieldService)
 
 local Vehicle = {}
 
@@ -510,12 +511,15 @@ local function step(entry: any, dt: number, now: number)
 	if state.Driver ~= nil and now - state.LastInputAt <= INPUT_TIMEOUT then
 		throttle, steer = state.Throttle, state.Steer
 	end
-	local maxSpeed = config.MaxSpeed
+	local maxSpeed, reverseSpeed = config.MaxSpeed, config.ReverseSpeed
 	if state.Race ~= nil then
 		maxSpeed = state.Race.MaxSpeed
 		if state.Race.Frozen then
 			throttle, steer = 0, 0
 		end
+	else
+		local slow = SlowFieldService.FactorAt(base.Position)
+		maxSpeed, reverseSpeed = maxSpeed * slow, reverseSpeed * slow
 	end
 	if state.Driver == nil and state.Speed == 0 then
 		return -- parked: the LinearVelocity already holds it still
@@ -533,7 +537,7 @@ local function step(entry: any, dt: number, now: number)
 		if speed > 0.5 then
 			speed = moveToward(speed, 0, config.Braking * dt)
 		else
-			speed = moveToward(speed, -config.ReverseSpeed * -throttle, config.Acceleration * dt)
+			speed = moveToward(speed, -reverseSpeed * -throttle, config.Acceleration * dt)
 		end
 	else
 		speed = moveToward(speed, 0, config.Coast * dt)
@@ -543,7 +547,7 @@ local function step(entry: any, dt: number, now: number)
 	local heading = CFrame.Angles(0, state.Yaw, 0)
 	local measured = base.AssemblyLinearVelocity:Dot(heading.LookVector)
 	speed = math.clamp(speed, measured - SPEED_SLACK, measured + SPEED_SLACK)
-	speed = math.clamp(speed, -config.ReverseSpeed, maxSpeed)
+	speed = math.clamp(speed, -reverseSpeed, maxSpeed)
 	if math.abs(speed) < 0.05 and throttle == 0 then
 		speed = 0
 	end

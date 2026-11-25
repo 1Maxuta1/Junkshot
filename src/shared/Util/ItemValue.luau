@@ -5,6 +5,7 @@
 
 	  SellPrice(itemId) -> number      0 when it cannot be sold
 	  CanSell(itemId) -> boolean
+	  HagglerBonus(total, share) -> number   extra Klunks for one sale, rounded up: never nothing
 	  IngredientValue(recipe) -> number
 
 	Crafted items are worth at most what their ingredients sell for (CraftedFactor below 1), so
@@ -95,6 +96,10 @@ function ItemValue.SellPrice(itemId: string): number
 		return 0
 	end
 	return rawValue(itemId)
+end
+
+function ItemValue.HagglerBonus(total: number, share: number): number
+	return math.max(0, math.ceil(total * share - 1e-6))
 end
 
 -- What the dealer charges for a shop entry (Config/ShopConfig): explicit Price, or the item's

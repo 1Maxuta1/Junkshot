@@ -92,7 +92,8 @@ local function applyWalkSpeed(player: Player)
 	local character = player.Character
 	local humanoid = if character ~= nil then character:FindFirstChildOfClass("Humanoid") else nil
 	if humanoid ~= nil then
-		humanoid.WalkSpeed = PlayerUpgradeService.GetValue(player, "WalkSpeed")
+		local slow = player:GetAttribute("SlowFactor") -- inside an aurora field (SlowFieldService)
+		humanoid.WalkSpeed = PlayerUpgradeService.GetValue(player, "WalkSpeed") * (if type(slow) == "number" then slow else 1)
 	end
 end
 
@@ -164,6 +165,11 @@ function PlayerUpgradeService.Start()
 	end)
 
 	local function hook(player: Player)
+		player:GetAttributeChangedSignal("SlowFactor"):Connect(function()
+			if DataService.GetData(player) ~= nil then
+				applyWalkSpeed(player)
+			end
+		end)
 		player.CharacterAdded:Connect(function(character: Model)
 			local humanoid = character:WaitForChild("Humanoid", 10)
 			if humanoid ~= nil and DataService.GetData(player) ~= nil then

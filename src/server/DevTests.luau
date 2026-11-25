@@ -624,6 +624,22 @@ end
 
 local function runRewardTests()
 	checkDistribution("Recycle", DropTables.Recycle)
+	checkDistribution("Recycle of an Epic", DropTables.RecycleFor("Epic"))
+	do -- every step up gives a better average and no row pays more than 2.6 times its input
+		local values = (require(ReplicatedStorage.Shared.Config.EconomyConfig) :: any).RarityValues
+		local last, rising, safe = 0, true, true
+		for _, rarity in Rarities.Order do
+			local average = 0
+			for result, chance in DropTables.RecycleFor(rarity) do
+				average += values[result] * chance / 100
+			end
+			rising = rising and average > last
+			safe = safe and average <= values[rarity] * 2.6
+			last = average
+		end
+		check("recycle: rarer junk gives better results", rising)
+		check("recycle: no money printer", safe)
+	end
 	checkDistribution("WorldSpawn", DropTables.WorldSpawn)
 	for _, rarityId in Rarities.Order do
 		local itemId = RewardService.RollItem(rarityId)
@@ -1422,7 +1438,8 @@ local function runEconomyTests(player: Player)
 	data.PlayerUpgrades.Haggler = 2
 	local bonusUid = give("crystal_shard")
 	local _, bonusQuote = SellService.Quote(player, { bonusUid })
-	check("the Haggler upgrade adds its bonus", bonusQuote == math.floor(ItemValue.SellPrice("crystal_shard") * 1.03),
+	check("Haggler: even one cheap item pays more", ItemValue.HagglerBonus(10, 0.03) == 1 and ItemValue.HagglerBonus(100, 0.1) == 10 and ItemValue.HagglerBonus(100, 0) == 0)
+	check("the Haggler upgrade adds its bonus", bonusQuote == ItemValue.SellPrice("crystal_shard") + ItemValue.HagglerBonus(ItemValue.SellPrice("crystal_shard"), 0.03),
 		`{tostring(bonusQuote)}`)
 	data.PlayerUpgrades.Haggler = nil
 	CarryService.Clear(player)
@@ -1995,6 +2012,40 @@ local function runFixTests(player: Player)
 			check("paint: the original color", PaintService.Paint(player, bucket, carUid, "") and hoodAgain ~= nil and hoodAgain.Color == red)
 			check("paint: taking it off costs nothing", CarryService.HasUid(player, bucket))
 			PlacementService.Store(player, carUid)
+		end
+		CarryService.Clear(player)
+	end
+	-- Aurora field
+	do
+		local SlowFieldService = require(script.Parent.Services.SlowFieldService) :: any
+		CarryService.Clear(player)
+		local uid = JunkService.NewUid()
+		CarryService.AddJunk(player, "aurora_reactor", uid)
+		teleportNear(player, CFrame.new(0, 4, -70))
+		task.wait(0.3)
+		local placedReactor, reactorCode = PlacementService.Place(player, uid, Vector3.new(0, 0.2, -60), 0)
+		check("aurora: the reactor stands", placedReactor, tostring(reactorCode))
+		local entry = PlacementService.GetEntry(uid)
+		if entry ~= nil then
+			local humanoid = (player.Character :: Model):FindFirstChildOfClass("Humanoid") :: Humanoid
+			local normal = humanoid.WalkSpeed
+			entry.Model:SetAttribute("GadgetMode", 1)
+			SlowFieldService.Update()
+			task.wait(0.2)
+			check("aurora: off changes nothing", SlowFieldService.FactorAt(entry.Model:GetPivot().Position) == 1 and humanoid.WalkSpeed == normal)
+			entry.Model:SetAttribute("GadgetMode", 2)
+			SlowFieldService.Update()
+			task.wait(0.3)
+			check("aurora: inside you walk slower", humanoid.WalkSpeed < normal * 0.6, tostring(humanoid.WalkSpeed))
+			teleportNear(player, CFrame.new(0, 4, 20))
+			task.wait(0.5)
+			check("aurora: outside the normal speed is back", humanoid.WalkSpeed == normal, tostring(humanoid.WalkSpeed))
+			teleportNear(player, CFrame.new(0, 4, -70))
+			task.wait(0.3)
+			entry.Model:SetAttribute("GadgetMode", 1)
+			PlacementService.Store(player, uid)
+			task.wait(0.4)
+			check("aurora: gone with the reactor", player:GetAttribute("SlowFactor") == nil)
 		end
 		CarryService.Clear(player)
 	end

@@ -424,7 +424,7 @@ function MachineService.Recycle(player: Player, uid: any): (boolean, string?)
 	if record == nil then
 		return false, MachineService.Errors.NotCarried
 	end
-	local resultId = RewardService.RollRecycle()
+	local resultId = RewardService.RollRecycle(record.Id)
 	startJob(machine, {
 		Kind = "Recycle",
 		Label = `Recycling {ItemConfig.GetDisplayName(record.Id)}`,

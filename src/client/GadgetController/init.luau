@@ -23,6 +23,7 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local AudioConfig = require(ReplicatedStorage.Shared.Config.AudioConfig)
+local Behaviors = require(ReplicatedStorage.Shared.Config.Behaviors)
 local ItemSounds = require(ReplicatedStorage.Shared.Config.ItemSounds)
 local JunkFactory = require(ReplicatedStorage.Shared.Util.JunkFactory)
 local PlacementRules = require(ReplicatedStorage.Shared.Util.PlacementRules)
@@ -497,8 +498,55 @@ function Effects.Reactor(ctx)
 		table.insert(beams, beam)
 	end
 	local core = part(ctx, 3)
+	-- The aura: a huge bubble you can walk through (inside everything is slow, SlowFieldService),
+	-- it grows when the reactor starts; motes drift slowly around in it.
+	local field = (Behaviors :: any)["Deploy.Reactor"].Gadget.SlowField
+	local center = ctx.Model:GetBoundingBox().Position
+	local bubble = piece(ctx.Folder, Enum.PartType.Ball, Vector3.one, rgb(120, 255, 210), 1)
+	bubble.Material = Enum.Material.ForceField
+	local glow = piece(ctx.Folder, Enum.PartType.Ball, Vector3.one, rgb(150, 220, 255), 1)
+	bubble.Position, glow.Position = center, center
+	local rim = {}
+	for index = 1, 28 do
+		rim[index] = piece(ctx.Folder, Enum.PartType.Ball, Vector3.one * (if index <= 20 then 0.9 else 0.6), rgb(150, 255, 220), 1)
+	end
+	local size, lastT = 0, nil :: number?
+	local function drawField(t: number, on: boolean)
+		local dt = math.clamp(t - (lastT or t), 0, 0.1)
+		lastT = t
+		size += ((if on then 1 else 0) - size) * math.min(dt * (if on then 3 else 6), 1)
+		local shown = size > 0.02
+		local radius = field.Radius * size
+		local color = Color3.fromHSV((0.42 + math.sin(t * 0.35) * 0.12) % 1, 0.55, 1)
+		bubble.Transparency = if shown then 0.1 else 1
+		glow.Transparency = if shown then 0.94 else 1
+		if not shown then
+			for _, mote in rim do
+				mote.Transparency = 1
+			end
+			return
+		end
+		local breath = 1 + math.sin(t * 1.4) * 0.008
+		bubble.Size = Vector3.one * radius * 2 * breath
+		glow.Size = Vector3.one * radius * 1.97
+		bubble.Color, glow.Color = color, color
+		for index, mote in rim do
+			mote.Transparency = 0.15
+			mote.Color = Color3.fromHSV((0.4 + index * 0.02 + t * 0.03) % 1, 0.5, 1)
+			if index <= 20 then -- ring where the bubble meets the ground
+				local a = index / 20 * math.pi * 2 + t * 0.15
+				local low = math.min(center.Y - 0.4, radius * 0.95) -- the ground is about y 0.4
+				local flat = math.sqrt(math.max(radius * radius - low * low, 0))
+				mote.Position = center + Vector3.new(math.cos(a) * flat, -low, math.sin(a) * flat)
+			else -- slow wanderers inside
+				local a, h = t * 0.12 + index * 1.7, math.sin(t * 0.2 + index * 2.3)
+				mote.Position = center + Vector3.new(math.cos(a) * 0.6, 0.25 + h * 0.3, math.sin(a) * 0.6) * radius
+			end
+		end
+	end
 	return function(t, mode, powered)
 		local on = mode == 2
+		drawField(t, on)
 		light.Enabled = on
 		light.Range, light.Brightness = 22, if powered then 1 else 0.6
 		core.Color = if on then Color3.fromHSV(0.4 + math.sin(t) * 0.15, 0.7, 1) else rgb(255, 80, 180)
