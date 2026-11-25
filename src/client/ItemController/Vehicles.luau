@@ -9,7 +9,8 @@
 	    every RESEND seconds while driving so the server knows the driver is still there.
 	  - Seated in any vehicle: throwing is blocked and a small HUD shows the speed and an EXIT
 	    button (Jump also exits).
-	  - Every nearby vehicle: wheels (and bicycle pedals) spin with its speed, and the engine
+	  - Every nearby vehicle: wheels (and bicycle pedals) spin with its speed, handlebars and
+	    steering wheels turn (parts with attribute Steer), and the engine
 	    sound's pitch follows the speed. Purely local and cosmetic.
 ]]
 
@@ -30,8 +31,10 @@ local SEND_INTERVAL = 1 / 12 -- seconds between input packets at most
 local RESEND = 0.4 -- seconds: resend unchanged input this often while driving
 local ANIMATE_DISTANCE = 220 -- studs from the camera within which vehicles are animated
 
-type Spinner = { Weld: Weld, BaseC0: CFrame, Radius: number }
-type View = { Model: Model, Spinners: { Spinner }, Angle: number }
+-- Radius 0 = it only steers. Axis (in the Base's space, -Y = the steering tube's foot) and Ratio
+-- (degrees at full lock) only for steering parts.
+type Spinner = { Weld: Weld, BaseC0: CFrame, Radius: number, Axis: CFrame?, Ratio: number }
+type View = { Model: Model, Spinners: { Spinner }, Angle: number, Steer: number, Shown: number }
 
 local localPlayer = Players.LocalPlayer
 local views: { [Model]: View } = {}
@@ -66,14 +69,21 @@ local function viewOf(model: Model): View
 	end
 	local spinners: { Spinner } = {}
 	for _, weld in model:GetDescendants() do
-		if weld:IsA("Weld") and weld.Name == "SpinWeld" and weld.Part1 ~= nil then
+		if weld:IsA("Weld") and (weld.Name == "SpinWeld" or weld.Name == "SteerWeld") and weld.Part1 ~= nil then
 			local radius = weld.Part1:GetAttribute("Spin")
-			if type(radius) == "number" and radius > 0 then
-				table.insert(spinners, { Weld = weld, BaseC0 = weld.C0, Radius = radius })
-			end
+			local ratio = weld.Part1:GetAttribute("Steer")
+			local axis = model:GetAttribute("SteerAxis")
+			local steers = type(ratio) == "number" and typeof(axis) == "CFrame" and model.PrimaryPart ~= nil
+			table.insert(spinners, {
+				Weld = weld,
+				BaseC0 = weld.C0,
+				Radius = if type(radius) == "number" then radius else 0,
+				Axis = if steers then (model.PrimaryPart :: BasePart).PivotOffset * (axis :: CFrame) else nil,
+				Ratio = if type(ratio) == "number" then ratio else 0,
+			})
 		end
 	end
-	view = { Model = model, Spinners = spinners, Angle = 0 }
+	view = { Model = model, Spinners = spinners, Angle = 0, Steer = 0, Shown = math.huge }
 	views[model] = view
 	model.AncestryChanged:Connect(function()
 		if not model:IsDescendantOf(Workspace) then
@@ -101,8 +111,27 @@ local function animate(dt: number)
 				end
 				local speed = base.AssemblyLinearVelocity:Dot(base.CFrame.LookVector)
 				view.Angle += speed * dt
-				for _, spinner in view.Spinners do
-					spinner.Weld.C0 = spinner.BaseC0 * CFrame.Angles(-view.Angle / spinner.Radius, 0, 0)
+				-- Your own handlebar follows your input at once, the others what the server publishes.
+				local wanted = model:GetAttribute("SteerShown")
+				if isDriver and seat ~= nil and seat:IsA("VehicleSeat") and seat.Parent == model then
+					wanted = math.clamp((seat :: VehicleSeat).SteerFloat, -1, 1)
+				end
+				view.Steer += ((if type(wanted) == "number" then wanted else 0) - view.Steer) * math.min(dt * 8, 1)
+				local pose = view.Angle + view.Steer * 1000
+				local moved = math.abs(pose - view.Shown) > 0.002 -- a parked vehicle costs nothing
+				if moved then
+					view.Shown = pose
+				end
+				for _, spinner in if moved then view.Spinners else {} do
+					local c0 = spinner.BaseC0
+					if spinner.Radius > 0 then
+						c0 = c0 * CFrame.Angles(-view.Angle / spinner.Radius, 0, 0)
+					end
+					if spinner.Axis ~= nil then
+						local axis = spinner.Axis
+						c0 = axis * CFrame.Angles(0, -math.rad(spinner.Ratio) * view.Steer, 0) * axis:Inverse() * c0
+					end
+					spinner.Weld.C0 = c0
 				end
 				local engine = base:FindFirstChild("Engine")
 				if engine ~= nil and engine:IsA("Sound") then

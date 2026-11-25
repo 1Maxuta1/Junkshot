@@ -205,12 +205,13 @@ function Vehicle.Attach(entry: any)
 	local config = entry.Behavior.Vehicle
 	local state = entry.State
 
-	-- One rigid assembly around Base. Spinning parts get a Weld (clients animate its C0).
+	-- One rigid assembly around Base. Spinning and steering parts get a Weld (clients animate C0).
 	for _, part in model:GetDescendants() do
 		if part:IsA("BasePart") and part ~= base then
-			if part:GetAttribute("Spin") ~= nil then
+			local spins = part:GetAttribute("Spin") ~= nil
+			if spins or part:GetAttribute("Steer") ~= nil then
 				local weld = Instance.new("Weld")
-				weld.Name = "SpinWeld"
+				weld.Name = if spins then "SpinWeld" else "SteerWeld"
 				weld.Part0 = base
 				weld.Part1 = part
 				weld.C0 = base.CFrame:ToObjectSpace(part.CFrame)
@@ -550,6 +551,10 @@ local function step(entry: any, dt: number, now: number)
 
 	local grip = math.clamp(math.abs(speed) / (maxSpeed * 0.3), 0, 1)
 	local direction = if speed >= 0 then 1 else -1
+	local steerShown = math.round(steer * 10) / 10 -- for the handlebar; replicated only when it changes
+	if entry.Model:GetAttribute("SteerShown") ~= steerShown then
+		entry.Model:SetAttribute("SteerShown", steerShown)
+	end
 	state.Yaw -= steer * config.TurnRate * grip * direction * dt
 	heading = CFrame.Angles(0, state.Yaw, 0)
 	local forward = heading.LookVector

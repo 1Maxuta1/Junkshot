@@ -167,14 +167,16 @@ local function buildTrack(zone)
 	for i = 0, SEGMENTS - 1 do
 		local a, b = nodes[i], nodes[(i + 1) % SEGMENTS]
 		local roadPart = span(road, a.Position, b.Position, {
-			Name = "Road", Width = ROAD_WIDTH, Height = 0.2, Y = if i % 2 == 0 then 0.1 else 0.15,
-			Overlap = 6, Color = ASPHALT, Material = Enum.Material.Asphalt, CastShadow = false,
+			-- One even color without texture and all at the same height: the overlaps cannot be
+			-- seen. Not collidable: vehicles roll on the flat RaceGround under it, without steps.
+			Name = "Road", Width = ROAD_WIDTH, Height = 0.2, Y = -0.04,
+			Overlap = 6, Color = ASPHALT, Material = Enum.Material.SmoothPlastic, CanCollide = false, CastShadow = false,
 		})
 		roadPart:AddTag("NoPlace")
 		if i % 2 == 0 then
 			local middle = (b.Position - a.Position) * 0.25
 			span(road, a.Position + middle, b.Position - middle, {
-				Name = "Dash", Width = 0.6, Height = 0.1, Y = 0.28, Color = WHITE,
+				Name = "Dash", Width = 0.6, Height = 0.06, Y = 0.06, Color = WHITE,
 				CanCollide = false, CanQuery = false, CastShadow = false,
 			})
 		end
@@ -217,7 +219,7 @@ local function buildTrack(zone)
 		local x = if slot % 2 == 1 then -5.5 else 5.5
 		local cf = frameAt(startDistance - 10 - row * 14 - (if slot % 2 == 0 then 4 else 0))
 		local pad = Part(grid, {
-			Name = `Slot{slot}`, Size = Vector3.new(6, 0.1, 9), CFrame = cf * CFrame.new(x, 0.3, 0),
+			Name = `Slot{slot}`, Size = Vector3.new(6, 0.1, 9), CFrame = cf * CFrame.new(x, 0.05, 0),
 			Color = if slot == 1 then C.Yellow else C.Ice, CanCollide = false, CanQuery = false, CastShadow = false,
 		})
 		pad:SetAttribute("Slot", slot)
@@ -227,7 +229,7 @@ local function buildTrack(zone)
 	-- Start / finish: checkered line and the arch above it.
 	local finish = child(track, "Model", "FinishArch")
 	local line = frameAt(startDistance)
-	checker(finish, line * CFrame.new(0, 0.32, 0), ROAD_WIDTH, 2, 2, 0.1, true)
+	checker(finish, line * CFrame.new(0, 0.07, 0), ROAD_WIDTH, 2, 2, 0.1, true)
 	for _, side in { -1, 1 } do
 		local x = side * 17
 		Part(finish, { Name = "Pillar", Size = Vector3.new(2.6, 19, 2.6), CFrame = line * CFrame.new(x, 9.5, 0), Color = C.Ink })
@@ -280,9 +282,9 @@ local function buildEntrance(zone)
 	end
 	-- Path: ring road -> gate -> race plaza.
 	local paths = child(zone, "Folder", "Paths")
-	span(paths, Vector3.new(57, 0, -139), Vector3.new(RaceZone.GateX, 0, -216), { Name = "Path", Width = 12, Height = 0.2, Y = 0.12, Color = C.Path, CastShadow = false })
-	span(paths, Vector3.new(RaceZone.GateX, 0, -214), Vector3.new(RaceZone.GateX, 0, -256), { Name = "Path", Width = 18, Height = 0.2, Y = 0.13, Color = C.Path, CastShadow = false })
-	Part(paths, { Name = "RacePlaza", Size = Vector3.new(84, 0.2, 38), CFrame = CFrame.new(RaceZone.GateX, 0.14, -274), Color = C.PlazaTop, CastShadow = false })
+	span(paths, Vector3.new(57, 0, -139), Vector3.new(RaceZone.GateX, 0, -216), { Name = "Path", Width = 12, Height = 0.2, Y = -0.04, Color = C.Path, CastShadow = false })
+	span(paths, Vector3.new(RaceZone.GateX, 0, -214), Vector3.new(RaceZone.GateX, 0, -256), { Name = "Path", Width = 18, Height = 0.2, Y = -0.05, Color = C.Path, CastShadow = false })
+	Part(paths, { Name = "RacePlaza", Size = Vector3.new(84, 0.2, 38), CFrame = CFrame.new(RaceZone.GateX, -0.03, -274), Color = C.PlazaTop, CastShadow = false })
 end
 
 local function buildLobby(zone)

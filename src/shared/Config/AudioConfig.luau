@@ -20,6 +20,9 @@ local AudioConfig = {
 			{ Name = "Holiday Bliss", SoundId = "rbxassetid://9046748008" }, -- APM Music
 			{ Name = "Favorite Time Of Year", SoundId = "rbxassetid://9046745950" }, -- APM Music
 			{ Name = "Snowman Song", SoundId = "rbxassetid://9046739139" }, -- APM Music
+			{ Name = "Winter Holidays", SoundId = "rbxassetid://9046740461" }, -- APM Music
+			{ Name = "Jingle Bells (jazz piano)", SoundId = "rbxassetid://1839945406" }, -- APM Music; the carol itself is public domain
+			{ Name = "Xmas Winter", SoundId = "rbxassetid://1836686862" }, -- APM Music
 		},
 	},
 	Cues = {

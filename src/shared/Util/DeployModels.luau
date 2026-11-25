@@ -14,6 +14,8 @@
 	  - Vehicles rest on invisible "Collider" balls at the wheels (they roll over curbs).
 	  - Parts with attribute Spin = <radius> spin around their X axis while driving (wheels);
 	    Crank parts have Spin too (pedals). Clients animate them.
+  - Parts with attribute Steer = <degrees at full lock> turn with the steering around the model
+    attribute SteerAxis (CFrame relative to the pivot; its Y axis is the steering axis).
 	  - Seats ("DriverSeat" VehicleSeat, "PassengerSeat" Seat) exist only when real = true.
 
 	API
@@ -110,25 +112,100 @@ local V = Vector3.new
 local UPRIGHT = V(0, 0, 90) -- stands a cylinder up (its axis is X)
 
 local builders: { [string]: Builder } = {
-	-- Bicycle: 2 wheels (diameter 2.6), orange frame, one seat.
+	-- Bicycle: a sporty city bike. Diamond frame, spoked wheels, chain, brakes, lights and bell;
+	-- fork, front wheel and handlebar turn with the steering. The invisible Base is its mass.
 	Bicycle = function(model: Model, real: boolean)
-		local frame = rgb(255, 150, 30)
-		local base = addPart(model, "Base", Block, V(1.4, 1.2, 4.4), frame, M.SmoothPlastic, V(0, 1.6, 0))
+		local paint, black, chrome, rubber = rgb(255, 138, 30), rgb(34, 36, 44), rgb(204, 210, 220), rgb(24, 25, 30)
+		local metal, glossy = M.Metal, M.SmoothPlastic
+		local base = addPart(model, "Base", Block, V(1.4, 1.2, 4.4), paint, glossy, V(0, 1.6, 0))
 		base.Transparency = 1 -- the body's mass; it rests on the two ball colliders
-		for index, z in { -1.65, 1.65 } do
-			local wheel = addPart(model, "Wheel", Cylinder, V(0.3, 2.6, 2.6), rgb(36, 38, 46), M.Slate, V(0, 1.3, z))
-			wheel:SetAttribute("Spin", 1.3)
-			addPart(model, "Hub" .. index, Cylinder, V(0.34, 0.7, 0.7), rgb(200, 206, 214), M.Metal, V(0, 1.3, z))
-			addCollider(model, 1.3, V(0, 1.3, z))
+		-- A tube between two points.
+		local function tube(name: string, a: Vector3, b: Vector3, thickness: number, color: Color3, material: Enum.Material?): Part
+			local part = addPart(model, name, Cylinder, V((b - a).Magnitude, thickness, thickness), color, material or metal, V(0, 0, 0))
+			part.CFrame = CFrame.lookAt((a + b) / 2, b, V(1, 0.01, 0)) * CFrame.Angles(0, math.rad(90), 0)
+			return part
 		end
-		addPart(model, "TopTube", Cylinder, V(2.9, 0.28, 0.28), frame, M.Metal, V(0, 2.45, -0.05), V(0, 90, 0))
-		addPart(model, "DownTube", Cylinder, V(2.4, 0.28, 0.28), frame, M.Metal, V(0, 1.75, -0.6), V(0, 90, -32))
-		addPart(model, "SeatPost", Cylinder, V(1.6, 0.26, 0.26), frame, M.Metal, V(0, 2.0, 0.55), UPRIGHT)
-		addPart(model, "Fork", Cylinder, V(1.7, 0.24, 0.24), rgb(200, 206, 214), M.Metal, V(0, 2.0, -1.5), V(0, 0, 90 - 12))
-		addPart(model, "Handlebar", Cylinder, V(1.8, 0.22, 0.22), rgb(40, 42, 50), M.Metal, V(0, 2.95, -1.55))
-		local crank = addPart(model, "Crank", Cylinder, V(0.2, 0.9, 0.9), rgb(200, 206, 214), M.Metal, V(0, 1.25, 0.35))
-		crank:SetAttribute("Spin", 2.6) -- turns at half the wheel speed
-		addSeat(model, "DriverSeat", true, V(0.8, 0.3, 1.1), V(0, 2.95, 0.7), rgb(40, 42, 50), real)
+		local function steer(part: BasePart): BasePart
+			part:SetAttribute("Steer", 32)
+			return part
+		end
+		local FRONT, REAR = V(0, 1.3, -1.75), V(0, 1.3, 1.65) -- wheel centers
+		local CRANK = V(0, 1.15, 0.3)
+		local HEAD_LOW, HEAD_TOP = V(0, 2.35, -1.3), V(0, 2.9, -1.1) -- the steering tube
+		local SEAT = V(0, 2.75, 0.85)
+		model:SetAttribute("SteerAxis", CFrame.lookAt(HEAD_LOW, HEAD_LOW + V(1, 0, 0), HEAD_TOP - HEAD_LOW))
+
+		for index, center in { FRONT, REAR } do
+			local function turning(part: BasePart): BasePart
+				part:SetAttribute("Spin", 1.3)
+				return if index == 1 then steer(part) else part
+			end
+			-- Tyre as a thin ring of 12 blocks, spokes through the hub (few parts: every moving one
+			-- is animated)
+			for piece = 0, 11 do
+				local angle = math.rad(piece * 30)
+				local tyre = turning(addPart(model, "Wheel", Block, V(0.24, 0.24, 0.72), rubber, M.Slate, V(0, 0, 0)))
+				tyre.CFrame = CFrame.new(center) * CFrame.Angles(angle, 0, 0) * CFrame.new(0, 1.2, 0)
+			end
+			for spoke = 0, 3 do
+				turning(addPart(model, "Spoke", Block, V(0.04, 2.1, 0.04), chrome, metal, center, V(spoke * 45, 0, 0)))
+			end
+			turning(addPart(model, "Hub", Cylinder, V(0.42, 0.26, 0.26), chrome, metal, center))
+			addCollider(model, 1.3, center)
+		end
+		addPart(model, "Cassette", Cylinder, V(0.1, 0.55, 0.55), black, metal, REAR + V(0.2, 0, 0)):SetAttribute("Spin", 1.3)
+
+		-- Frame
+		tube("TopTube", V(0, 2.72, -1.15), V(0, 2.4, 0.72), 0.24, paint, glossy)
+		tube("DownTube", V(0, 2.42, -1.25), CRANK, 0.28, paint, glossy)
+		tube("SeatTube", CRANK, V(0, 2.55, 0.78), 0.24, paint, glossy)
+		tube("HeadTube", HEAD_LOW, HEAD_TOP, 0.3, paint, glossy)
+		for _, x in { -0.22, 0.22 } do
+			tube("ChainStay", CRANK + V(x * 0.5, 0, 0), REAR + V(x, 0, 0), 0.14, paint, glossy)
+			tube("SeatStay", V(x * 0.4, 2.35, 0.72), REAR + V(x, 0, 0), 0.12, paint, glossy)
+			steer(tube("Fork", V(x * 0.8, 2.2, -1.36), FRONT + V(x, 0, 0), 0.14, black))
+		end
+		tube("Decal", V(0.13, 2.05, -0.82), V(0.13, 1.55, -0.18), 0.08, rgb(250, 246, 236), glossy)
+		steer(tube("ForkCrown", V(-0.26, 2.22, -1.35), V(0.26, 2.22, -1.35), 0.18, black))
+		steer(tube("SteeringTube", HEAD_LOW, V(0, 3.15, -1.02), 0.16, chrome))
+
+		-- Handlebar, grips, brake levers, bell, headlight
+		steer(tube("Stem", V(0, 3.12, -1.02), V(0, 3.2, -1.3), 0.16, black))
+		steer(tube("Handlebar", V(-0.95, 3.2, -1.22), V(0.95, 3.2, -1.22), 0.14, chrome))
+		for _, side in { -1, 1 } do
+			steer(tube("Grip", V(0.72 * side, 3.2, -1.22), V(1.15 * side, 3.2, -1.08), 0.2, rubber, M.Slate))
+			steer(tube("BrakeLever", V(0.62 * side, 3.12, -1.36), V(1.02 * side, 3.1, -1.34), 0.07, chrome))
+		end
+		steer(addPart(model, "Bell", Enum.PartType.Ball, V(0.26, 0.26, 0.26), rgb(255, 205, 60), metal, V(0.4, 3.34, -1.22)))
+		steer(addPart(model, "LampShell", Cylinder, V(0.3, 0.42, 0.42), black, metal, V(0, 2.95, -1.5), V(0, 90, 0)))
+		steer(addPart(model, "LampGlass", Cylinder, V(0.06, 0.34, 0.34), rgb(255, 244, 200), M.Neon, V(0, 2.95, -1.67), V(0, 90, 0)))
+
+		-- Drive: chainring, chain, cranks with pedals (half the wheel speed)
+		for _, size in { 0.85, 0.5 } do
+			addPart(model, "ChainRing", Cylinder, V(0.08, size, size), if size > 0.6 then chrome else black, metal, CRANK + V(if size > 0.6 then 0.26 else 0.3, 0, 0)):SetAttribute("Spin", 2.6)
+		end
+		tube("Chain", CRANK + V(0.26, 0.4, 0), REAR + V(0.22, 0.26, 0), 0.06, black)
+		tube("Chain", CRANK + V(0.26, -0.4, 0), REAR + V(0.22, -0.26, 0), 0.06, black)
+		for _, side in { -1, 1 } do
+			-- Cranks and pedals circle with the pedals' axle (their weld turns around its own part,
+			-- so each is a bar through the axle).
+			addPart(model, "Crank", Block, V(0.1, 1.3, 0.14), chrome, metal, CRANK + V(0.4 * side, 0, 0), V(25, 0, 0)):SetAttribute("Spin", 2.6)
+		end
+		addPart(model, "Axle", Cylinder, V(0.9, 0.2, 0.2), black, metal, CRANK)
+
+		-- Saddle, seat post, rack, mudguards, rear light
+		tube("SeatPost", V(0, 2.4, 0.74), SEAT, 0.16, chrome)
+		addPart(model, "SaddleNose", Block, V(0.34, 0.16, 0.7), black, M.Leather, V(0, 2.9, 0.4))
+		addPart(model, "SaddleBack", Block, V(0.82, 0.22, 0.6), black, M.Leather, V(0, 2.9, 1.0))
+		for _, piece in { { 1.45, 2.72, 10 }, { 2.05, 2.66, -28 }, { 2.55, 2.3, -55 } } do
+			addPart(model, "Mudguard", Block, V(0.34, 0.06, 0.68), black, glossy, V(0, piece[2], piece[1]), V(-piece[3], 0, 0))
+		end
+		addPart(model, "RearLight", Block, V(0.24, 0.2, 0.1), rgb(255, 50, 50), M.Neon, V(0, 2.2, 2.82))
+		addSeat(model, "DriverSeat", true, V(0.8, 0.3, 1.1), V(0, 2.95, 0.7), black, real)
+		local rideSeat = model:FindFirstChild("DriverSeat")
+		if rideSeat ~= nil and rideSeat:IsA("BasePart") then
+			rideSeat.Transparency = 1 -- the saddle is drawn above
+		end
 	end,
 
 	-- Motor scooter: low deck, small wheels, seat box and a front shield.
@@ -283,8 +360,14 @@ local builders: { [string]: Builder } = {
 			addPart(model, "Gauge", Cylinder, V(0.1, 0.36, 0.36), rgb(120, 240, 190), M.Neon, V(x, 2.75, -0.48), V(0, 90, 0))
 		end
 		addPart(model, "SteeringColumn", Cylinder, V(1.1, 0.18, 0.18), steel, metal, V(-1.05, 2.75, -0.35), V(0, 90, -30))
-		addPart(model, "SteeringWheel", Cylinder, V(0.16, 1.2, 1.2), black, M.Leather, V(-1.05, 3, 0.05), V(0, 90, -30))
-		addPart(model, "SteeringHub", Cylinder, V(0.2, 0.45, 0.45), rgb(255, 205, 50), metal, V(-1.05, 3.02, 0.08), V(0, 90, -30))
+		local steering = addPart(model, "SteeringWheel", Cylinder, V(0.16, 1.2, 1.2), black, M.Leather, V(-1.05, 3, 0.05), V(0, 90, -30))
+		local hub = addPart(model, "SteeringHub", Cylinder, V(0.2, 0.45, 0.45), rgb(255, 205, 50), metal, V(-1.05, 3.02, 0.08), V(0, 90, -30))
+		local spokeBar = addPart(model, "SteeringSpoke", Block, V(0.18, 0.14, 1.1), chrome, metal, V(-1.05, 3, 0.05), V(0, 90, -30))
+		for _, part in { steering, hub, spokeBar } do
+			part:SetAttribute("Steer", 90)
+		end
+		-- The wheel's axis is the cylinder's X axis: turn it into the Y axis of SteerAxis.
+		model:SetAttribute("SteerAxis", steering.CFrame * CFrame.Angles(0, 0, math.rad(-90)))
 		addPart(model, "GearStick", Cylinder, V(0.9, 0.12, 0.12), chrome, metal, V(0, 2.3, 0.2), V(0, 0, 80))
 		addPart(model, "GearKnob", Enum.PartType.Ball, V(0.3, 0.3, 0.3), paint, glossy, V(0.07, 2.78, 0.2))
 		for _, x in { -1.05, 1.05 } do
