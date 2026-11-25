@@ -252,7 +252,7 @@ function Plaza.Build(map)
 	end
 	arrow(folder, Vector3.new(33, FLOOR, -9), Vector3.new(1, 0, 0), "BASES", C.Red)
 	arrow(folder, Vector3.new(-33, FLOOR, -9), Vector3.new(-1, 0, 0), "BASES", C.Blue)
-	arrow(folder, Vector3.new(24, FLOOR, -33), Vector3.new(0.26, 0, -1).Unit, "RACEWAY", C.Orange)
+	arrow(folder, Vector3.new(31, FLOOR, -22), Vector3.new(0.5, 0, -1).Unit, "RACEWAY", C.Orange)
 end
 
 return Plaza
