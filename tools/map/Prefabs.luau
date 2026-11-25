@@ -110,7 +110,8 @@ end
 -- Pieces
 ---------------------------------------------------------------------------------------------
 
--- Shipping container, 24 x 9 x 9, with a darker door end and a snow cap.
+-- Shipping container, 24 x 9 x 9: body, doors, steel rails, snow cap. The fine details are added
+-- near the camera by the client (ContainerController, tag ScrapContainer).
 function Prefabs.Container(parent, cf, color, name)
 	local m = model(parent, name or "Container")
 	local body = Prefabs.Part(m, {
@@ -131,6 +132,18 @@ function Prefabs.Container(parent, cf, color, name)
 		CFrame = cf * CFrame.new(0, 9.3, 0),
 		Color = C.Snow,
 	})
+	for _, y in { 0.35, 8.65 } do
+		Prefabs.Part(m, {
+			Name = "Rail",
+			Size = Vector3.new(24.1, 0.7, 9.5),
+			CFrame = cf * CFrame.new(0, y, 0),
+			Color = color:Lerp(C.Ink, 0.35),
+			CanCollide = false,
+			CanQuery = false,
+			CastShadow = false,
+		})
+	end
+	m:AddTag("ScrapContainer")
 	m.PrimaryPart = body
 	return m
 end

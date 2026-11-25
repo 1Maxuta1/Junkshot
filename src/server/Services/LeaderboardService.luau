@@ -24,6 +24,7 @@ local KlunksFormat = require(ReplicatedStorage.Shared.Util.KlunksFormat)
 
 local CurrencyService = require(script.Parent.CurrencyService)
 local DataService = require(script.Parent.DataService)
+local Board = require(script.Parent.Leaderboard.Board)
 
 local LeaderboardService = {}
 
@@ -40,8 +41,7 @@ local BOARD_POSITIONS = {
 local started = false
 local store: OrderedDataStore? = nil
 local names: { [number]: string } = {}
-local rowsOf: { [string]: { TextLabel } } = {}
-local footerOf: { [string]: TextLabel } = {}
+local boards: { [string]: Board.Board } = {}
 local serverDirty = false
 
 local function nameOf(userId: number): string
@@ -66,93 +66,14 @@ local function buildBoard(key: string, title: string, rowCount: number)
 	local ground = if site ~= nil and site:IsA("BasePart")
 		then CFrame.new(site.Position.X, site.Position.Y - site.Size.Y / 2, site.Position.Z)
 		else CFrame.new(0, 0.4, 0)
-	local model = Instance.new("Model")
-	model.Name = `Leaderboard{key}`
-	local function part(name: string, size: Vector3, cframe: CFrame, color: Color3, material: Enum.Material?): Part
-		local p = Instance.new("Part")
-		p.Name = name
-		p.Size = size
-		p.CFrame = cframe
-		p.Color = color
-		p.Material = material or Enum.Material.SmoothPlastic
-		p.Anchored = true
-		p.Parent = model
-		return p
-	end
-	local base = ground * BOARD_POSITIONS[key]
-	for _, x in { -4.2, 4.2 } do
-		part("Leg", Vector3.new(0.6, 6, 0.6), base * CFrame.new(x, 3, 0), Color3.fromRGB(40, 44, 64), Enum.Material.Metal)
-	end
-	local board = part("Board", Vector3.new(9.4, 8.6, 0.5), base * CFrame.new(0, 9.6, 0), Color3.fromRGB(24, 44, 86))
-	part("Frame", Vector3.new(10, 9.2, 0.35), base * CFrame.new(0, 9.6, 0), Color3.fromRGB(255, 205, 50))
-	for _, x in { -4.2, 4.2 } do
-		part("Foot", Vector3.new(1.8, 0.8, 1.8), base * CFrame.new(x, 0.4, 0), Color3.fromRGB(28, 36, 60))
-	end
-	part("Snow", Vector3.new(9.8, 0.4, 0.9), base * CFrame.new(0, 14.1, 0), Color3.fromRGB(250, 252, 255), Enum.Material.Snow)
-	local rows: { TextLabel } = {}
-	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
-		local gui = Instance.new("SurfaceGui")
-		gui.Face = face
-		gui.CanvasSize = Vector2.new(470, 430)
-		gui.LightInfluence = 0
-		gui.Parent = board
-		local header = Instance.new("TextLabel")
-		header.Size = UDim2.new(1, 0, 0, 60)
-		header.BackgroundTransparency = 1
-		header.Font = Enum.Font.FredokaOne
-		header.Text = title
-		header.TextColor3 = Color3.fromRGB(255, 205, 50)
-		header.TextScaled = true
-		header.Parent = gui
-		for index = 1, rowCount do
-			local row = Instance.new("TextLabel")
-			row.Name = `Row{index}`
-			row.Position = UDim2.new(0, 16, 0, 64 + (index - 1) * 34)
-			row.Size = UDim2.new(1, -32, 0, 30)
-			row.BackgroundTransparency = 1
-			row.Font = Enum.Font.GothamBold
-			row.Text = ""
-			row.TextColor3 = if index <= 3 then Color3.fromRGB(255, 236, 170) else Color3.fromRGB(230, 238, 255)
-			row.TextScaled = true
-			row.TextXAlignment = Enum.TextXAlignment.Left
-			row.Parent = gui
-			table.insert(rows, row)
-		end
-		local footer = Instance.new("TextLabel")
-		footer.Name = "Footer"
-		footer.Position = UDim2.new(0, 0, 1, -26)
-		footer.Size = UDim2.new(1, 0, 0, 22)
-		footer.BackgroundTransparency = 1
-		footer.Font = Enum.Font.Gotham
-		footer.Text = ""
-		footer.TextColor3 = Color3.fromRGB(160, 178, 220)
-		footer.TextScaled = true
-		footer.Parent = gui
-		footerOf[key .. tostring(face)] = footer
-	end
-	model.Parent = Workspace
-	rowsOf[key] = rows
+	boards[key] = Board.Build(key, title, rowCount, ground * BOARD_POSITIONS[key])
 end
 
-local function setRows(key: string, lines: { string }, footer: string?)
-	local rows = rowsOf[key]
-	if rows == nil then
-		return
+local function setRows(key: string, entries: { Board.Entry }, footer: string)
+	local board = boards[key]
+	if board ~= nil then
+		board.Set(entries, footer)
 	end
-	local perFace = #rows // 2
-	for index, row in rows do
-		local line = lines[((index - 1) % perFace) + 1]
-		row.Text = line or ""
-	end
-	for name, label in footerOf do
-		if string.sub(name, 1, #key) == key then
-			label.Text = footer or ""
-		end
-	end
-end
-
-local function line(rank: number, name: string, amount: number): string
-	return `{rank}. {name}  ·  {KlunksFormat.Format(amount)}`
 end
 
 local function refreshServer()
@@ -161,17 +82,13 @@ local function refreshServer()
 	for _, player in Players:GetPlayers() do
 		local klunks = CurrencyService.GetKlunks(player)
 		if klunks ~= nil then
-			table.insert(list, { Name = player.DisplayName, Klunks = klunks })
+			table.insert(list, { UserId = player.UserId, Name = player.DisplayName, Klunks = klunks })
 		end
 	end
 	table.sort(list, function(a, b)
 		return a.Klunks > b.Klunks
 	end)
-	local lines = {}
-	for index = 1, math.min(SERVER_SIZE, #list) do
-		table.insert(lines, line(index, list[index].Name, list[index].Klunks))
-	end
-	setRows("Server", lines, "This server - live")
+	setRows("Server", list, "This server - live")
 end
 
 local function markServerDirty()
@@ -206,14 +123,14 @@ local function readGlobal()
 		setRows("Global", {}, "Updating soon...")
 		return
 	end
-	local lines = {}
-	for index, entry in (pages :: any):GetCurrentPage() do
+	local list = {}
+	for _, entry in (pages :: any):GetCurrentPage() do
 		local userId = tonumber(entry.key)
 		if userId ~= nil then
-			table.insert(lines, line(index, nameOf(userId), entry.value))
+			table.insert(list, { UserId = userId, Name = nameOf(userId), Klunks = entry.value })
 		end
 	end
-	setRows("Global", lines, "All servers - every 2 minutes")
+	setRows("Global", list, "All servers - every 2 minutes")
 end
 
 local function setupLeaderstats(player: Player)

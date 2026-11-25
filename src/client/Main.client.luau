@@ -46,6 +46,8 @@ local CONTROLLER_NAMES = {
 	"ButtonStyleController",
 	"BuffController",
 	"BackpackController",
+	"LeaderboardController",
+	"ContainerController",
 }
 
 for _, name in CONTROLLER_NAMES do
