@@ -98,8 +98,41 @@ function Theme.PopIn(frame: GuiObject)
 		scale.Parent = frame
 	end
 	local s = scale :: UIScale
-	s.Scale = 0.9
-	TweenService:Create(s, TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+	s.Scale = 0.82
+	TweenService:Create(s, TweenInfo.new(0.26, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+end
+
+-- Shrinks a window and calls `done` when it is gone.
+function Theme.PopOut(frame: GuiObject, done: () -> ())
+	local scale = frame:FindFirstChildOfClass("UIScale")
+	if scale == nil then
+		done()
+		return
+	end
+	local tween = TweenService:Create(scale, TweenInfo.new(0.13, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Scale = 0.86 })
+	tween.Completed:Once(done)
+	tween:Play()
+end
+
+-- The rows of a list come in one after another.
+function Theme.Stagger(list: Instance)
+	if game:GetService("Players").LocalPlayer:GetAttribute("LiteGraphics") == true then
+		return -- weak phones: the window pop alone
+	end
+	local index = 0
+	for _, child in list:GetChildren() do
+		if child:IsA("GuiObject") and index < 12 then
+			index += 1
+			local scale = child:FindFirstChildOfClass("UIScale")
+			if scale == nil then
+				scale = Instance.new("UIScale")
+				scale.Parent = child
+			end
+			local s = scale :: UIScale
+			s.Scale = 0.86
+			TweenService:Create(s, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, index * 0.028), { Scale = 1 }):Play()
+		end
+	end
 end
 
 return table.freeze(Theme)

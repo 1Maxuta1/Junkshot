@@ -4,7 +4,8 @@
 
 	GameConfig.UI.ButtonStyle
 	  "Chunky"   shaded like a thick toy button: light top edge, darker bottom lip, soft gradient;
-	             it sinks a little while pressed and brightens under the mouse
+	             it sinks while pressed, a light runs over it under the mouse, and a click flashes and
+	             sends a ring outwards
 	  "Classic"  the flat buttons from before (this module then does nothing at all)
 
 	Only decoration is added (children and a gradient); sizes, colors and actions stay with the
@@ -14,6 +15,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 
@@ -23,6 +25,11 @@ local MAX_HEIGHT = 84 -- taller buttons are cards or pages, not buttons
 local MIN_HEIGHT = 24
 local PRESS = TweenInfo.new(0.07, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 local RELEASE = TweenInfo.new(0.16, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+
+-- A finger has no hover: it would leave the button enlarged.
+local function touching(): boolean
+	return UserInputService:GetLastInputType() == Enum.UserInputType.Touch
+end
 
 local function strip(name: string, position: UDim2, size: UDim2, color: Color3, transparency: number, radius: UDim): Frame
 	local frame = Instance.new("Frame")
@@ -69,6 +76,40 @@ local function dress(button: TextButton)
 	strip("StyleLip", UDim2.new(0, 2, 1, -7), UDim2.new(1, -4, 0, 5), Color3.new(0, 0, 0), 0.78, radius).Parent = button
 	strip("StyleShine", UDim2.new(0, 5, 0, 3), UDim2.new(1, -10, 0.3, 0), Color3.new(1, 1, 1), 0.72, radius).Parent = button
 
+	-- Light that runs over the button when the mouse enters.
+	local sweep = strip("StyleSweep", UDim2.new(), UDim2.fromScale(1, 1), Color3.new(1, 1, 1), 0, radius)
+	local sweepGradient = Instance.new("UIGradient")
+	sweepGradient.Rotation = 20
+	sweepGradient.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.42, 1),
+		NumberSequenceKeypoint.new(0.5, 0.45),
+		NumberSequenceKeypoint.new(0.58, 1),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	sweepGradient.Offset = Vector2.new(-1, 0)
+	sweepGradient.Parent = sweep
+	sweep.Parent = button
+	-- White flash and a ring on a click.
+	local flash = strip("StyleFlash", UDim2.new(), UDim2.fromScale(1, 1), Color3.new(1, 1, 1), 1, radius)
+	flash.Parent = button
+	local ring = strip("StyleRing", UDim2.fromScale(0.5, 0.5), UDim2.fromScale(1, 1), Color3.new(1, 1, 1), 1, radius)
+	ring.AnchorPoint = Vector2.new(0.5, 0.5)
+	local ringStroke = Instance.new("UIStroke")
+	ringStroke.Color = Color3.new(1, 1, 1)
+	ringStroke.Thickness = 2
+	ringStroke.Transparency = 1
+	ringStroke.Parent = ring
+	ring.Parent = button
+	button.Activated:Connect(function()
+		flash.BackgroundTransparency = 0.35
+		TweenService:Create(flash, TweenInfo.new(0.28), { BackgroundTransparency = 1 }):Play()
+		ring.Size = UDim2.fromScale(1, 1)
+		ringStroke.Transparency = 0.1
+		TweenService:Create(ring, TweenInfo.new(0.34, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.new(1, 26, 1, 22) }):Play()
+		TweenService:Create(ringStroke, TweenInfo.new(0.34), { Transparency = 1 }):Play()
+	end)
+
 	local scale = button:FindFirstChildOfClass("UIScale")
 	if scale == nil then
 		scale = Instance.new("UIScale")
@@ -82,10 +123,16 @@ local function dress(button: TextButton)
 		to(0.93, PRESS)
 	end)
 	button.MouseButton1Up:Connect(function()
-		to(1, RELEASE)
+		to(if touching() then 1 else 1.04, RELEASE)
 	end)
 	button.MouseEnter:Connect(function()
 		gradient.Offset = Vector2.new(0, 0.18)
+		if touching() then
+			return
+		end
+		to(1.04, RELEASE)
+		sweepGradient.Offset = Vector2.new(-1, 0)
+		TweenService:Create(sweepGradient, TweenInfo.new(0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Offset = Vector2.new(1, 0) }):Play()
 	end)
 	button.MouseLeave:Connect(function()
 		gradient.Offset = Vector2.zero

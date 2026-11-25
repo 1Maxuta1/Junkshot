@@ -379,7 +379,11 @@ function Panel.Mount(screenGui: ScreenGui, actions: Widgets.Actions, durationFor
 			return
 		end
 		open = false
-		root.Visible = false
+		Theme.PopOut(root, function()
+			if not open then
+				root.Visible = false
+			end
+		end)
 		ContextActionService:UnbindAction(CLOSE_ACTION)
 		if GuiService.SelectedObject ~= nil and GuiService.SelectedObject:IsDescendantOf(root) then
 			GuiService.SelectedObject = nil

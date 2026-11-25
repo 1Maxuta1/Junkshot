@@ -103,6 +103,13 @@ local function isShown(gui: GuiObject): boolean
 	if not gui.Visible or not gui:IsDescendantOf(game) then
 		return false
 	end
+	local parent = gui.Parent
+	while parent ~= nil and parent:IsA("GuiObject") do
+		if not parent.Visible then
+			return false
+		end
+		parent = parent.Parent
+	end
 	local screen = gui:FindFirstAncestorWhichIsA("LayerCollector")
 	return screen ~= nil and screen.Enabled
 end

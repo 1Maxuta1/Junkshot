@@ -123,10 +123,10 @@ function SupplyDrop.Mount(gui: ScreenGui, onClaim: () -> ()): SupplyDrop
 	overlay.BackgroundTransparency = 1
 	overlay.Visible = false
 	overlay.Active = true -- no clicks through to the world
+	overlay:AddTag("JunkshotMenu") -- the part whose Visible really changes (InputController)
 
 	local panel = frame(overlay, "SupplyDrop", UDim2.fromScale(0.5, 0.5), UDim2.new(0.9, -180, 0.84, -168), STEEL, 21)
 	panel.AnchorPoint = Vector2.new(0.5, 0.5)
-	panel:AddTag("JunkshotMenu")
 	local limit = Instance.new("UISizeConstraint")
 	limit.MaxSize = Vector2.new(1060, 470)
 	limit.Parent = panel

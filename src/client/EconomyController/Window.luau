@@ -13,6 +13,7 @@ local ContextActionService = game:GetService("ContextActionService")
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local ItemConfig = require(ReplicatedStorage.Shared.Config.ItemConfig)
 local Rarities = require(ReplicatedStorage.Shared.Config.Rarities)
@@ -249,6 +250,9 @@ function Window.Mount(screenGui: ScreenGui, name: string, title: string, tabs: {
 			end
 		end
 		tabChanged:Fire(tab)
+		if root.Visible then
+			task.defer(Theme.Stagger, contents[tab])
+		end
 	end
 
 	for index, tab in tabs do
@@ -281,13 +285,32 @@ function Window.Mount(screenGui: ScreenGui, name: string, title: string, tabs: {
 		end
 	end
 
+	-- The world behind an open window gets darker.
+	local backdrop = Instance.new("Frame")
+	backdrop.Name = "Backdrop"
+	backdrop.Position = UDim2.fromOffset(-100, -100)
+	backdrop.Size = UDim2.new(1, 200, 1, 200)
+	backdrop.BackgroundColor3 = Theme.Colors.Ink
+	backdrop.BackgroundTransparency = 1
+	backdrop.BorderSizePixel = 0
+	backdrop.ZIndex = 0
+	backdrop.Active = false
+	backdrop.Visible = false
+	backdrop.Parent = screenGui
+
 	local open = false
 	local function close()
 		if not open then
 			return
 		end
 		open = false
-		root.Visible = false
+		TweenService:Create(backdrop, TweenInfo.new(0.15), { BackgroundTransparency = 1 }):Play()
+		Theme.PopOut(root, function()
+			if not open then
+				root.Visible = false
+				backdrop.Visible = false
+			end
+		end)
 		ContextActionService:UnbindAction(closeAction)
 		if GuiService.SelectedObject ~= nil and GuiService.SelectedObject:IsDescendantOf(root) then
 			GuiService.SelectedObject = nil
@@ -310,6 +333,11 @@ function Window.Mount(screenGui: ScreenGui, name: string, title: string, tabs: {
 			open = true
 			root.Visible = true
 			Theme.PopIn(root)
+			backdrop.Visible = true
+			TweenService:Create(backdrop, TweenInfo.new(0.2), { BackgroundTransparency = 0.6 }):Play()
+			task.defer(function()
+				Theme.Stagger(contents[current]) -- after the opener has filled the list
+			end)
 			ContextActionService:BindAction(closeAction, function(_, inputState)
 				if inputState == Enum.UserInputState.Begin then
 					close()
