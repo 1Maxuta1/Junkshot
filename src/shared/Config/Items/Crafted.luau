@@ -251,7 +251,7 @@ return {
 		part(Block, V(1.5, 1.1, 0.1), rgb(20, 24, 40), M.SmoothPlastic, V(0, 0.6, -0.72)),
 		part(Block, V(1.7, 0.2, 0.7), rgb(30, 34, 60), M.SmoothPlastic, V(0, -0.3, -0.95)),
 		part(Ball, V(0.35, 0.35, 0.35), rgb(255, 60, 60), M.SmoothPlastic, V(-0.4, 0, -1)),
-		part(Block, V(1.8, 0.4, 0.2), rgb(255, 80, 180), M.Neon, V(0, 1.4, -0.65)),
+		part(Block, V(1.6, 0.36, 0.14), rgb(255, 80, 180), M.Neon, V(0, 1.36, -0.79)),
 	}),
 	crafted("hologram_projector", "Hologram Projector", "Legendary", "Crafted", "Deployable", "Deploy.Hologram", "Shows a hologram of any item you hold.", {
 		part(Cylinder, V(0.5, 2, 2), rgb(40, 50, 80), M.Metal, nil, UPRIGHT),

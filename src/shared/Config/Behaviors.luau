@@ -9,7 +9,7 @@
 	           client feature that drives it: "Vehicle" | "Cart" | "Radio" | "Detector" | "Ability" | "Gadget"
 	  Mode     "Place" = selected in the hotbar, placed in the world (preview -> server checks)
 	           "Use"   = used while carried (no world object)
-	           "Activate" = an ability used while carried (left click too), with a cooldown
+	           "Activate" = an ability used while carried (UseKey G / the action button), with a cooldown
 	  Model    Util/DeployModels builder name (Place only)
 	  Storable the owner can pick the placed object back up into their hands (Place only)
 	  FacePlayer  placed facing the player (otherwise facing where the player looks, like a
@@ -123,8 +123,8 @@ local Behaviors = {
 			},
 		},
 	},
-	-- Mythic abilities (Mode "Activate"): select the item, then left click / G / D-pad up / the
-	-- action chip. A big effect everyone nearby sees, then a cooldown (saved, survives a rejoin).
+	-- Mythic abilities (Mode "Activate"): select the item, then G / D-pad up / the action chip
+	-- (the click throws, like with every item). A big effect everyone nearby sees, then a cooldown (saved, survives a rejoin).
 	-- Purely a show-off: no items, money or advantage.
 	["Ability.Comet"] = {
 		Kind = "Ability",
@@ -152,14 +152,16 @@ local Behaviors = {
 		Model = "TurboKart",
 		Storable = true,
 		Vehicle = {
-			MaxSpeed = 70,
-			Acceleration = 30,
-			Braking = 80,
+			MaxSpeed = 100,
+			Acceleration = 34,
+			Braking = 95,
 			Coast = 14,
 			ReverseSpeed = 18,
 			TurnRate = 1.9,
 			PassengerCapacity = 0,
-			EngineSoundId = "rbxassetid://80317022777602",
+			EngineSoundId = "rbxassetid://9112782019", -- "Formula One Race Car 1", ProSoundEffects
+			EngineLoop = { 14, 22 }, -- seconds of the recording that repeat
+			EngineVolume = 0.28,
 			WheelRadius = 0.9,
 		},
 	},
@@ -212,7 +214,13 @@ local Behaviors = {
 		Mode = "Activate",
 		Ability = { Effect = "PlasmaToast", Name = "Plasma Toast", Cooldown = 30, Distance = 14, Toasts = 3, Lifetime = 15, EatDistance = 4.5, BuffSeconds = 10, JumpFactor = 2.2 },
 	},
-	["Tool.Magnet"]  = {
+	-- Polar Dragon Egg: a baby dragon comes out and flies around its owner for a while.
+	["Ability.DragonCall"] = {
+		Kind = "Ability",
+		Mode = "Activate",
+		Ability = { Effect = "DragonCall", Name = "Call the Dragon", Cooldown = 60, Distance = 0 },
+	},
+	["Tool.Magnet"]   = {
 		Kind = "Ability",
 		Mode = "Activate",
 		Ability = { Effect = "Magnet", Name = "Pull Scrap", Cooldown = 25, Distance = 0, Range = 28, Amount = 5 },
@@ -224,6 +232,8 @@ local Behaviors = {
 		Gadget = { Effect = "Throne", Action = "Sit", Label = "Sit" } },
 	["Deploy.Teleport"] = { Kind = "Gadget", Mode = "Place", Model = "Item:teleport_pad:2", Storable = true, FacePlayer = true,
 		Gadget = { Effect = "Teleporter", Action = "Teleport", Label = "Teleport", TravelCooldown = 5 } },
+	["Deploy.CrystalSnowman"] = { Kind = "Gadget", Mode = "Place", Model = "Item:crystal_snowman:2", Storable = true, FacePlayer = true,
+		Gadget = { Effect = "CrystalSnowman", Action = "Cycle", Modes = { "Light off", "Violet glow", "Ice glow", "Aurora glow" } } },
 	["Deploy.Panel"] = { Kind = "Gadget", Mode = "Place", Model = "Item:glass_panel:2.4", Storable = true, FacePlayer = true,
 		Gadget = { Effect = "Panel", Action = "Cycle", Modes = { "Clear", "Blue", "Red", "Gold", "Green", "Dark" } } },
 	["Deploy.Television"] = { Kind = "Gadget", Mode = "Place", Model = "Item:neon_tv:2", Storable = true, FacePlayer = true,

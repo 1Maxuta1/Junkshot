@@ -1142,6 +1142,27 @@ local function runItemTests(player: Player)
 	local thirdOk, thirdCode = PlacementService.Place(player, thirdUid, spotC, 0)
 	check("a third vehicle is over the limit", not thirdOk and thirdCode == errors.VehicleLimit and CarryService.HasUid(player, thirdUid), tostring(thirdCode))
 	local carEntry = PlacementService.GetEntry(carUid)
+	if carEntry ~= nil then
+		local driverSeat = carEntry.Model:FindFirstChild("DriverSeat") :: VehicleSeat
+		local passengerSeat = carEntry.Model:FindFirstChild("PassengerSeat") :: Seat
+		local rider = character:FindFirstChildOfClass("Humanoid") :: Humanoid
+		standNear(spotA)
+		driverSeat:Sit(rider)
+		check("the owner sits at the wheel", waitUntil(3, function()
+			return driverSeat.Occupant == rider
+		end))
+		check("the driver can move to the passenger seat", (VehicleBehavior.SwitchSeat(player)) and passengerSeat.Occupant == rider and driverSeat.Occupant == nil)
+		check("a passenger does not drive", VehicleBehavior.GetDriven(player) == nil)
+		check("and back to the wheel", (VehicleBehavior.SwitchSeat(player)) and waitUntil(2, function()
+			return driverSeat.Occupant == rider and VehicleBehavior.GetDriven(player) == carEntry
+		end))
+		rider.Sit = false
+		waitUntil(3, function()
+			return driverSeat.Occupant == nil and rider.SeatPart == nil
+		end)
+		task.wait(0.5)
+		check("not seated: nothing to switch", not VehicleBehavior.SwitchSeat(player))
+	end
 	check("the car has a passenger seat and an engine sound", carEntry ~= nil and carEntry.Model:FindFirstChild("PassengerSeat") ~= nil
 		and carEntry.State.Engine ~= nil)
 	standNear(spotA)

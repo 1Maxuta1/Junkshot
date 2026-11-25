@@ -135,17 +135,17 @@ if runDevTests or (RunService:IsStudio() and ServerScriptService:GetAttribute("D
 			return true
 		elseif action == "SpawnItem" then
 			return JunkService.SpawnAt(arg.Id, arg.Position, { Yaw = 0 })
-		elseif action == "TestProfile" then -- only for a TestStore session: everything unlocked
+		elseif action == "TestProfile" then -- only for a TestStore session: fresh profile, endless money
 			if ServerScriptService:GetAttribute("TestStore") ~= true then
 				return false
 			end
 			local data = DataService.GetData(player) :: any
-			data.Progress.Level = 50
-			data.Machine.Upgrades = { Speed = 6, Storage = 3, Level = 3 }
+			data.Progress.Level = 1
+			data.Progress.XP = 0
+			data.PlayerUpgrades = {}
+			data.Machine.Upgrades = { Speed = 1, Storage = 1, Level = 1 }
 			OnboardingService.Skip(player)
 			CurrencyService.AddKlunks(player, arg or 100000)
-			ProgressionService.AddXP(player, 1, "Test")
-			player:SetAttribute("Level", 50)
 			MachineService.Unload(player)
 			MachineService.Load(player)
 			return true

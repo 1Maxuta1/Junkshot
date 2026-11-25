@@ -44,18 +44,19 @@
         "$properties": {
           "Anchored": true,
           "Color": [
-            0.96471,
-            0.98039,
-            1
+            0.89,
+            0.93,
+            0.985
           ],
           "Material": "SmoothPlastic",
           "TopSurface": "Smooth",
           "Locked": true,
-          "Position": [
-            0,
-            -10,
-            0
-          ],
+          "CFrame": {
+            "CFrame": {
+              "position": [0, -10, 0],
+              "orientation": [[1, 0, 0], [0, 1, 0], [0, 0, 1]]
+            }
+          },
           "Size": [
             512,
             20,
@@ -94,7 +95,7 @@
         ],
         "EnvironmentDiffuseScale": 0.4,
         "EnvironmentSpecularScale": 0.2,
-        "ExposureCompensation": 0.1,
+        "ExposureCompensation": -0.05,
         "GlobalShadows": true,
         "ShadowSoftness": 0.4,
         "Outlines": false,

@@ -109,9 +109,6 @@ local function refresh()
 		else
 			action = ability.Name
 			color = Theme.Colors.Ice
-			if InputController.GetInputKind() == "KeyboardMouse" then
-				key = "Click"
-			end
 		end
 	else
 		action = `Use {name}`
@@ -147,16 +144,6 @@ local function act()
 		end
 	end
 	refresh()
-end
-
--- Left click with an ability item selected uses the ability instead of throwing it.
-local function onPrimaryClick(): boolean
-	local _, capabilities = selectedAction()
-	if capabilities == nil or capabilities.Behavior.Kind ~= "Ability" or Placement.IsActive() then
-		return false
-	end
-	act()
-	return true
 end
 
 local function mount()
@@ -222,7 +209,6 @@ function ItemController.Start()
 	CarryController.Changed:Connect(refresh)
 	InputController.InputTypeChanged:Connect(refresh)
 	InputController.MenuChanged:Connect(refresh)
-	InputController.SetPrimaryClickHandler(onPrimaryClick)
 	Abilities.Start()
 	-- Ability cooldown countdown on the chip (only while an ability item is selected).
 	local elapsed = 0

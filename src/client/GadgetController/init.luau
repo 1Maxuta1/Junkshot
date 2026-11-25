@@ -23,6 +23,7 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local AudioConfig = require(ReplicatedStorage.Shared.Config.AudioConfig)
+local ItemSounds = require(ReplicatedStorage.Shared.Config.ItemSounds)
 local JunkFactory = require(ReplicatedStorage.Shared.Util.JunkFactory)
 local PlacementRules = require(ReplicatedStorage.Shared.Util.PlacementRules)
 local RaceConfig = require(ReplicatedStorage.Shared.Config.RaceConfig)
@@ -141,7 +142,7 @@ local function burst(position: Vector3, colors: { Color3 }, count: number, speed
 end
 
 -- Something flies up from `from`, then bursts.
-local function rocket(from: Vector3, height: number, size: Vector3, color: Color3, colors: { Color3 }, count: number)
+local function rocket(from: Vector3, height: number, size: Vector3, color: Color3, colors: { Color3 }, count: number, onBurst: ((Vector3) -> ())?)
 	local shot = piece(effectsFolder(), Enum.PartType.Block, size, color)
 	shot.Position = from
 	local target = from + Vector3.new(math.random(-6, 6), height, math.random(-6, 6))
@@ -152,6 +153,9 @@ local function rocket(from: Vector3, height: number, size: Vector3, color: Color
 	rise.Completed:Connect(function()
 		shot:Destroy()
 		burst(target, colors, count, 30)
+		if onBurst ~= nil then
+			onBurst(target)
+		end
 	end)
 	rise:Play()
 	Debris:AddItem(shot, 3)
@@ -312,16 +316,54 @@ function Effects.Disco(ctx)
 end
 
 function Effects.Fountain(ctx)
-	local head = part(ctx, 4)
-	local water = emitter(head, SPARKLE, {
-		Rate = 60, Speed = NumberRange.new(12, 16), SpreadAngle = Vector2.new(14, 14), Acceleration = Vector3.new(0, -32, 0),
+	local pool = part(ctx, 2)
+	local duck = { part(ctx, 3), part(ctx, 4), part(ctx, 5) }
+	local homes = {}
+	for index, p in duck do
+		homes[index] = p.CFrame
+	end
+	local center = pool.Position
+	local radius = math.max(pool.Size.Y, pool.Size.Z) / 2 - duck[1].Size.X * 0.55
+	local nozzle = Instance.new("Attachment")
+	nozzle.Parent = ctx.Base
+	nozzle.WorldCFrame = CFrame.new(center + Vector3.new(0, 0.4, 0))
+	ctx.Track(nozzle)
+	local water = emitter(nozzle, SPARKLE, {
+		Rate = 60, Speed = NumberRange.new(12, 16), SpreadAngle = Vector2.new(12, 12), Acceleration = Vector3.new(0, -32, 0),
 		Lifetime = NumberRange.new(0.7, 1), Size = NumberSequence.new(0.5, 0.2), Color = ColorSequence.new(rgb(120, 200, 255)),
 	})
-	ctx.Track(water)
+	local sound = Instance.new("Sound")
+	sound.Name = "Fountain"
+	sound.SoundId = "rbxassetid://9120557577" -- "Water Fountain 2", ProSoundEffects
+	sound.Looped = true
+	sound.Volume = 0.12
+	sound.PlaybackSpeed = 1.15 -- smaller fountain
+	sound.RollOffMinDistance = 5
+	sound.RollOffMaxDistance = 40
+	sound.Parent = ctx.Base
+	ctx.Track(sound)
+	local swum = 0
+	local last: number? = nil
 	return function(t, mode, powered)
-		water.Enabled = mode > 1
+		local on = mode > 1
+		water.Enabled = on
 		water.Speed = if powered then NumberRange.new(20, 25) else NumberRange.new(12, 16)
 		water.Color = ColorSequence.new(if mode == 3 then Color3.fromHSV(t * 0.3 % 1, 0.7, 1) else rgb(120, 200, 255))
+		if on ~= sound.Playing then
+			sound.Playing = on
+		end
+		-- The duck swims in circles, bobbing, with its beak forward.
+		swum += if on and last ~= nil then math.clamp(t - last, 0, 0.1) else 0
+		last = t
+		for index, p in duck do
+			if on then
+				local angle = swum * 0.9
+				local swim = CFrame.new(center) * CFrame.Angles(0, angle, 0) * CFrame.new(radius, math.sin(swum * 4) * 0.12, 0)
+				p.CFrame = swim * CFrame.new(center):ToObjectSpace(homes[index] - Vector3.new(0, 0.35, 0))
+			else
+				p.CFrame = homes[index]
+			end
+		end
 	end
 end
 
@@ -409,8 +451,21 @@ function Effects.Generator(ctx)
 	local ring = piece(ctx.Folder, Enum.PartType.Cylinder, Vector3.new(0.08, POWER_RANGE * 2, POWER_RANGE * 2), rgb(80, 255, 140), 1)
 	ring.CFrame = CFrame.new(ctx.Model:GetPivot().Position + Vector3.new(0, 0.1, 0)) * CFrame.Angles(0, 0, math.pi / 2)
 	local startedAt: number? = nil
+	local motor = Instance.new("Sound")
+	motor.Name = "Motor"
+	motor.SoundId = "rbxassetid://80317022777602"
+	motor.Looped = true
+	motor.Volume = 0.22
+	motor.PlaybackSpeed = 0.6 -- a slow, heavy engine
+	motor.RollOffMinDistance = 6
+	motor.RollOffMaxDistance = 55
+	motor.Parent = ctx.Base
+	ctx.Track(motor)
 	return function(t, mode)
 		local on = mode == 2
+		if on ~= motor.Playing then
+			motor.Playing = on
+		end
 		smoke.Enabled, light.Enabled = on, on
 		light.Range = 10
 		ctx.Base.CFrame = home * CFrame.new(0, if on then math.sin(t * 40) * 0.03 else 0, 0)
@@ -542,6 +597,26 @@ function Effects.Teleporter(ctx)
 	end
 end
 
+local CRYSTAL = { rgb(200, 170, 255), rgb(190, 110, 255), rgb(120, 210, 255), rgb(120, 255, 200) }
+
+function Effects.CrystalSnowman(ctx)
+	local balls = { ctx.Base, part(ctx, 2), part(ctx, 3) }
+	local light = pointLight(ctx, part(ctx, 2), CRYSTAL[2])
+	local sparkle = emitter(part(ctx, 2), SPARKLE, { Rate = 10, Speed = NumberRange.new(2, 5), SpreadAngle = Vector2.new(180, 180), Lifetime = NumberRange.new(0.8, 1.6), Size = NumberSequence.new(0.6, 0) })
+	ctx.Track(sparkle)
+	return function(t, mode, powered)
+		local on = mode > 1
+		local color = if mode == 4 then Color3.fromHSV(0.38 + math.sin(t * 0.6) * 0.2, 0.55, 1) else CRYSTAL[mode] or CRYSTAL[1]
+		light.Enabled, sparkle.Enabled = on, on
+		light.Color, light.Range = color, if powered then 24 else 15
+		light.Brightness = 0.5 + math.sin(t * 2) * 0.15
+		sparkle.Color = ColorSequence.new(color)
+		for index, ball in balls do
+			ball.Color = if on then color:Lerp(rgb(255, 255, 255), 0.15 + math.sin(t * 2 + index) * 0.15) else CRYSTAL[1]
+		end
+	end
+end
+
 function Effects.Toast(ctx)
 	onFire(ctx, function(powered)
 		for index = 1, if powered then 5 else 2 do
@@ -553,10 +628,25 @@ end
 
 function Effects.Plasma(ctx)
 	onFire(ctx, function(powered)
-		AudioController.PlayAt(AudioConfig.Abilities.CometWhoosh, ctx.Base, false, 120)
 		for index = 1, if powered then 9 else 5 do
 			local color = Color3.fromHSV(math.random(), 0.75, 1)
-			task.delay(index * 0.25, rocket, top(ctx), 45 + math.random(0, 12), Vector3.new(0.5, 1.4, 0.5), color, { color, rgb(255, 255, 255) }, 70)
+			task.delay(index * 0.3, function()
+				-- whistle up, then a bang and crackling sparks where it bursts
+				local rise, risePitch = ItemSounds.ForEvent("FireworkRise")
+				AudioController.PlayItem(rise, risePitch * (0.9 + math.random() * 0.3), ctx.Base, 1, 160)
+				rocket(top(ctx), 45 + math.random(0, 12), Vector3.new(0.5, 1.4, 0.5), color, { color, rgb(255, 255, 255) }, 70, function(position)
+					local holder = Instance.new("Attachment")
+					holder.WorldPosition = position
+					holder.Parent = Workspace.Terrain
+					local bang = table.clone(AudioConfig.Abilities.CometImpact) :: any
+					bang.Pitch = 1.1 + math.random() * 0.35
+					bang.Volume = 0.4
+					AudioController.PlayAt(bang, holder, false, 220)
+					local crackle, cracklePitch = ItemSounds.ForEvent("FireworkCrackle")
+					AudioController.PlayItem(crackle, cracklePitch, holder, 1, 180)
+					Debris:AddItem(holder, 4)
+				end)
+			end)
 		end
 	end)
 	return nothing
@@ -676,8 +766,31 @@ function Effects.Throne(ctx)
 	local seat = ctx.Model:FindFirstChild("ThroneSeat")
 	local sparkle = emitter(if crown ~= nil then crown else ctx.Base, SPARKLE, { Rate = 25, Speed = NumberRange.new(3, 6), SpreadAngle = Vector2.new(180, 180), Lifetime = NumberRange.new(0.8, 1.4), Size = NumberSequence.new(0.8, 0), Color = ColorSequence.new(rgb(255, 215, 90)) })
 	ctx.Track(sparkle)
+	-- Fanfares for the ruler, one after another while somebody sits there (APM Music).
+	local tracks = { "rbxassetid://1836473422", "rbxassetid://85130118995016" }
+	local music = Instance.new("Sound")
+	music.Name = "Fanfare"
+	music.Volume = 0.35
+	music.RollOffMinDistance = 10
+	music.RollOffMaxDistance = 80
+	music.Parent = ctx.Base
+	ctx.Track(music)
+	local nextAt, index = 0, 0
 	return function()
-		sparkle.Enabled = seat ~= nil and seat:IsA("Seat") and seat.Occupant ~= nil
+		local seated = seat ~= nil and seat:IsA("Seat") and seat.Occupant ~= nil
+		sparkle.Enabled = seated
+		if not seated then
+			if music.Playing then
+				music:Stop()
+			end
+			nextAt, index = 0, 0
+		elseif not music.Playing and os.clock() >= nextAt then
+			index = index % #tracks + 1
+			music.SoundId = tracks[index]
+			music.TimePosition = 0
+			music:Play()
+			nextAt = os.clock() + 3 -- also the pause after a fanfare
+		end
 	end
 end
 
@@ -701,7 +814,8 @@ function Effects.Launcher(ctx)
 			humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
 			local velocity = root.AssemblyLinearVelocity
 			root.AssemblyLinearVelocity = Vector3.new(velocity.X, if powered then 125 else 95, velocity.Z)
-			AudioController.PlayAt(AudioConfig.Machine.Start, ctx.Base, false, 60)
+			local family, pitch = ItemSounds.ForEvent("Boing")
+			AudioController.PlayItem(family, pitch, ctx.Base, 1, 70)
 		end
 	end
 end

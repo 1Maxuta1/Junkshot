@@ -186,6 +186,10 @@ local builders: { [string]: Builder } = {
 		addPart(model, "Engine", Block, V(1.8, 0.8, 1.4), rgb(70, 80, 96), M.Metal, V(0, 2.95, -2.7))
 		addPart(model, "Windshield", Block, V(4.0, 1.4, 0.15), rgb(140, 210, 255), M.Glass, V(0, 2.9, -1.15), V(-15, 0, 0)).Transparency = 0.4
 		addPart(model, "RollBar", Block, V(4.2, 1.6, 0.3), rgb(200, 206, 214), M.Metal, V(0, 3.0, 2.6))
+		addPart(model, "SteeringColumn", Cylinder, V(1.2, 0.2, 0.2), rgb(60, 66, 80), M.Metal, V(-1.05, 3.05, -0.55), V(0, 90, -30))
+		addPart(model, "SteeringWheel", Cylinder, V(0.16, 1.3, 1.3), rgb(30, 32, 40), M.SmoothPlastic, V(-1.05, 3.3, -0.15), V(0, 90, -30))
+		addPart(model, "SteeringHub", Cylinder, V(0.2, 0.5, 0.5), rgb(255, 205, 50), M.Metal, V(-1.05, 3.32, -0.12), V(0, 90, -30))
+		addPart(model, "Dashboard", Block, V(4, 0.5, 0.5), rgb(40, 42, 50), M.SmoothPlastic, V(0, 2.75, -0.95))
 		addPart(model, "Bumper", Block, V(4.8, 0.5, 0.4), rgb(200, 206, 214), M.Metal, V(0, 1.2, -4.2))
 		for _, x in { -1.5, 1.5 } do
 			addPart(model, "Headlight", Cylinder, V(0.2, 0.6, 0.6), rgb(255, 240, 180), M.Neon, V(x, 1.75, -4.15), V(0, 90, 0))

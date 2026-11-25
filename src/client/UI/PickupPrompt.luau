@@ -130,6 +130,20 @@ function PickupPrompt.Mount(onTriggeredLocally: (prompt: ProximityPrompt) -> ())
 			local column = prompt:GetAttribute("CardColumn")
 			gui.SizeOffset = Vector2.new((if type(column) == "number" then column else 0) * 2.06 / 2, 0.5 + row * 1.12)
 		end
+		local character = Players.LocalPlayer.Character
+		local humanoid = if character ~= nil then character:FindFirstChildOfClass("Humanoid") else nil
+		if humanoid ~= nil then
+			local function refreshSeat()
+				local owner = prompt:FindFirstAncestorWhichIsA("Model")
+				local part = humanoid.SeatPart
+				gui.Enabled = not (owner ~= nil and part ~= nil and part:IsDescendantOf(owner))
+			end
+			local connection = humanoid:GetPropertyChangedSignal("SeatPart"):Connect(refreshSeat)
+			gui.Destroying:Once(function()
+				connection:Disconnect()
+			end)
+			refreshSeat()
+		end
 		gui.AlwaysOnTop = true
 		gui.LightInfluence = 0
 		gui.ResetOnSpawn = false
@@ -203,9 +217,9 @@ function PickupPrompt.Mount(onTriggeredLocally: (prompt: ProximityPrompt) -> ())
 			InputType = inputType,
 		}
 
-		-- Touch: the whole card is the button.
+		-- Touch and mouse: the whole card is the button.
 		button.Activated:Connect(function()
-			if card.InputType == Enum.ProximityPromptInputType.Touch and cards[prompt] == card then
+			if cards[prompt] == card then
 				prompt:InputHoldBegin()
 				task.defer(function()
 					prompt:InputHoldEnd()

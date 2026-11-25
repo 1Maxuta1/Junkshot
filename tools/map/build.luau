@@ -27,11 +27,13 @@
 local fs = require("@lune/fs")
 local roblox = require("@lune/roblox")
 local Prefabs = require("./Prefabs")
+local Plaza = require("./Plaza")
 local RaceZone = require("./RaceZone")
 
 local Instance = roblox.Instance
 local Vector3 = roblox.Vector3
 local CFrame = roblox.CFrame
+local Color3 = roblox.Color3
 local Enum = roblox.Enum
 local C = Prefabs.Colors
 local Part = Prefabs.Part
@@ -247,12 +249,12 @@ local zones = {
 		end,
 	},
 	{
-		Name = "Old Sheds",
+		Name = "Scrap Village",
 		Degrees = 315,
 		Accent = C.Blue,
 		Build = function(parent, at)
-			Prefabs.Shed(parent, at(-19, 0, -28, 180), C.Blue, C.Red)
-			Prefabs.Shed(parent, at(14, 0, -28, 180), C.Yellow, C.Teal)
+			Prefabs.Cottage(parent, at(-19, 0, -28, 180), Color3.fromRGB(150, 190, 235), C.Red)
+			Prefabs.Cottage(parent, at(14, 0, -28, 180), Color3.fromRGB(246, 214, 150), C.Teal)
 			Prefabs.Barrel(parent, at(33, 0, -14), C.Green)
 			Prefabs.Barrel(parent, at(33, 0, -18.5), C.Orange)
 			Prefabs.Barrel(parent, at(30.5, 0, -30), C.Red)
@@ -362,7 +364,7 @@ do -- South-west: pine grove
 end
 do -- South-east: workshop corner
 	local cf = cornerCFrame(315, 262)
-	Prefabs.Shed(landmarks, cf * CFrame.new(-8, 0, 2), C.Red, C.Blue)
+	Prefabs.Cottage(landmarks, cf * CFrame.new(-8, 0, 2), Color3.fromRGB(236, 160, 140), C.Blue)
 	Prefabs.TireStack(landmarks, cf * CFrame.new(12, 0, -6), 5)
 	Prefabs.TireStack(landmarks, cf * CFrame.new(17, 0, 1), 3)
 	Prefabs.JunkHeap(landmarks, cf * CFrame.new(10, 0, 14), 0.9, 13)
@@ -438,6 +440,7 @@ for _, side in sides do
 end
 
 RaceZone.Build(map)
+Plaza.Build(map)
 
 -- Small parts cast no shadow: nobody sees them, but phones draw every one of them again.
 local SMALL = 5

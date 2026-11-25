@@ -138,6 +138,25 @@ local function heldUidOf(player: Player): string?
 	return if type(value) == "string" then value else nil
 end
 
+-- Items that are put on like gloves instead of being held.
+local WORN_ON_HANDS: { [string]: boolean } = { patched_mitten = true }
+local GLOVE_SIZE = 1.55 -- studs, largest side
+
+local function wearOnHands(character: Model, itemId: string, folder: Instance, models: { { Model: Model, To: BasePart } })
+	for _, side in { 1, -1 } do
+		local hand = character:FindFirstChild(if side > 0 then "RightHand" else "LeftHand")
+			or character:FindFirstChild(if side > 0 then "Right Arm" else "Left Arm")
+		local model = if hand ~= nil and hand:IsA("BasePart") then JunkFactory.Build(itemId, "Cosmetic", GLOVE_SIZE) else nil
+		if model ~= nil and hand ~= nil and hand:IsA("BasePart") then
+			-- Fingers (item +Y) point down the arm (hand -Y); thumbs point forward.
+			local y = if hand.Size.Y > 1 then -hand.Size.Y / 2 + 0.3 else -0.1
+			model:PivotTo(hand.CFrame * CFrame.new(0, y, 0) * CFrame.Angles(0, 0, math.pi) * CFrame.Angles(0, side * math.pi / 2, 0))
+			model.Parent = folder
+			table.insert(models, { Model = model, To = hand })
+		end
+	end
+end
+
 local function addLight(itemId: string, part: BasePart)
 	local config = HeldLights[itemId]
 	if config == nil then
@@ -193,7 +212,7 @@ local function refreshVisuals(player: Player)
 	local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
 	local holding = false
 	for _, entry in entries do
-		if entry.Uid == heldUid and hand ~= nil then
+		if entry.Uid == heldUid and hand ~= nil and not WORN_ON_HANDS[entry.Id] then
 			holding = true
 		end
 	end
@@ -211,6 +230,10 @@ local function refreshVisuals(player: Player)
 	local slot = 0
 	for _, entry in entries do
 		local inHand = entry.Uid == heldUid and hand ~= nil and hand:IsA("BasePart")
+		if inHand and WORN_ON_HANDS[entry.Id] then
+			wearOnHands(character, entry.Id, folder, models)
+			continue
+		end
 		local model = JunkFactory.Build(entry.Id, "Cosmetic", if inHand then HELD_SIZE else VISUAL_MAX_SIZE)
 		if model == nil then
 			continue
@@ -218,6 +241,11 @@ local function refreshVisuals(player: Player)
 		if inHand then
 			local part = hand :: BasePart
 			local tip = CFrame.new(0, -part.Size.Y / 2 - 0.1, -0.35) * CFrame.Angles(math.rad(-90), 0, 0)
+			local lightConfig = HeldLights[entry.Id]
+			if lightConfig ~= nil and lightConfig.Spot then
+				-- The lens is on the item's +X end; the arm points along the hand's -Y.
+				tip = CFrame.new(0, -part.Size.Y / 2 - 0.35, 0) * CFrame.Angles(0, 0, math.rad(-90))
+			end
 			model:PivotTo(part.CFrame * tip)
 			local itemRoot = JunkFactory.GetRoot(model)
 			if itemRoot ~= nil then

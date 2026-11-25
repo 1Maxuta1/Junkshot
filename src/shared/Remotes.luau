@@ -36,6 +36,7 @@ local definitions: { [string]: string } = {
 	ItemPlace = "RemoteEvent", -- client -> server: (uid, groundPosition, yaw) place a carried item
 	ItemUse = "RemoteEvent", -- client -> server: (uid) use a carried item (detector scan)
 	ItemFx = "RemoteEvent", -- server -> client: result of a use (e.g. detector signal)
+	VehicleSwitch = "RemoteEvent", -- client -> server: () move to the other seat of the vehicle
 	VehicleInput = "RemoteEvent", -- client -> server: (throttle, steer) in [-1, 1], driver only
 	-- Economy (Stage 3). Prices, totals and results are always decided on the server; the
 	-- request id (a GUID made by the client) only makes a repeated request a no-op.

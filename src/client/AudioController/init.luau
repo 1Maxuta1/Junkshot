@@ -14,6 +14,7 @@
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
@@ -289,6 +290,16 @@ function AudioController.PlayItem(family: any, pitch: number, parent: Instance?,
 	sound.Parent = parent or SoundService
 	itemSounds += 1
 	sound:Play()
+	if family.Wobble then
+		local started = os.clock()
+		task.spawn(function()
+			while sound.Parent ~= nil and os.clock() - started < family.Length / pitch + 0.5 do
+				local t = os.clock() - started
+				sound.PlaybackSpeed = pitch * (0.9 + t * 0.9 + math.sin(t * 34) * 0.22 * math.exp(-t * 1.5))
+				RunService.Heartbeat:Wait()
+			end
+		end)
+	end
 	task.delay(family.Length / pitch + 0.6, function()
 		itemSounds -= 1
 		sound:Destroy()

@@ -537,6 +537,7 @@ local function buildTimerBoard()
 		part("PostFoot", Vector3.new(3, 1, 3), Vector3.new(x, 0.5, 0), ink)
 	end
 	local board = part("Board", Vector3.new(28, 10, 0.8), Vector3.new(0, 21, 0), ink)
+	part("Frame", Vector3.new(28.8, 10.8, 0.5), Vector3.new(0, 21, 0), Color3.fromRGB(255, 205, 50))
 	for index = 0, 13 do
 		part("Check", Vector3.new(2, 1, 0.9), Vector3.new(-13 + index * 2, 26.5, 0), if index % 2 == 0 then white else red)
 	end

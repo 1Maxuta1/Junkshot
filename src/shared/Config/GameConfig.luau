@@ -159,6 +159,7 @@ local GameConfig = {
 		MachineAccelerate = { MaxRequests = 10, Window = 1 },
 		ItemPlace = { MaxRequests = 3, Window = 2 },
 		ItemUse = { MaxRequests = 4, Window = 1 },
+		VehicleSwitch = { MaxRequests = 3, Window = 2 },
 		VehicleInput = { MaxRequests = 30, Window = 1 },
 		SellItems = { MaxRequests = 3, Window = 2 },
 		ShopBuy = { MaxRequests = 4, Window = 2 },

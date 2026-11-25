@@ -342,6 +342,7 @@ local function build()
 	part("Screen", Vector3.new(3.2, 1.6, 0.3), CFrame.new(0, 4.4, 0.2) * CFrame.Angles(math.rad(-20), 0, 0), teal, Enum.Material.Neon)
 	part("Beam", Vector3.new(12.8, 0.6, 0.6), CFrame.new(0, 7.2, 3.2), steel, Enum.Material.Metal)
 	local sign = part("Sign", Vector3.new(11, 2.4, 0.5), CFrame.new(0, 9, 3.2), ink)
+	part("SignFrame", Vector3.new(11.6, 3, 0.3), CFrame.new(0, 9, 3.2), Color3.fromRGB(255, 205, 50))
 	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
 		local gui = Instance.new("SurfaceGui")
 		gui.Face = face

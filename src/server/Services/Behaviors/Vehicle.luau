@@ -141,7 +141,8 @@ local function watchSeat(entry: any, seat: Seat | VehicleSeat, isDriverSeat: boo
 			if isDriverSeat then
 				setDriver(entry, nil)
 			end
-			if previous ~= nil then
+			local moved = previous ~= nil and previous.SeatPart ~= nil and previous.SeatPart:IsDescendantOf(entry.Model)
+			if previous ~= nil and state.Switching ~= previous and not moved then
 				exitSafely(entry, seat, previous)
 			end
 			return
@@ -276,6 +277,12 @@ function Vehicle.Attach(entry: any)
 		engine.Name = "Engine"
 		engine.SoundId = config.EngineSoundId
 		engine.Looped = true
+		if config.EngineLoop ~= nil then
+			local region = NumberRange.new(config.EngineLoop[1], config.EngineLoop[2])
+			engine.PlaybackRegionsEnabled = true
+			engine.PlaybackRegion = region
+			engine.LoopRegion = region
+		end
 		engine.Volume = if config.EngineRolling then 0 else config.EngineVolume or 0.35
 		engine.RollOffMaxDistance = 90
 		engine.Parent = base
@@ -363,6 +370,56 @@ function Vehicle.SetInput(player: Player, throttle: number, steer: number): bool
 	state.Steer = math.clamp(steer, -1, 1)
 	state.LastInputAt = os.clock()
 	return true
+end
+
+-- Moves a seated player to the vehicle's other seat (driver <-> passenger). Yields a moment.
+function Vehicle.SwitchSeat(player: Player): (boolean, string?)
+	local character = player.Character
+	local humanoid = if character ~= nil then character:FindFirstChildOfClass("Humanoid") else nil
+	local part = if humanoid ~= nil then humanoid.SeatPart else nil
+	if humanoid == nil or part == nil then
+		return false, nil
+	end
+	for entry in active do
+		if part:IsDescendantOf(entry.Model) then
+			local other = entry.Model:FindFirstChild(if part.Name == "DriverSeat" then "PassengerSeat" else "DriverSeat")
+			if other == nil or not (other:IsA("Seat") or other:IsA("VehicleSeat")) then
+				return false, nil
+			end
+			if other.Occupant ~= nil then
+				return false, "Someone is already sitting there"
+			end
+			if other.Name == "DriverSeat" and player ~= entry.Owner then
+				return false, "Only its owner can drive this"
+			end
+			if entry.State.Race ~= nil or entry.State.Switching ~= nil then
+				return false, nil
+			end
+			entry.State.Switching = humanoid -- leaving this seat is not getting out
+			local weld = part:FindFirstChild("SeatWeld")
+			if weld ~= nil then
+				weld:Destroy()
+			end
+			humanoid.Sit = false
+			for _ = 1, 10 do
+				task.wait(0.1)
+				if humanoid.Health <= 0 or other.Occupant ~= nil or entry.Model.Parent == nil then
+					break
+				end
+				other:Sit(humanoid)
+				if other.Occupant == humanoid then
+					break
+				end
+			end
+			task.wait(0.15) -- the seats' own events of this move
+			entry.State.Switching = nil
+			if humanoid.SeatPart == nil then
+				exitSafely(entry, part, humanoid) -- never leave somebody inside the car
+			end
+			return humanoid.SeatPart == other, nil
+		end
+	end
+	return false, nil
 end
 
 function Vehicle.GetDriven(player: Player): any?
@@ -517,6 +574,17 @@ function Vehicle.Start()
 		end,
 	}, function(player: Player, throttle: number, steer: number)
 		Vehicle.SetInput(player, throttle, steer)
+	end)
+
+	RemoteGuard.ConnectEvent(Remotes.GetEvent("VehicleSwitch"), {
+		Name = "VehicleSwitch",
+		MaxArgs = 0,
+		RateLimit = GameConfig.RateLimits.VehicleSwitch,
+	}, function(player: Player)
+		local _, message = Vehicle.SwitchSeat(player)
+		if message ~= nil then
+			api.Notify(player, message)
+		end
 	end)
 
 	Players.PlayerRemoving:Connect(function(player: Player)

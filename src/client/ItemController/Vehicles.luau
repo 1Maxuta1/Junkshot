@@ -40,7 +40,8 @@ local isDriver = false
 local lastSent = { Throttle = 0, Steer = 0, At = 0 }
 local hud: Frame? = nil
 local speedLabel: TextLabel? = nil
-local hintLabel: TextLabel? = nil
+local switchButton: TextButton? = nil
+local switchLabel: TextLabel? = nil
 local onChanged: (() -> ())? = nil
 
 local function vehicleModelOf(part: Instance?): Model?
@@ -134,28 +135,23 @@ local function sendInput()
 	Remotes.GetEvent("VehicleInput"):FireServer(throttle, steer)
 end
 
-local function hintText(): string
-	local kind = InputController.GetInputKind()
-	if not isDriver then
-		return if kind == "Gamepad" then "A: get out" elseif kind == "Touch" then "Jump to get out" else "Space: get out"
-	end
-	if kind == "Gamepad" then
-		return "Left stick: drive  ·  A: get out"
-	elseif kind == "Touch" then
-		return "Stick: drive  ·  Jump: get out"
-	end
-	return "WASD: drive  ·  Space: get out"
-end
-
 local function updateHud()
 	if hud == nil then
 		return
 	end
 	hud.Visible = seat ~= nil
-	if seat ~= nil and speedLabel ~= nil and hintLabel ~= nil then
+	if seat ~= nil and speedLabel ~= nil then
 		local speed = seat.AssemblyLinearVelocity.Magnitude
 		speedLabel.Text = string.format("%d", math.floor(speed + 0.5))
-		hintLabel.Text = hintText()
+		local model = vehicleModelOf(seat)
+		local other = if model ~= nil then model:FindFirstChild(if isDriver then "PassengerSeat" else "DriverSeat") else nil
+		local free = other ~= nil and (other:IsA("Seat") or other:IsA("VehicleSeat")) and other.Occupant == nil
+		local mine = model ~= nil and model:GetAttribute("OwnerUserId") == localPlayer.UserId
+		if switchButton ~= nil and switchLabel ~= nil then
+			switchButton.Visible = free and (isDriver or mine)
+			switchLabel.Text = if isDriver then "PASSENGER SEAT" else "DRIVE"
+			hud.Size = UDim2.new(0, if switchButton.Visible then 340 else 210, 0, 64)
+		end
 	end
 end
 
@@ -240,17 +236,6 @@ function Vehicles.Mount(screenGui: ScreenGui, changed: () -> ())
 		MaxTextSize = 12,
 		Parent = frame,
 	})
-	hintLabel = Theme.Label({
-		Name = "Hint",
-		Text = "",
-		Size = UDim2.new(1, -190, 0, 44),
-		Position = UDim2.new(0, 84, 0, 10),
-		Font = Theme.FontBody,
-		MinTextSize = 10,
-		MaxTextSize = 14,
-		XAlignment = Enum.TextXAlignment.Left,
-		Parent = frame,
-	})
 	local exit = Instance.new("TextButton")
 	exit.Name = "Exit"
 	exit.AnchorPoint = Vector2.new(1, 0.5)
@@ -273,6 +258,34 @@ function Vehicles.Mount(screenGui: ScreenGui, changed: () -> ())
 	})
 	Theme.TextStroke(exitLabel, Theme.Colors.Ink, 1.5)
 	exit.Parent = frame
+
+	local switch = Instance.new("TextButton")
+	switch.Name = "Switch"
+	switch.AnchorPoint = Vector2.new(1, 0.5)
+	switch.Position = UDim2.new(1, -108, 0.5, 0)
+	switch.Size = UDim2.new(0, 132, 0, 46)
+	switch.BackgroundColor3 = Theme.Colors.Ice
+	switch.Text = ""
+	switch.Visible = false
+	Theme.Corner(switch, UDim.new(0, 12))
+	Theme.Stroke(switch, Theme.Colors.Ink, 2.5)
+	switchLabel = Theme.Label({
+		Name = "Label",
+		Text = "",
+		Size = UDim2.fromScale(0.88, 0.7),
+		Position = UDim2.fromScale(0.5, 0.5),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Color = Theme.Colors.White,
+		MinTextSize = 11,
+		MaxTextSize = 18,
+		Parent = switch,
+	})
+	Theme.TextStroke(switchLabel :: TextLabel, Theme.Colors.Ink, 1.5)
+	switch.Parent = frame
+	switch.Activated:Connect(function()
+		Remotes.GetEvent("VehicleSwitch"):FireServer()
+	end)
+	switchButton = switch
 	exit.Activated:Connect(Vehicles.Exit)
 	hud = frame
 

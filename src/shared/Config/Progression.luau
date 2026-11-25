@@ -12,7 +12,7 @@
 ]]
 
 local Progression = {
-	MaxLevel = 50,
+	MaxLevel = 100,
 	-- XP needed to go from `level` to `level + 1`.
 	XpBase = 60,
 	XpExponent = 1.6,

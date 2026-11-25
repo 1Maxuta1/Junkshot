@@ -84,6 +84,10 @@ local function buildBoard(key: string, title: string, rowCount: number)
 		part("Leg", Vector3.new(0.6, 6, 0.6), base * CFrame.new(x, 3, 0), Color3.fromRGB(40, 44, 64), Enum.Material.Metal)
 	end
 	local board = part("Board", Vector3.new(9.4, 8.6, 0.5), base * CFrame.new(0, 9.6, 0), Color3.fromRGB(24, 44, 86))
+	part("Frame", Vector3.new(10, 9.2, 0.35), base * CFrame.new(0, 9.6, 0), Color3.fromRGB(255, 205, 50))
+	for _, x in { -4.2, 4.2 } do
+		part("Foot", Vector3.new(1.8, 0.8, 1.8), base * CFrame.new(x, 0.4, 0), Color3.fromRGB(28, 36, 60))
+	end
 	part("Snow", Vector3.new(9.8, 0.4, 0.9), base * CFrame.new(0, 14.1, 0), Color3.fromRGB(250, 252, 255), Enum.Material.Snow)
 	local rows: { TextLabel } = {}
 	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do

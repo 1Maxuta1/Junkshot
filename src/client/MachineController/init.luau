@@ -60,7 +60,8 @@ type View = {
 	AnnouncementGui: BillboardGui?,
 	Tweens: { Tween },
 	MotionKey: string?, -- the state the running animation belongs to (restarted only when it changes)
-	LoopSound: Sound?, -- the soft working sound while Processing
+	LoopSound: Sound?,
+	BubbleSound: Sound?, -- the soft working sound while Processing
 	SoundsReady: boolean, -- false until the first state is shown (no "start" sound for jobs already running)
 	ApplyQueued: boolean,
 	SeenSeq: number,
@@ -344,16 +345,22 @@ local function applyState(view: View)
 			view.LoopSound:Destroy()
 			view.LoopSound = nil
 		end
+		if view.BubbleSound ~= nil then
+			view.BubbleSound:Destroy()
+			view.BubbleSound = nil
+		end
 		local sounds = AudioConfig.Machine
 		if anchor ~= nil and view.SoundsReady then
 			if state == "Processing" then
 				AudioController.PlayAt(sounds.Start, anchor, false, sounds.Range)
 				view.LoopSound = AudioController.PlayAt(sounds.Loop, anchor, true, sounds.Range)
+				view.BubbleSound = AudioController.PlayAt(sounds.Bubbles, anchor, true, sounds.Range)
 			elseif state == "RewardReady" and wasWorking then
 				AudioController.PlayAt(sounds.Done, anchor, false, sounds.Range)
 			end
 		elseif anchor ~= nil and state == "Processing" then
 			view.LoopSound = AudioController.PlayAt(sounds.Loop, anchor, true, sounds.Range) -- joined mid-job: no "start"
+			view.BubbleSound = AudioController.PlayAt(sounds.Bubbles, anchor, true, sounds.Range)
 		end
 		view.SoundsReady = true
 	end

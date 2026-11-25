@@ -22,7 +22,7 @@ local WorldConfig = {
 		NightAmbient = Color3.fromRGB(70, 86, 130),
 		DayOutdoor = Color3.fromRGB(140, 163, 204),
 		NightOutdoor = Color3.fromRGB(96, 112, 168),
-		DayBrightness = 2.6,
+		DayBrightness = 2.2,
 		NightBrightness = 1.4,
 	},
 	Bloom = { Intensity = 0.15, Size = 20, Threshold = 1.9 }, -- the glow of neon and bright parts

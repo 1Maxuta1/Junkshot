@@ -107,13 +107,13 @@ return {
 		part(Block, V(1.6, 0.12, 0.35), rgb(220, 120, 255), M.Neon, V(0, 0.72, 0.25)),
 		part(Block, V(0.35, 0.3, 0.35), rgb(255, 255, 255), M.Neon, V(0.75, 0.3, -0.72)),
 	})),
-	item("crystal_snowman", "Crystal Snowman", "Epic", {
+	withBehavior("Deploy.CrystalSnowman", item("crystal_snowman", "Crystal Snowman", "Epic", {
 		part(Ball, V(1.8, 1.8, 1.8), rgb(200, 170, 255), M.Glass),
 		part(Ball, V(1.3, 1.3, 1.3), rgb(200, 170, 255), M.Glass, V(0, 1.35, 0)),
 		part(Ball, V(0.9, 0.9, 0.9), rgb(220, 200, 255), M.Glass, V(0, 2.3, 0)),
 		part(Block, V(0.15, 0.15, 0.5), rgb(255, 140, 40), M.Neon, V(0, 2.3, -0.6)),
 		part(Cylinder, V(0.6, 0.7, 0.7), rgb(140, 70, 220), M.Neon, V(0, 2.85, 0), UPRIGHT),
-	}),
+	})),
 	item("jet_sled", "Jet Sled", "Epic", {
 		part(Block, V(1.6, 0.4, 3), rgb(150, 80, 230), M.SmoothPlastic),
 		part(Block, V(0.2, 0.2, 3.2), rgb(220, 230, 240), M.Metal, V(-0.6, -0.35, 0)),
@@ -153,12 +153,12 @@ return {
 		part(Block, V(0.3, 0.3, 2.4), rgb(120, 230, 255), M.Neon, nil, V(45, 0, 0)),
 		part(Cylinder, V(0.15, 2.6, 2.6), rgb(40, 30, 70), M.Metal, nil, V(0, 0, 90)),
 	})),
-	item("dragon_egg", "Polar Dragon Egg", "Mythic", {
+	withBehavior("Ability.DragonCall", item("dragon_egg", "Polar Dragon Egg", "Mythic", {
 		part(Ball, V(1.8, 1.8, 1.8), rgb(110, 220, 255), M.Glass),
 		part(Ball, V(1.3, 1.3, 1.3), rgb(255, 80, 170), M.Neon),
 		part(Ball, V(1.5, 1.5, 1.5), rgb(110, 220, 255), M.Glass, V(0, 0.75, 0)),
 		part(Cylinder, V(0.4, 2, 2), rgb(60, 50, 90), M.Slate, V(0, -0.9, 0), UPRIGHT),
-	}),
+	})),
 	withBehavior("Ability.Comet", item("comet_shard", "Comet Shard", "Mythic", {
 		part(Block, V(0.9, 2.6, 0.9), rgb(255, 120, 220), M.Neon, nil, V(0, 45, 15)),
 		part(Block, V(0.6, 1.6, 0.6), rgb(140, 230, 255), M.Neon, V(0.7, -0.3, 0.2), V(0, 20, -25)),

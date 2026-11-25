@@ -292,6 +292,81 @@ function Prefabs.Shed(parent, cf, wallColor, roofColor)
 	return m
 end
 
+-- Detailed winter cottage, footprint 16 x 14, front = -Z: timber frame, gabled roof with snow,
+-- framed glowing windows, porch, chimney. About 40 parts, no lights.
+function Prefabs.Cottage(parent, cf, wallColor, roofColor)
+	local m = model(parent, "Cottage")
+	local timber = C.Trunk
+	local function p(name, size, offset, color, extra)
+		local props = extra or {}
+		props.Name = name
+		props.Size = size
+		props.CFrame = cf * offset
+		props.Color = color
+		return Prefabs.Part(m, props)
+	end
+	local at = CFrame.new
+	p("Foundation", Vector3.new(14.6, 1, 12.6), at(0, 0.5, 0), rgb(150, 160, 178))
+	p("Walls", Vector3.new(14, 7, 12), at(0, 4.5, 0), wallColor)
+	-- Timber frame
+	for _, x in { -6.9, 6.9 } do
+		for _, z in { -5.9, 5.9 } do
+			p("Corner", Vector3.new(0.9, 7, 0.9), at(x, 4.5, z), timber, { Material = Enum.Material.Wood })
+		end
+	end
+	for _, z in { -6.05, 6.05 } do
+		p("Beam", Vector3.new(14.6, 0.6, 0.4), at(0, 7.8, z), timber, { Material = Enum.Material.Wood, CastShadow = false })
+		p("Sill", Vector3.new(14.6, 0.5, 0.4), at(0, 1.25, z), timber, { Material = Enum.Material.Wood, CastShadow = false })
+	end
+	-- Gable ends and the roof
+	for _, x in { -6.7, 6.7 } do
+		p("Gable", Vector3.new(0.6, 4.7, 6), at(x, 10.35, -3), wallColor, { ClassName = "WedgePart" })
+		p("Gable", Vector3.new(0.6, 4.7, 6), at(x, 10.35, 3) * CFrame.Angles(0, math.pi, 0), wallColor, { ClassName = "WedgePart" })
+		p("GableBeam", Vector3.new(0.4, 4.4, 0.5), at(x * 1.06, 10, 0), timber, { Material = Enum.Material.Wood, CastShadow = false })
+	end
+	local pitch = math.rad(38)
+	for _, side in { -1, 1 } do
+		local slope = at(0, 10.2, side * 3.55) * CFrame.Angles(side * pitch, 0, 0)
+		p("Roof", Vector3.new(16.4, 0.7, 9.4), slope, roofColor)
+		p("RoofSnow", Vector3.new(16, 0.55, 6.4), slope * at(0, 0.6, -side * 1.3), C.Snow)
+		p("Edge", Vector3.new(16.8, 0.5, 0.4), slope * at(0, -0.1, side * 4.75), timber, { Material = Enum.Material.Wood, CastShadow = false })
+	end
+	p("Ridge", Vector3.new(16.6, 0.9, 1.6), at(0, 13.2, 0), C.Snow)
+	-- Chimney
+	p("Chimney", Vector3.new(2, 5, 2), at(4.2, 12.4, 2.2), rgb(170, 88, 72))
+	p("ChimneyRim", Vector3.new(2.5, 0.6, 2.5), at(4.2, 14.8, 2.2), rgb(120, 62, 54), { CastShadow = false })
+	p("ChimneySnow", Vector3.new(2.2, 0.4, 2.2), at(4.2, 15.2, 2.2), C.Snow, { CastShadow = false })
+	-- Door with frame, knob and wreath
+	p("DoorFrame", Vector3.new(4.2, 6, 0.3), at(-2.6, 4, -6.15), C.Snow, { CastShadow = false })
+	p("Door", Vector3.new(3.4, 5.5, 0.3), at(-2.6, 3.8, -6.3), roofColor, { CastShadow = false })
+	p("Knob", Vector3.new(0.4, 0.4, 0.4), at(-1.4, 3.7, -6.5), C.Yellow, { Shape = Enum.PartType.Ball, CastShadow = false })
+	p("Wreath", Vector3.new(0.25, 1.5, 1.5), at(-2.6, 5.2, -6.5) * CFrame.Angles(0, math.rad(90), 0), C.Pine, { Shape = Enum.PartType.Cylinder, CastShadow = false })
+	p("Bow", Vector3.new(0.5, 0.5, 0.3), at(-2.6, 4.6, -6.65), C.Red, { CastShadow = false })
+	-- Front windows, one on each side wall
+	local function window(frame)
+		p("WindowFrame", Vector3.new(3.4, 3.2, 0.25), frame, C.Snow, { CastShadow = false })
+		p("Window", Vector3.new(2.8, 2.6, 0.25), frame * at(0, 0, -0.12), C.Warm, { Material = Enum.Material.Neon, CastShadow = false })
+		p("Cross", Vector3.new(0.25, 2.6, 0.2), frame * at(0, 0, -0.22), C.Snow, { CastShadow = false })
+		p("WindowSill", Vector3.new(3.8, 0.4, 0.8), frame * at(0, -1.8, -0.2), C.Snow, { CastShadow = false })
+	end
+	window(at(3.6, 4.8, -6.15))
+	window(at(-7.15, 4.8, 0) * CFrame.Angles(0, math.rad(90), 0))
+	window(at(7.15, 4.8, 0) * CFrame.Angles(0, math.rad(-90), 0))
+	-- Porch
+	p("Porch", Vector3.new(6.4, 0.5, 3.4), at(-2.6, 0.55, -8), C.Wood, { Material = Enum.Material.WoodPlanks })
+	for _, x in { -5.4, 0.2 } do
+		p("PorchPost", Vector3.new(0.5, 6, 0.5), at(x, 3.6, -9.2), timber, { Material = Enum.Material.Wood })
+	end
+	p("PorchRoof", Vector3.new(7, 0.5, 4.2), at(-2.6, 7, -8) * CFrame.Angles(math.rad(-12), 0, 0), roofColor)
+	p("PorchSnow", Vector3.new(6.6, 0.4, 3.6), at(-2.6, 7.42, -8) * CFrame.Angles(math.rad(-12), 0, 0), C.Snow, { CastShadow = false })
+	p("Lantern", Vector3.new(0.8, 1, 0.8), at(0.2, 5.8, -9.2), C.Yellow, { Material = Enum.Material.Neon, CastShadow = false })
+	-- Firewood by the wall
+	for index = 0, 2 do
+		p("Log", Vector3.new(3, 1, 1), at(4.6, 0.9 + (index == 2 and 0.9 or 0), -7 - (index % 2) * 1 + (index == 2 and -0.5 or 0)), C.Trunk, { Shape = Enum.PartType.Cylinder, CastShadow = false })
+	end
+	return m
+end
+
 -- Lamp post with a warm bulb. Only some lamps get a real PointLight (lights cost GPU time).
 function Prefabs.Lamp(parent, cf, withLight)
 	local m = model(parent, "Lamp")
@@ -661,7 +736,7 @@ function Prefabs.RecyclingMachine(parent, cf, machineId)
 
 	-- Big recycling sign on the roof, readable from both sides of the plaza
 	for _, x in { -3.6, 3.6 } do
-		p({ Name = "SignPost", Size = Vector3.new(0.6, 3.6, 0.6), CFrame = CFrame.new(x, 15.6, -1.5), Color = Dark })
+		p({ Name = "SignPost", Size = Vector3.new(0.5, 3.2, 0.4), CFrame = CFrame.new(x, 15.45, -1.5), Color = Dark })
 	end
 	local board = p({ Name = "SignBoard", Size = Vector3.new(10, 5, 0.6), CFrame = CFrame.new(0, 19.6, -1.5), Color = C.Green })
 	p({ Name = "SignSnow", Size = Vector3.new(10.2, 0.6, 1), CFrame = CFrame.new(0, 22.3, -1.5), Color = C.Snow, CastShadow = false })

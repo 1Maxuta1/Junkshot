@@ -190,6 +190,10 @@ local function comet(target: Vector3, direction: Vector3)
 end
 
 local function starfall(center: Vector3)
+	local family, pitch = ItemSounds.ForEvent("Starfall")
+	for index = 0, 1 do -- falling shimmer, twice while the stars fall
+		task.delay(index * 2.2, AudioController.PlayItem, family, pitch * (1 - index * 0.12), nil, 1)
+	end
 	local folder = effectsFolder()
 	local random = Random.new()
 	local skyHeight = center.Y + 190
@@ -211,11 +215,6 @@ local function starfall(center: Vector3)
 			})
 			fly:Play()
 			Debris:AddItem(star, 2.4)
-			if index % 4 == 0 then
-				local chime = table.clone(AudioConfig.Abilities.StarChime) :: any
-				chime.Pitch = 1.3 + random:NextNumber() * 0.7
-				AudioController.PlayAt(chime, Workspace.CurrentCamera, false)
-			end
 		end)
 	end
 end
@@ -328,6 +327,57 @@ function watchToasted()
 	end
 end
 
+local DRAGON_SECONDS = 20
+
+-- A baby ice dragon circles its owner and leaves frost behind (drawn by every client).
+local function dragonCall(userId: any)
+	local first = rootOf(userId)
+	if first == nil then
+		return
+	end
+	local folder = Instance.new("Folder")
+	folder.Name = "Dragon"
+	folder.Parent = effectsFolder()
+	local function limb(size: Vector3, color: Color3): Part
+		local p = glowPart(size, color, Enum.PartType.Block)
+		p.Material = Enum.Material.SmoothPlastic
+		p.Parent = folder
+		return p
+	end
+	local ice, light, wing = Color3.fromRGB(110, 210, 255), Color3.fromRGB(170, 238, 255), Color3.fromRGB(255, 110, 190)
+	local body, head, snout = limb(Vector3.new(1, 0.9, 2), ice), limb(Vector3.new(0.9, 0.8, 0.9), light), limb(Vector3.new(0.5, 0.4, 0.5), light)
+	local tail, left, right = limb(Vector3.new(0.35, 0.35, 1.6), ice), limb(Vector3.new(2, 0.1, 1.1), wing), limb(Vector3.new(2, 0.1, 1.1), wing)
+	addTrail(body, light, ice, 0.8, 1)
+	sparkleBurst(first.Position, light, 40)
+	local family, pitch = ItemSounds.ForEvent("Dragon")
+	AudioController.PlayItem(family, pitch, first, 1, 80)
+	local started = os.clock()
+	local connection: RBXScriptConnection
+	connection = RunService.Heartbeat:Connect(function()
+		local t = os.clock() - started
+		local root = rootOf(userId)
+		if root == nil or t >= DRAGON_SECONDS then
+			connection:Disconnect()
+			if root ~= nil then
+				sparkleBurst(body.Position, light, 30)
+			end
+			folder:Destroy()
+			return
+		end
+		local angle = t * 2
+		local grow = math.min(t, 1) * math.min(DRAGON_SECONDS - t, 1)
+		local offset = Vector3.new(math.cos(angle) * 6 * grow, 3 + math.sin(t * 1.7) * 1.2, math.sin(angle) * 6 * grow)
+		local cf = CFrame.lookAlong(root.Position + offset, Vector3.new(-math.sin(angle), math.cos(t * 1.7) * 0.2, math.cos(angle))) * CFrame.Angles(0, 0, 0.3)
+		local flap = math.sin(t * 11) * 0.7
+		body.CFrame = cf
+		head.CFrame = cf * CFrame.new(0, 0.45, -1.3)
+		snout.CFrame = cf * CFrame.new(0, 0.3, -1.95)
+		tail.CFrame = cf * CFrame.new(0, 0.1, 1.7) * CFrame.Angles(0, math.sin(t * 6) * 0.35, 0)
+		left.CFrame = cf * CFrame.new(-0.45, 0.35, 0) * CFrame.Angles(0, 0, -flap) * CFrame.new(-1, 0, 0)
+		right.CFrame = cf * CFrame.new(0.45, 0.35, 0) * CFrame.Angles(0, 0, flap) * CFrame.new(1, 0, 0)
+	end)
+end
+
 local function magnetPulse(userId: any)
 	local root = rootOf(userId)
 	if root == nil then
@@ -358,6 +408,8 @@ function Abilities.Start()
 			starfall(payload.Position)
 		elseif payload.Effect == "RocketJump" then
 			rocketJump(payload.UserId, direction)
+		elseif payload.Effect == "DragonCall" then
+			dragonCall(payload.UserId)
 		elseif payload.Effect == "Magnet" then
 			magnetPulse(payload.UserId)
 		elseif payload.Effect == "PlasmaToast" and type(payload.Spots) == "table" then

@@ -30,12 +30,14 @@ local AudioConfig = {
 		RareReward = { SoundId = "rbxasset://sounds/electronicpingshort.wav", Volume = 0.6, Pitch = 0.85 },
 		Delivery = { SoundId = "rbxasset://sounds/electronicpingshort.wav", Volume = 0.3, Pitch = 0.7 },
 	},
-	-- The machine (heard by everyone near it, positional): item goes in, soft ratchet while it
-	-- works, a ding when it is done.
+	-- The machine (heard by everyone near it, positional): a magic burst when it starts, shimmer and bubbling while it
+	-- works, chimes when it is done.
 	Machine = {
-		Start = { SoundId = "rbxasset://sounds/Kerplunk.wav", Volume = 0.45, Pitch = 0.9 },
-		Loop = { SoundId = "rbxasset://sounds/clickfast.wav", Volume = 0.07, Pitch = 0.45 },
-		Done = { SoundId = "rbxasset://sounds/electronicpingshort.wav", Volume = 0.4, Pitch = 1.3 },
+		-- ProSoundEffects (Roblox Creator Store): magic burst, shimmer + bubbling pot, chimes.
+		Start = { SoundId = "rbxassetid://9116384483", Volume = 0.3, Pitch = 1.15 },
+		Loop = { SoundId = "rbxassetid://9116420454", Volume = 0.16, Pitch = 0.9 },
+		Bubbles = { SoundId = "rbxassetid://9125410132", Volume = 0.2, Pitch = 1 },
+		Done = { SoundId = "rbxassetid://9116395085", Volume = 2, Pitch = 1.1 },
 		Range = 40, -- studs at which the machine falls silent
 	},
 	-- Mythic item abilities (ItemController/Abilities).
