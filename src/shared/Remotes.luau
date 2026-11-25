@@ -34,6 +34,7 @@ local definitions: { [string]: string } = {
 	-- Machine state needs no remote: it is published as attributes on each machine model.
 	-- Functional items (PlacementService). Actions ON placed objects go through their prompts.
 	ItemPlace = "RemoteEvent", -- client -> server: (uid, groundPosition, yaw) place a carried item
+	ItemPaint = "RemoteEvent", -- client -> server: (bucketUid, targetUid, "rrggbb" | "") paint an own placed object
 	ItemUse = "RemoteEvent", -- client -> server: (uid) use a carried item (detector scan)
 	ItemFx = "RemoteEvent", -- server -> client: result of a use (e.g. detector signal)
 	VehicleSwitch = "RemoteEvent", -- client -> server: () move to the other seat of the vehicle

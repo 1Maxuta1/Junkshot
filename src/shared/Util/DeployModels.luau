@@ -209,7 +209,7 @@ local builders: { [string]: Builder } = {
 			addPart(model, "Handle", Block, V(0.12, 0.12, 0.5), chrome, metal, V(2.22 * side, 2.55, 1.05))
 			addPart(model, "Number", Cylinder, V(0.06, 0.9, 0.9), cream, glossy, V(2.19 * side, 2.25, 0.2))
 			addPart(model, "Seven", Block, V(0.07, 0.1, 0.4), dark, glossy, V(2.2 * side, 2.48, 0.2))
-			addPart(model, "Seven", Block, V(0.07, 0.5, 0.1), dark, glossy, V(2.2 * side, 2.25, 0.2 - 0.08 * side), V(22 * side, 0, 0))
+			addPart(model, "Seven", Block, V(0.07, 0.5, 0.1), dark, glossy, V(2.2 * side, 2.25, 0.2 - 0.1 * side), V(-22 * side, 0, 0))
 			addPart(model, "MirrorArm", Cylinder, V(0.5, 0.08, 0.08), chrome, metal, V(2.1 * side, 3.15, -1), V(0, 0, 20 * side))
 			addPart(model, "Mirror", Block, V(0.4, 0.3, 0.12), chrome, metal, V(2.4 * side, 3.25, -1))
 			addPart(model, "SidePipe", Cylinder, V(3, 0.28, 0.28), chrome, metal, V(2.15 * side, 1.35, -0.2), V(0, 90, 0))

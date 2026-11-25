@@ -29,6 +29,10 @@ local GameConfig = {
 		PickupDistanceTolerance = 8,
 	},
 
+	Paint = {
+		Reach = 16, -- studs from which a placed object can be painted
+	},
+
 	Junk = {
 		-- Junk objects lying in the world, server-wide. Natural spawning stops at this number;
 		-- drops and throws may exceed it briefly but expire (DroppedLifetime). Lower it for

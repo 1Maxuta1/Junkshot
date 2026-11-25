@@ -73,6 +73,8 @@ local TEMPLATE: Types.ProfileData = {
 	},
 	-- Functional items placed in the world (PlacementService), restored at the plot on rejoin.
 	Deployed = {},
+	-- Colors of painted items: uid -> "rrggbb" (PaintService).
+	Paints = {},
 	-- Stage 3: permanent player upgrades (level per upgrade id), level/XP, economy log.
 	PlayerUpgrades = {},
 	Progress = { Level = 1, XP = 0, Discovered = {} },

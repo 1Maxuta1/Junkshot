@@ -28,6 +28,7 @@ local CONTROLLER_NAMES = {
 	"UI",
 	"MachineController",
 	"ItemController",
+	"PaintController",
 	"EconomyController",
 	"BaseController",
 	"AudioController",

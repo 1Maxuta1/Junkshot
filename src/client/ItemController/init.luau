@@ -23,9 +23,11 @@ local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
 local ItemConfig = require(ReplicatedStorage.Shared.Config.ItemConfig)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local ItemCapabilities = require(ReplicatedStorage.Shared.Util.ItemCapabilities)
+local Paint = require(ReplicatedStorage.Shared.Util.Paint)
 
 local CarryController = require(script.Parent.CarryController)
 local InputController = require(script.Parent.InputController)
+local PaintController = require(script.Parent.PaintController)
 local Theme = require(script.Parent.UI.Theme)
 local Placement = require(script.Placement)
 local Vehicles = require(script.Vehicles)
@@ -88,6 +90,16 @@ local function refresh()
 	end
 	local show = capabilities ~= nil and not Placement.IsActive() and not Vehicles.IsSeated()
 		and not InputController.IsMenuOpen()
+	if selected ~= nil and selected.Id == Paint.ITEM and not Vehicles.IsSeated() and not InputController.IsMenuOpen() then
+		-- A paint bucket works on the placed object next to you.
+		local target = PaintController.GetTarget()
+		local paintKey = keyName()
+		local text = if target ~= nil then `Paint {ItemConfig.GetDisplayName(target:GetAttribute("ItemId") :: string)}` else "Stand next to your bike, car, radio..."
+		chip.Visible = true
+		chip.BackgroundColor3 = if target ~= nil then Color3.fromRGB(230, 80, 190) else Theme.Colors.InkSoft
+		chipLabel.Text = if target ~= nil and paintKey ~= "" then `[{paintKey}]  {text}` else text
+		return
+	end
 	chip.Visible = show
 	if not show or selected == nil or capabilities == nil then
 		return
@@ -126,6 +138,10 @@ local function act()
 		return
 	end
 	local selected, capabilities = selectedAction()
+	if selected ~= nil and selected.Id == Paint.ITEM then
+		PaintController.Open(InputController.GetInputKind() == "Gamepad")
+		return
+	end
 	if selected == nil or capabilities == nil then
 		return
 	end
@@ -209,6 +225,7 @@ function ItemController.Start()
 	CarryController.Changed:Connect(refresh)
 	InputController.InputTypeChanged:Connect(refresh)
 	InputController.MenuChanged:Connect(refresh)
+	PaintController.TargetChanged:Connect(refresh)
 	Abilities.Start()
 	-- Ability cooldown countdown on the chip (only while an ability item is selected).
 	local elapsed = 0

@@ -1956,6 +1956,43 @@ local function runFixTests(player: Player)
 		end
 		check(`exactly one {className}`, effects == 1, tostring(effects))
 	end
+	-- Paint
+	do
+		local PaintService = require(script.Parent.Services.PaintService) :: any
+		CarryService.Clear(player)
+		local carUid, bucket = JunkService.NewUid(), JunkService.NewUid()
+		CarryService.AddJunk(player, "homemade_car", carUid)
+		CarryService.AddJunk(player, "paint_bucket", bucket)
+		teleportNear(player, CFrame.new(0, 4, -70))
+		task.wait(0.3)
+		local red = Color3.fromRGB(206, 48, 44)
+		local placedCar = PlacementService.Place(player, carUid, Vector3.new(0, 0.2, -60), 0)
+		local car = PlacementService.GetEntry(carUid)
+		check("paint: the car stands", placedCar and car ~= nil)
+		if car ~= nil then
+			local hood = car.Model:FindFirstChild("Hood") :: BasePart
+			local wheel = car.Model:FindFirstChild("Wheel") :: BasePart
+			local tyre = wheel.Color
+			check("paint: a bad color is refused", not PaintService.Paint(player, bucket, carUid, "zzzzzz") and not PaintService.Paint(player, bucket, carUid, "12"))
+			check("paint: no bucket, no paint", not PaintService.Paint(player, JunkService.NewUid(), carUid, "00ff00"))
+			check("paint: the body changes", PaintService.Paint(player, bucket, carUid, "00ff00") and hood.Color == Color3.fromRGB(0, 255, 0))
+			check("paint: the tyres do not", wheel.Color == tyre)
+			check("paint: the bucket stays", CarryService.HasUid(player, bucket))
+			teleportNear(player, CFrame.new(0, 4, 40))
+			task.wait(0.2)
+			check("paint: too far away", not PaintService.Paint(player, bucket, carUid, "0000ff"))
+			teleportNear(player, CFrame.new(0, 4, -70))
+			task.wait(0.2)
+			check("paint: picked up", (PlacementService.Store(player, carUid)))
+			PlacementService.Place(player, carUid, Vector3.new(0, 0.2, -60), 0)
+			local again = PlacementService.GetEntry(carUid)
+			local hoodAgain = if again ~= nil then again.Model:FindFirstChild("Hood") :: BasePart else nil
+			check("paint: it keeps its color", hoodAgain ~= nil and hoodAgain.Color == Color3.fromRGB(0, 255, 0))
+			check("paint: the original color", PaintService.Paint(player, bucket, carUid, "") and hoodAgain ~= nil and hoodAgain.Color == red)
+			PlacementService.Store(player, carUid)
+		end
+		CarryService.Clear(player)
+	end
 	-- Sled and scooter
 	check("the sled is a 4-item cart", ItemCapabilities.Get("wooden_sled").Behavior.Kind == "Cart" and ItemCapabilities.Get("wooden_sled").Behavior.Cart.Capacity == 4)
 	check("the scooter is 1.5 times as fast as the bicycle",
