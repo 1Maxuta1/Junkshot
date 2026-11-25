@@ -140,7 +140,19 @@ end
 
 -- Items that are put on like gloves instead of being held.
 local WORN_ON_HANDS: { [string]: boolean } = { patched_mitten = true }
+local WORN_ON_HEAD: { [string]: boolean } = { frozen_crown = true }
+local CROWN_SIZE = 1.6
 local GLOVE_SIZE = 1.55 -- studs, largest side
+
+local function wearOnHead(character: Model, itemId: string, folder: Instance, models: { { Model: Model, To: BasePart } })
+	local head = character:FindFirstChild("Head")
+	local model = if head ~= nil and head:IsA("BasePart") then JunkFactory.Build(itemId, "Cosmetic", CROWN_SIZE) else nil
+	if model ~= nil and head ~= nil and head:IsA("BasePart") then
+		model:PivotTo(head.CFrame * CFrame.new(0, head.Size.Y / 2 + 0.2, 0))
+		model.Parent = folder
+		table.insert(models, { Model = model, To = head })
+	end
+end
 
 local function wearOnHands(character: Model, itemId: string, folder: Instance, models: { { Model: Model, To: BasePart } })
 	for _, side in { 1, -1 } do
@@ -212,7 +224,7 @@ local function refreshVisuals(player: Player)
 	local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
 	local holding = false
 	for _, entry in entries do
-		if entry.Uid == heldUid and hand ~= nil and not WORN_ON_HANDS[entry.Id] then
+		if entry.Uid == heldUid and hand ~= nil and not WORN_ON_HANDS[entry.Id] and not WORN_ON_HEAD[entry.Id] then
 			holding = true
 		end
 	end
@@ -230,6 +242,10 @@ local function refreshVisuals(player: Player)
 	local slot = 0
 	for _, entry in entries do
 		local inHand = entry.Uid == heldUid and hand ~= nil and hand:IsA("BasePart")
+		if inHand and WORN_ON_HEAD[entry.Id] then
+			wearOnHead(character, entry.Id, folder, models)
+			continue
+		end
 		if inHand and WORN_ON_HANDS[entry.Id] then
 			wearOnHands(character, entry.Id, folder, models)
 			continue

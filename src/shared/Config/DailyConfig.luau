@@ -5,15 +5,25 @@
 
 	Everybody gets the same three quests on a day (picked from the day number), one per group, so
 	friends can do them together. Rewards are Klunks through EconomyService, no new currency.
-	  a full day  = streak reward + about 110 for the quests
-	  a full week = about 1300 in total (one race win pays 1500)
+	  a full week = 500 from the days, two machine boosts, two items, and the quests
 ]]
 
 export type Quest = { Id: string, Group: number, Event: string, Text: string, Goal: number, Reward: number }
 
 local DailyConfig = {
 	DaySeconds = 24 * 60 * 60,
-	StreakRewards = { 25, 35, 45, 60, 75, 100, 160 }, -- day 1 .. 7, then from the start again
+	-- Day 1 .. 7 of the login streak, then from the start again.
+	--   Klunks  Amount        Boost  Minutes (MachineService.AddBoost: jobs started take half)
+	--   Item    Rarity (a random reward item), Icon = item shown on the card
+	DayRewards = {
+		{ Kind = "Klunks", Amount = 50, Text = "50 KLUNKS" },
+		{ Kind = "Boost", Minutes = 30, Text = "CRAFT x2\n30 MIN" },
+		{ Kind = "Klunks", Amount = 100, Text = "100 KLUNKS" },
+		{ Kind = "Item", Rarity = "Rare", Icon = "neon_gear", Text = "RARE ITEM" },
+		{ Kind = "Boost", Minutes = 60, Text = "CRAFT x2\n60 MIN" },
+		{ Kind = "Klunks", Amount = 200, Text = "200 KLUNKS" },
+		{ Kind = "Item", Rarity = "Epic", Icon = "plasma_toaster", Klunks = 150, Text = "EPIC ITEM\n+150 KLUNKS" },
+	} :: { any },
 	Quests = {
 		{ Id = "collect15", Group = 1, Event = "Collect", Text = "Pick up 15 different items", Goal = 15, Reward = 30 },
 		{ Id = "throw8", Group = 1, Event = "Throw", Text = "Throw 8 items", Goal = 8, Reward = 25 },
@@ -28,6 +38,11 @@ local DailyConfig = {
 	Groups = 3,
 	Weekly = { Text = "Complete 10 daily quests this week", Goal = 10, Reward = 250 },
 }
+
+for _, reward in DailyConfig.DayRewards do
+	assert(reward.Kind == "Klunks" or reward.Kind == "Boost" or reward.Kind == "Item", "[DailyConfig] unknown reward kind")
+	table.freeze(reward)
+end
 
 local byGroup: { { Quest } } = {}
 for _, quest in DailyConfig.Quests do

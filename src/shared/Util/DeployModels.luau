@@ -237,26 +237,69 @@ local builders: { [string]: Builder } = {
 	end,
 }
 
+-- Turbo kart: an open-wheel formula racer (nose, wings, side pods, engine, suspension).
 builders.TurboKart = function(model: Model, real: boolean)
-	local paint = rgb(255, 196, 40)
-	local base = addPart(model, "Base", Block, V(3.2, 0.7, 6.4), paint, M.Metal, V(0, 1, 0))
+	local paint, dark, carbon, steel, white = rgb(214, 32, 40), rgb(22, 24, 30), rgb(44, 48, 58), rgb(176, 184, 196), rgb(245, 246, 250)
+	local glossy, metal = M.SmoothPlastic, M.Metal
+	local base = addPart(model, "Base", Block, V(1.9, 0.5, 8.2), carbon, glossy, V(0, 0.75, 0))
 	base.CanCollide = true
-	for _, x in { -1.9, 1.9 } do
-		for _, z in { -2.2, 2.2 } do
-			local wheel = addPart(model, "Wheel", Cylinder, V(0.8, 1.8, 1.8), rgb(36, 38, 46), M.Slate, V(x, 0.9, z))
-			wheel:SetAttribute("Spin", 0.9)
-			addCollider(model, 0.9, V(x, 0.9, z))
+	-- Wheels: slick tyre, rim, hub nut
+	for _, side in { -1, 1 } do
+		for _, axle in { { -2.75, 1.9, 0.8, 1.75 }, { 2.75, 2.2, 1.15, 1.85 } } do
+			local z, diameter, width, x = axle[1], axle[2], axle[3], axle[4] * side
+			local radius = diameter / 2
+			local wheel = addPart(model, "Wheel", Cylinder, V(width, diameter, diameter), dark, M.Slate, V(x, radius, z))
+			wheel:SetAttribute("Spin", radius)
+			local rim = addPart(model, "Rim", Cylinder, V(width + 0.06, diameter * 0.58, diameter * 0.58), steel, metal, V(x, radius, z))
+			rim:SetAttribute("Spin", radius)
+			for spoke = 0, 2 do
+				local bar = addPart(model, "Spoke", Block, V(width + 0.1, diameter * 0.54, 0.16), carbon, metal, V(x, radius, z), V(spoke * 60, 0, 0))
+				bar:SetAttribute("Spin", radius)
+			end
+			addPart(model, "Nut", Cylinder, V(width + 0.2, 0.24, 0.24), rgb(255, 205, 50), metal, V(x, radius, z))
+			addCollider(model, radius, V(x, radius, z))
+			-- Suspension arms
+			addPart(model, "Arm", Cylinder, V(1.3, 0.14, 0.14), dark, metal, V(side * 1.15, radius + 0.2, z - 0.3), V(0, 12 * side, 0))
+			addPart(model, "Arm", Cylinder, V(1.3, 0.14, 0.14), dark, metal, V(side * 1.15, radius - 0.15, z + 0.3), V(0, -12 * side, 0))
 		end
+		-- Side pods with air intakes, mirrors, floor edge
+		addPart(model, "SidePod", Block, V(0.9, 0.95, 3), paint, glossy, V(side * 1.25, 1.2, 0.75))
+		addPart(model, "PodNose", Cylinder, V(0.95, 0.9, 0.9), dark, glossy, V(side * 1.25, 1.2, -0.72), V(0, 90, 0))
+		addPart(model, "PodStripe", Block, V(0.06, 0.3, 2.9), white, glossy, V(side * 1.72, 1.35, 0.75))
+		addPart(model, "Floor", Block, V(0.9, 0.12, 4), carbon, glossy, V(side * 1.3, 0.62, 0.5))
+		addPart(model, "MirrorStalk", Cylinder, V(0.6, 0.08, 0.08), dark, metal, V(side * 0.95, 1.95, -0.95))
+		addPart(model, "Mirror", Block, V(0.4, 0.28, 0.18), paint, glossy, V(side * 1.25, 2.05, -0.95))
+		addPart(model, "CockpitSide", Block, V(0.22, 0.7, 2.2), paint, glossy, V(side * 0.85, 1.6, 0.2))
+		addPart(model, "Exhaust", Cylinder, V(1, 0.34, 0.34), steel, metal, V(side * 0.4, 1.5, 3.3), V(0, 90, 0))
+		addPart(model, "Flame", Cylinder, V(0.12, 0.26, 0.26), rgb(255, 130, 50), M.Neon, V(side * 0.4, 1.5, 3.83), V(0, 90, 0))
+		-- Rear wing end plate, front wing end plate
+		addPart(model, "EndPlate", Block, V(0.12, 1.4, 1.1), dark, glossy, V(side * 1.5, 2.6, 3.7))
+		addPart(model, "FrontPlate", Block, V(0.12, 0.6, 1), dark, glossy, V(side * 1.75, 0.65, -4.7))
+		addPart(model, "Halo", Cylinder, V(1.7, 0.16, 0.16), dark, metal, V(side * 0.42, 2.5, 0.05), V(0, 90 + side * 22, 0))
 	end
-	addPart(model, "Nose", Block, V(2.2, 0.5, 1.6), rgb(236, 74, 70), M.SmoothPlastic, V(0, 1.4, -2.6), V(-10, 0, 0))
-	addPart(model, "Wing", Block, V(4, 0.2, 0.9), rgb(236, 74, 70), M.SmoothPlastic, V(0, 3.1, 2.8))
-	for _, x in { -1.1, 1.1 } do
-		addPart(model, "WingPost", Block, V(0.2, 1.6, 0.4), rgb(60, 66, 90), M.Metal, V(x, 2.2, 2.8))
-		addPart(model, "Jet", Cylinder, V(2, 0.9, 0.9), rgb(60, 66, 90), M.Metal, V(x, 1.7, 2.4), V(0, 90, 0))
-		addPart(model, "Flame", Cylinder, V(0.3, 0.7, 0.7), rgb(255, 120, 40), M.Neon, V(x, 1.7, 3.45), V(0, 90, 0))
-	end
-	addPart(model, "Wheelbar", Cylinder, V(1.1, 0.18, 0.18), rgb(40, 42, 50), M.Metal, V(0, 2.2, -1))
-	addSeat(model, "DriverSeat", true, V(1.5, 0.4, 1.5), V(0, 1.6, 0.5), rgb(40, 42, 50), real)
+	-- Nose and front wing
+	addPart(model, "Monocoque", Block, V(1.6, 0.9, 2.6), paint, glossy, V(0, 1.3, -1.9), V(-3, 0, 0))
+	addPart(model, "Nose", Block, V(1.1, 0.6, 1.8), paint, glossy, V(0, 1.1, -3.7), V(-9, 0, 0))
+	addPart(model, "NoseTip", Cylinder, V(0.7, 0.5, 0.5), white, glossy, V(0, 0.9, -4.75), V(0, 90, 0))
+	addPart(model, "NoseStripe", Block, V(0.4, 0.06, 4.2), white, glossy, V(0, 1.72, -2.9), V(-7, 0, 0))
+	addPart(model, "FrontWing", Block, V(3.6, 0.12, 0.9), dark, glossy, V(0, 0.45, -4.75), V(6, 0, 0))
+	addPart(model, "FrontFlap", Block, V(3.5, 0.1, 0.4), paint, glossy, V(0, 0.72, -4.4), V(22, 0, 0))
+	addPart(model, "HaloFront", Cylinder, V(0.8, 0.16, 0.16), dark, metal, V(0, 2.15, -0.95), V(0, 0, 70))
+	-- Steering wheel and dash
+	addPart(model, "Dash", Block, V(1.3, 0.25, 0.3), carbon, glossy, V(0, 1.85, -0.75))
+	addPart(model, "SteeringWheel", Block, V(0.8, 0.45, 0.14), dark, glossy, V(0, 1.95, -0.4), V(-20, 0, 0))
+	addPart(model, "Display", Block, V(0.34, 0.2, 0.05), rgb(90, 240, 160), M.Neon, V(0, 2.0, -0.31), V(-20, 0, 0))
+	-- Engine cover, air box, shark fin, rear wing, rain light, diffuser
+	addPart(model, "AirBox", Block, V(0.9, 1.2, 0.8), paint, glossy, V(0, 2.1, 1.75))
+	addPart(model, "Intake", Cylinder, V(0.1, 0.6, 0.6), dark, glossy, V(0, 2.4, 1.33), V(0, 90, 0))
+	addPart(model, "EngineCover", Block, V(1.2, 1, 2.2), paint, glossy, V(0, 1.6, 2.4), V(8, 0, 0))
+	addPart(model, "Fin", Block, V(0.1, 0.8, 1.8), white, glossy, V(0, 2.4, 2.7), V(10, 0, 0))
+	addPart(model, "RearWing", Block, V(3, 0.14, 0.9), paint, glossy, V(0, 3, 3.75), V(10, 0, 0))
+	addPart(model, "RearFlap", Block, V(3, 0.12, 0.5), dark, glossy, V(0, 3.3, 4.05), V(28, 0, 0))
+	addPart(model, "WingPost", Block, V(0.14, 1.6, 0.5), dark, glossy, V(0, 2.2, 3.7))
+	addPart(model, "RainLight", Block, V(0.3, 0.3, 0.1), rgb(255, 50, 50), M.Neon, V(0, 1.2, 4.12))
+	addPart(model, "Diffuser", Block, V(1.8, 0.35, 0.8), dark, glossy, V(0, 0.75, 4), V(-18, 0, 0))
+	addSeat(model, "DriverSeat", true, V(1.2, 0.35, 1.4), V(0, 1.15, 0.65), dark, real)
 end
 
 -- Jet board: a hovering board; invisible rollers keep it above the ground.

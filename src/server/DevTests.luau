@@ -2365,15 +2365,35 @@ local function runDailyTests(player: Player)
 	end
 	check("daily: quests are the same for the same day", DailyConfig.QuestsFor(day)[1] == DailyConfig.QuestsFor(day)[1] and #DailyConfig.QuestsFor(day) == 3)
 	check("daily: weeks start on Monday", DailyConfig.Week(4) == DailyConfig.Week(10) and DailyConfig.Week(3) ~= DailyConfig.Week(4))
-	local rewards = DailyConfig.StreakRewards
-	check("daily: the first reward", DailyService.ClaimReward(player) and earned() == rewards[1])
-	check("daily: only once a day", not DailyService.ClaimReward(player) and earned() == rewards[1])
-	local total = rewards[1]
-	for index = 2, 7 do
-		clock += DailyConfig.DaySeconds
-		DailyService.ClaimReward(player)
-		total += rewards[index]
+	local rewards = DailyConfig.DayRewards
+	CarryService.Clear(player)
+	local savedBoost = data.Machine.BoostUntil
+	data.Machine.BoostUntil = 0
+	check("daily: the first reward", DailyService.ClaimReward(player) and earned() == rewards[1].Amount)
+	check("daily: only once a day", not DailyService.ClaimReward(player) and earned() == rewards[1].Amount)
+	clock += DailyConfig.DaySeconds
+	DailyService.ClaimReward(player)
+	check("daily: day 2 is a machine boost", math.abs(data.Machine.BoostUntil - workspace:GetServerTimeNow() - rewards[2].Minutes * 60) < 5)
+	clock += DailyConfig.DaySeconds
+	DailyService.ClaimReward(player)
+	clock += DailyConfig.DaySeconds
+	DailyService.ClaimReward(player)
+	local held = CarryService.GetCarried(player)
+	check("daily: day 4 is a Rare item in the hands", #held == 1 and ItemConfig.GetRarity(held[1].Id) == "Rare")
+	clock += DailyConfig.DaySeconds
+	DailyService.ClaimReward(player)
+	clock += DailyConfig.DaySeconds
+	DailyService.ClaimReward(player)
+	while not CarryService.IsFull(player) do
+		CarryService.AddJunk(player, "rusty_can")
 	end
+	local worldBefore = JunkService.GetActiveCount()
+	clock += DailyConfig.DaySeconds
+	DailyService.ClaimReward(player)
+	check("daily: with full hands the item lies in front of its owner", JunkService.GetActiveCount() == worldBefore + 1)
+	CarryService.Clear(player)
+	data.Machine.BoostUntil = savedBoost
+	local total = rewards[1].Amount + rewards[3].Amount + rewards[6].Amount + rewards[7].Klunks
 	check("daily: seven days in a row", earned() == total, `{earned()} / {total}`)
 	clock += DailyConfig.DaySeconds
 	DailyService.ClaimReward(player)

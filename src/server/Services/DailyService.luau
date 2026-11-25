@@ -16,15 +16,19 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local DailyConfig = require(ReplicatedStorage.Shared.Config.DailyConfig)
 local GameConfig = require(ReplicatedStorage.Shared.Config.GameConfig)
+local ItemConfig = require(ReplicatedStorage.Shared.Config.ItemConfig)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Validate = require(ReplicatedStorage.Shared.Util.Validate)
 
 local CarryService = require(script.Parent.CarryService)
 local DataService = require(script.Parent.DataService)
 local EconomyService = require(script.Parent.EconomyService)
+local InventoryService = require(script.Parent.InventoryService)
+local JunkService = require(script.Parent.JunkService)
 local MachineService = require(script.Parent.MachineService)
 local RaceService = require(script.Parent.RaceService)
 local RemoteGuard = require(script.Parent.RemoteGuard)
+local RewardService = require(script.Parent.RewardService)
 local ThrowService = require(script.Parent.ThrowService)
 
 local DailyService = {}
@@ -67,7 +71,7 @@ end
 -- The streak day (1-7) a reward claimed today would be.
 local function nextStreak(state: any): number
 	local continued = state.RewardDay == state.Day - 1
-	return if continued then state.Streak % #DailyConfig.StreakRewards + 1 else 1
+	return if continued then state.Streak % #DailyConfig.DayRewards + 1 else 1
 end
 
 local function publish(player: Player)
@@ -108,6 +112,36 @@ function DailyService.Count(player: Player, event: string, amount: number)
 	end
 end
 
+-- Into the hands, or on the ground in front of the player and only for them.
+local function giveItem(player: Player, itemId: string)
+	if not CarryService.IsFull(player) and CarryService.AddJunk(player, itemId) then
+		return
+	end
+	local root = CarryService.GetLiveRoot(player)
+	local model = if root ~= nil
+		then JunkService.SpawnAt(itemId, (root.CFrame * CFrame.new(0, 0, -4)).Position, { ReservedFor = player.UserId, Lifetime = 600 })
+		else nil
+	if model == nil then
+		InventoryService.AddItem(player, itemId) -- no character or no ground: the chest
+	end
+end
+
+local function grant(player: Player, reward: any)
+	if reward.Kind == "Klunks" then
+		EconomyService.Earn(player, reward.Amount, "Daily")
+	elseif reward.Kind == "Boost" then
+		MachineService.AddBoost(player, reward.Minutes * 60)
+		EconomyService.Message(player, `Craft boost: {reward.Minutes} min of double speed!`, "Success")
+	elseif reward.Kind == "Item" then
+		local itemId = RewardService.RollItem(reward.Rarity)
+		giveItem(player, itemId)
+		EconomyService.Message(player, `Daily reward: {ItemConfig.GetDisplayName(itemId)}!`, "Success")
+		if reward.Klunks ~= nil then
+			EconomyService.Earn(player, reward.Klunks, "Daily")
+		end
+	end
+end
+
 function DailyService.ClaimReward(player: Player): boolean
 	local state = stateOf(player)
 	if state == nil or state.RewardDay == state.Day then
@@ -115,7 +149,7 @@ function DailyService.ClaimReward(player: Player): boolean
 	end
 	state.Streak = nextStreak(state)
 	state.RewardDay = state.Day
-	EconomyService.Earn(player, DailyConfig.StreakRewards[state.Streak], "Daily")
+	grant(player, DailyConfig.DayRewards[state.Streak])
 	publish(player)
 	return true
 end

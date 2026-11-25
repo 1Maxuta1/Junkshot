@@ -776,8 +776,34 @@ function Effects.Throne(ctx)
 	music.Parent = ctx.Base
 	ctx.Track(music)
 	local nextAt, index = 0, 0
+	local crowned: Instance? = nil
+	local worn: Model? = nil
 	return function()
-		local seated = seat ~= nil and seat:IsA("Seat") and seat.Occupant ~= nil
+		local occupant = if seat ~= nil and seat:IsA("Seat") then seat.Occupant else nil
+		local seated = occupant ~= nil
+		-- A crown for whoever sits there.
+		local character = if occupant ~= nil then occupant.Parent else nil
+		if character ~= crowned then
+			crowned = character
+			if worn ~= nil then
+				worn:Destroy()
+				worn = nil
+			end
+			local head = if character ~= nil then character:FindFirstChild("Head") else nil
+			local built = if head ~= nil and head:IsA("BasePart") then JunkFactory.Build("frozen_crown", "Cosmetic", 1.6) else nil
+			if built ~= nil and head ~= nil and head:IsA("BasePart") then
+				built:PivotTo(head.CFrame * CFrame.new(0, head.Size.Y / 2 + 0.2, 0))
+				built.Parent = ctx.Folder
+				local root = JunkFactory.GetRoot(built)
+				if root ~= nil then
+					local weld = Instance.new("WeldConstraint")
+					weld.Part0 = head
+					weld.Part1 = root
+					weld.Parent = root
+				end
+				worn = built
+			end
+		end
 		sparkle.Enabled = seated
 		if not seated then
 			if music.Playing then

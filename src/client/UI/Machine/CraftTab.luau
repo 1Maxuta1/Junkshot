@@ -62,7 +62,7 @@ function CraftTab.Mount(container: Frame, actions: Widgets.Actions, durationFor:
 	categoryRow.Parent = container
 	local categoryLayout = Instance.new("UIListLayout")
 	categoryLayout.FillDirection = Enum.FillDirection.Horizontal
-	categoryLayout.Padding = UDim.new(0.01, 0)
+	categoryLayout.Padding = UDim.new(0.02, 0)
 	categoryLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	categoryLayout.Parent = categoryRow
 
@@ -79,7 +79,13 @@ function CraftTab.Mount(container: Frame, actions: Widgets.Actions, durationFor:
 	Theme.Corner(list, UDim.new(0, 10))
 	list.Parent = container
 	local listLayout = Instance.new("UIListLayout")
-	listLayout.Padding = UDim.new(0, 4)
+	listLayout.Padding = UDim.new(0, 9)
+	listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	local listPadding = Instance.new("UIPadding")
+	listPadding.PaddingTop = UDim.new(0, 6)
+	listPadding.PaddingBottom = UDim.new(0, 6)
+	listPadding.PaddingRight = UDim.new(0, 8) -- the scroll bar
+	listPadding.Parent = list
 	listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	listLayout.Parent = list
 
@@ -150,10 +156,10 @@ function CraftTab.Mount(container: Frame, actions: Widgets.Actions, durationFor:
 	local craftButton, craftLabel = Widgets.Button({
 		Name = "Craft",
 		Text = "CRAFT",
-		Size = UDim2.fromScale(0.46, 0.24),
-		Position = UDim2.fromScale(1, 1),
+		Size = UDim2.fromScale(0.42, 0.21),
+		Position = UDim2.new(1, -4, 1, -4),
 		AnchorPoint = Vector2.new(1, 1),
-		MinSize = Vector2.new(110, 46),
+		MinSize = Vector2.new(104, 40),
 		Parent = detail,
 	})
 
@@ -171,7 +177,7 @@ function CraftTab.Mount(container: Frame, actions: Widgets.Actions, durationFor:
 		local chip = Instance.new("TextButton")
 		chip.Name = name
 		chip.LayoutOrder = index
-		chip.Size = UDim2.fromScale(0.158, 1)
+		chip.Size = UDim2.fromScale(0.148, 0.86)
 		chip.BackgroundColor3 = Theme.Colors.PanelTint
 		chip.Text = ""
 		Theme.Corner(chip, UDim.new(0, 8))
@@ -188,7 +194,7 @@ function CraftTab.Mount(container: Frame, actions: Widgets.Actions, durationFor:
 			Parent = chip,
 		})
 		local limit = Instance.new("UISizeConstraint")
-		limit.MinSize = Vector2.new(0, 36)
+		limit.MinSize = Vector2.new(0, 32)
 		limit.Parent = chip
 		chip.Activated:Connect(function()
 			category = name
@@ -248,7 +254,7 @@ function CraftTab.Mount(container: Frame, actions: Widgets.Actions, durationFor:
 					local row = Instance.new("TextButton")
 					row.Name = entry.RecipeId
 					row.LayoutOrder = index
-					row.Size = UDim2.new(1, -8, 0, 40)
+					row.Size = UDim2.new(1, -14, 0, 34)
 					row.BackgroundColor3 = Theme.Colors.Panel
 					row.Text = ""
 					Theme.Corner(row, UDim.new(0, 8))

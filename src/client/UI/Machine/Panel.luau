@@ -189,7 +189,7 @@ function Panel.Mount(screenGui: ScreenGui, actions: Widgets.Actions, durationFor
 	tabRow.Parent = root
 	local tabLayout = Instance.new("UIListLayout")
 	tabLayout.FillDirection = Enum.FillDirection.Horizontal
-	tabLayout.Padding = UDim.new(0.015, 0)
+	tabLayout.Padding = UDim.new(0.028, 0)
 	tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	tabLayout.Parent = tabRow
 
@@ -243,7 +243,7 @@ function Panel.Mount(screenGui: ScreenGui, actions: Widgets.Actions, durationFor
 		local button = Widgets.Button({
 			Name = name,
 			Text = name,
-			Size = UDim2.fromScale(0.235, 1),
+			Size = UDim2.fromScale(0.225, 0.94),
 			Color = Theme.Colors.PanelTint,
 			MinSize = Vector2.new(0, 40),
 			Parent = tabRow,

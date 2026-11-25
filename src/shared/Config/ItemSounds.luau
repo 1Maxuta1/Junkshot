@@ -49,7 +49,8 @@ local Families: { [string]: Family } = {
 	Slosh = family(9126205694, 2.6, 0, 0.8),
 	Bottle = family(9114589663, 0.45, 0, 0.9),
 	Wire = family(9125717352, 0.7, 0, 0.4),
-	Chest = family(9120873380, 2.2, 0.42, 1.1),
+	Chest = family(9126263691, 0.6, 0, 1.5),
+	DragonRoar = family(9125596197, 0.7, 0, 1.2),
 	Whistle = family(9119628055, 0.4, 0.2, 0.9),
 	Shimmer = family(9116418035, 1, 0.5, 2.7),
 	Growl = family(9125596077, 0.5, 0, 0.8),
@@ -97,7 +98,7 @@ local Items: { [string]: { any } } = {
 	neon_tv = { "Click", 0.9 }, disco_ball = { "Glass", 1.3 }, duck_fountain = { "Water", 1 }, snow_machine = { "Snow", 0.9 },
 	frost_lamp = { "Click", 1.1 }, robot_band = { "Tech", 1.2 }, crystal_beacon = { "Glass", 1.1 }, toast_cannon = { "Lever", 0.7 },
 	plasma_cannon = { "Zap", 0.75 }, high_five_machine = { "Cloth", 1.1 }, arcade_machine = { "Beep", 1.1 }, hologram_projector = { "Tech", 1.35 },
-	teleport_pad = { "Tech", 0.8 }, golden_throne = { "Coin", 0.8 }, dragon_incubator = { "Growl", 0.9 }, cosmic_gate = { "Toy", 0.7 },
+	teleport_pad = { "Tech", 0.8 }, golden_throne = { "Coin", 0.8 }, dragon_incubator = { "DragonRoar", 0.85 }, cosmic_gate = { "Toy", 0.7 },
 }
 
 -- Taking an item into the hand (hotbar). Everything else uses its normal sound here.
@@ -130,6 +131,7 @@ local Events: { [string]: { any } } = {
 	Boing2 = { "Boing", 1.45 },
 	Boing3 = { "BoingShort", 0.8 },
 	Boing4 = { "BoingMetal", 0.75 },
+	DailyClaim = { "Coin", 1.2 },
 	TuneUp = { "Ratchet", 1.1 },
 	FireworkRise = { "FireworkRise", 1 },
 	FireworkCrackle = { "FireworkCrackle", 1 },

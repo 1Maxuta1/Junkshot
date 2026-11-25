@@ -17,6 +17,8 @@ local InputController = require(script.Parent.InputController)
 local Theme = require(script.Parent.UI.Theme)
 local Window = require(script.Parent.EconomyController.Window)
 
+local SupplyDrop = require(script.SupplyDrop)
+
 local DailyController = {}
 
 local localPlayer = Players.LocalPlayer
@@ -53,10 +55,17 @@ local function mount()
 	gui.ResetOnSpawn = false
 	gui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
 	gui.DisplayOrder = 8
+	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	local dropGui = Instance.new("ScreenGui") -- its layers use global ZIndex
+	dropGui.Name = "JunkshotSupplyDrop"
+	dropGui.ResetOnSpawn = false
+	dropGui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
+	dropGui.DisplayOrder = 12
+	dropGui.Parent = localPlayer:WaitForChild("PlayerGui")
 	local window = Window.Mount(gui, "DailyWindow", "QUESTS", { "QUESTS" })
 	local open = Window.HudButton("JunkshotDailyButton", "QUESTS", Theme.Colors.Accent, UDim2.new(0, 104, 0, 38), UDim2.new(1, -8, 0, 114))
 	local openLabel = open:FindFirstChild("Label") :: TextLabel
-	-- Green circle at the corner: how many of today's quests are complete.
+	-- Green circle at the corner: how many quest rewards wait to be collected.
 	local badge = Instance.new("TextLabel")
 	badge.Name = "Badge"
 	badge.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -83,14 +92,34 @@ local function mount()
 	})
 	local symbol = GameConfig.Klunks.Symbol
 
+	local drop = SupplyDrop.Mount(dropGui, function()
+		claim("Reward")
+	end)
+	local shownDay: number? = nil
+	local readyToShow = false
+	local wasReady: boolean? = nil
+
 	local function button(right: Frame, ready: boolean, done: boolean, text: string, action: () -> ())
-		local label = if done then "DONE" else text
+		local label = if done then "✔ DONE" else text
 		local made = Window.SmallButton(right, label, if ready and not done then Theme.Colors.Success else Theme.Colors.InkSoft, UDim2.new(0, 120, 0, 40))
 		made.Activated:Connect(function()
 			if ready and not done then
 				action()
 			end
 		end)
+	end
+
+	-- A finished row turns green with a check mark, a collected one fades.
+	local function mark(row: any, finished: boolean, collected: boolean)
+		if collected then
+			row.Title.Text = "✔ " .. row.Title.Text
+			row.Title.TextColor3 = Theme.Colors.InkSoft
+			row.Frame.BackgroundColor3 = Color3.fromRGB(232, 238, 244)
+		elseif finished then
+			row.Title.Text = "✔ " .. row.Title.Text
+			row.Title.TextColor3 = Color3.fromRGB(24, 130, 70)
+			row.Frame.BackgroundColor3 = Color3.fromRGB(206, 246, 218)
+		end
 	end
 
 	local function render()
@@ -100,7 +129,10 @@ local function mount()
 		local complete = 0
 		if state ~= nil then
 			for index, quest in DailyConfig.QuestsFor(state.Day) do
-				complete += if (state.Progress[index] or 0) >= quest.Goal then 1 else 0
+				complete += if (state.Progress[index] or 0) >= quest.Goal and state.Claimed[index] ~= true then 1 else 0
+			end
+			if state.WeekClaimed ~= true and state.WeekDone >= DailyConfig.Weekly.Goal then
+				complete += 1
 			end
 		end
 		badge.Text = tostring(complete)
@@ -116,16 +148,19 @@ local function mount()
 			return
 		end
 		Window.Header(list, 1, "DAILY REWARD")
-		local reward = DailyConfig.StreakRewards[state.Streak] or 0
-		local row = Window.Row(list, 2, `Day {state.Streak} of {#DailyConfig.StreakRewards}: +{reward} {symbol}`, "Come back tomorrow for a bigger one", nil)
-		button(row.Right, state.RewardReady == true, state.RewardReady ~= true, "CLAIM", function()
-			claim("Reward")
+		local reward = DailyConfig.DayRewards[state.Streak]
+		local row = Window.Row(list, 2, `Day {state.Streak} of {#DailyConfig.DayRewards}: {(string.gsub(reward.Text, "\n", " "))}`, if state.RewardReady then "Ready!" else "Come back tomorrow", nil)
+		local made = Window.SmallButton(row.Right, if state.RewardReady then "OPEN" else "SHOW", if state.RewardReady then Theme.Colors.Success else Theme.Colors.Ice, UDim2.new(0, 120, 0, 40))
+		made.Activated:Connect(function()
+			window.Close()
+			drop.Open(state)
 		end)
 		Window.Header(list, 3, "TODAY")
 		for index, quest in DailyConfig.QuestsFor(state.Day) do
 			local progress = state.Progress[index] or 0
 			local questRow = Window.Row(list, 3 + index, quest.Text, `{progress} / {quest.Goal}   +{quest.Reward} {symbol}`, nil)
 			local ready = progress >= quest.Goal
+			mark(questRow, ready, state.Claimed[index] == true)
 			button(questRow.Right, ready, state.Claimed[index] == true, if ready then "CLAIM" else `{math.floor(progress / quest.Goal * 100)}%`, function()
 				claim("Quest", index)
 			end)
@@ -135,6 +170,7 @@ local function mount()
 		local done = math.min(state.WeekDone, weekly.Goal)
 		local weekRow = Window.Row(list, 11, weekly.Text, `{done} / {weekly.Goal}   +{weekly.Reward} {symbol}`, nil)
 		local weekReady = state.WeekDone >= weekly.Goal
+		mark(weekRow, weekReady, state.WeekClaimed == true)
 		button(weekRow.Right, weekReady, state.WeekClaimed == true, if weekReady then "CLAIM" else `{math.floor(done / weekly.Goal * 100)}%`, function()
 			claim("Weekly")
 		end)
@@ -148,7 +184,31 @@ local function mount()
 			render()
 		end
 	end)
-	localPlayer:GetAttributeChangedSignal("Daily"):Connect(render)
+	-- The drop opens by itself once on the first visit of a day (after the tutorial).
+	local function maybeOpen()
+		local state = read()
+		if state == nil then
+			return
+		end
+		if wasReady == true and state.RewardReady ~= true and drop.IsOpen() then
+			drop.Open(state) -- redraw with the check mark
+			drop.Claimed(state.Streak)
+		end
+		wasReady = state.RewardReady
+		if readyToShow and state.RewardReady == true and shownDay ~= state.Day and localPlayer:GetAttribute("OnboardStep") == nil then
+			shownDay = state.Day
+			drop.Open(state)
+		end
+	end
+	localPlayer:GetAttributeChangedSignal("Daily"):Connect(function()
+		render()
+		maybeOpen()
+	end)
+	localPlayer:GetAttributeChangedSignal("OnboardStep"):Connect(maybeOpen)
+	task.delay(5, function() -- the world is there before the window covers it
+		readyToShow = true
+		maybeOpen()
+	end)
 	gui.Parent = localPlayer:WaitForChild("PlayerGui")
 	render()
 	while true do
