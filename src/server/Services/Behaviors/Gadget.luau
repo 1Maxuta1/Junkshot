@@ -239,6 +239,7 @@ function Gadget.Attach(entry: any)
 	local model: Model = entry.Model
 	model:SetAttribute("PartCount", #model:GetChildren()) -- clients wait for all of them (streaming)
 	model:SetAttribute("Gadget", config.Effect)
+	model:SetAttribute("CardsLow", if config.CardsLow then true else nil) -- prompt cards under the object
 	if config.Action ~= "None" then
 		entry.State.Prompt = api.AddPrompt(entry, model.PrimaryPart, {
 			Name = "GadgetPrompt",

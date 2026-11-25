@@ -43,6 +43,7 @@ local CONTROLLER_NAMES = {
 	"SfxController",
 	"GraphicsController",
 	"PlazaController",
+	"ButtonStyleController",
 }
 
 for _, name in CONTROLLER_NAMES do

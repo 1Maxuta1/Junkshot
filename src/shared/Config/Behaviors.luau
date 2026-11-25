@@ -234,7 +234,13 @@ local Behaviors = {
 		Gadget = { Effect = "Teleporter", Action = "Teleport", Label = "Teleport", TravelCooldown = 5 } },
 	["Deploy.CrystalSnowman"] = { Kind = "Gadget", Mode = "Place", Model = "Item:crystal_snowman:2", Storable = true, FacePlayer = true,
 		Gadget = { Effect = "CrystalSnowman", Action = "Cycle", Modes = { "Light off", "Violet glow", "Ice glow", "Aurora glow" } } },
-	["Deploy.Panel"] = { Kind = "Gadget", Mode = "Place", Model = "Item:glass_panel:2.4", Storable = true, FacePlayer = true,
+	-- Golden Wrench: tunes up the nearest working machine, also a friend's. Never the Wish Furnace.
+	["Ability.GoldenWrench"] = {
+		Kind = "Ability",
+		Mode = "Activate",
+		Ability = { Effect = "TuneUp", Name = "Golden Tune-Up", Cooldown = 20 * 60, Distance = 0, Range = 24, Seconds = 10 * 60 },
+	},
+	["Deploy.Panel"]  = { Kind = "Gadget", Mode = "Place", Model = "Item:glass_panel:2.4", Storable = true, FacePlayer = true,
 		Gadget = { Effect = "Panel", Action = "Cycle", Modes = { "Clear", "Blue", "Red", "Gold", "Green", "Dark" } } },
 	["Deploy.Television"] = { Kind = "Gadget", Mode = "Place", Model = "Item:neon_tv:2", Storable = true, FacePlayer = true,
 		Gadget = { Effect = "Television", Action = "Cycle", Modes = { "Switch off", "Yard news", "Race channel", "Cartoon", "Party colors" } } },
@@ -269,7 +275,7 @@ local Behaviors = {
 	["Deploy.Arcade"] = { Kind = "Gadget", Mode = "Place", Model = "Item:arcade_machine:2.2", Storable = true, FacePlayer = true,
 		Gadget = { Effect = "Arcade", Action = "Arcade", Label = "Play / React" } },
 	["Deploy.Hologram"] = { Kind = "Gadget", Mode = "Place", Model = "Item:hologram_projector:2", Storable = true, FacePlayer = true,
-		Gadget = { Effect = "Hologram", Action = "Hologram", Label = "Show held item" } },
+		Gadget = { Effect = "Hologram", Action = "Hologram", Label = "Show held item", CardsLow = true } },
 	["Companion.Robot"] = { Kind = "Gadget", Mode = "Place", Model = "Item:junk_robot:1.8", Storable = true, FacePlayer = true,
 		Gadget = { Effect = "Robot", Action = "Robot", Label = "Find treasure", Cooldown = 2 } },
 	["Deploy.Launcher"] = { Kind = "Gadget", Mode = "Place", Model = "Item:spring_launcher:2.2", Storable = true, FacePlayer = true,

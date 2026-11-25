@@ -2232,6 +2232,38 @@ local function runGadgetTests(player: Player)
 		end
 	end
 
+	-- Golden Wrench
+	CarryService.Clear(player)
+	local machineModel = MachineService.GetModel(player)
+	local machineData = DataService.GetData(player).Machine :: any
+	if machineModel ~= nil and machineData.Job == nil and #machineData.Output == 0 then
+		local machineAnchor = machineModel:FindFirstChild("PromptAnchor", true) :: BasePart
+		local back = (player.Character :: Model):GetPivot()
+		teleportNear(player, machineAnchor.CFrame * CFrame.new(0, 0, -9))
+		task.wait(0.2)
+		check("wrench: nothing to tune without a job", MachineService.NearestWorking(machineAnchor.Position, 24) == nil and MachineService.TuneUp(player, 600) == 0)
+		for _ = 1, 3 do
+			CarryService.AddJunk(player, "soda_bottle")
+		end
+		check("wrench: a craft is running", (MachineService.Craft(player, "glass_panel")))
+		local left = MachineService.GetRemaining(player) :: number
+		check("wrench: it finds the working machine", MachineService.NearestWorking(machineAnchor.Position, 24) == player)
+		check("wrench: removes the seconds", math.abs(MachineService.TuneUp(player, 5) - 5) < 0.01 and math.abs(left - (MachineService.GetRemaining(player) or 0) - 5) < 0.5)
+		machineData.Job.Kind = "Mythic"
+		check("wrench: never the Wish Furnace", MachineService.TuneUp(player, 5) == 0 and MachineService.NearestWorking(machineAnchor.Position, 24) == nil)
+		machineData.Job.Kind = "Craft"
+		check("wrench: never more than what is left", MachineService.TuneUp(player, 99999) < 100 and MachineService.GetRemaining(player) == nil)
+		local made = machineData.Output[1]
+		if made ~= nil then
+			MachineService.Take(player, made.Uid)
+		end
+		CarryService.Clear(player)
+		teleportNear(player, back)
+		task.wait(0.2)
+	else
+		check("wrench: the machine is free for the test", false)
+	end
+
 	-- Teleport pads
 	local padA, padB = JunkService.NewUid(), JunkService.NewUid()
 	CarryService.AddJunk(player, "teleport_pad", padA)

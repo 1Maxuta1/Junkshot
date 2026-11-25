@@ -683,6 +683,44 @@ function MachineService.SkipTime(player: Player, seconds: number): boolean
 	return true
 end
 
+-- Golden Wrench: takes up to `seconds` off the running job. Not for the Wish Furnace: its six
+-- hours shrink only by clicks and bought time. Returns the seconds removed (0 = nothing to do).
+function MachineService.TuneUp(player: Player, seconds: number): number
+	local machine = machines[player]
+	local job = if machine ~= nil then machine.Data.Job else nil
+	if machine == nil or job == nil or job.Kind == "Mythic" then
+		return 0
+	end
+	local removed = math.min(seconds, remaining(job))
+	if removed <= 0 then
+		return 0
+	end
+	job.Accelerated += removed
+	if remaining(job) <= 0 then
+		settle(machine)
+	else
+		schedule(machine)
+		publish(machine)
+	end
+	return removed
+end
+
+-- The player whose working machine (no Wish Furnace) is nearest to `position`.
+function MachineService.NearestWorking(position: Vector3, range: number): Player?
+	local best: Player? = nil
+	local bestDistance = range
+	for player, machine in machines do
+		local model, job = machine.Model, machine.Data.Job
+		if model ~= nil and job ~= nil and job.Kind ~= "Mythic" then
+			local distance = (model:GetPivot().Position - position).Magnitude
+			if distance <= bestDistance then
+				best, bestDistance = player, distance
+			end
+		end
+	end
+	return best
+end
+
 -- Monetization: jobs started during the next `seconds` use the boost multiplier.
 function MachineService.AddBoost(player: Player, seconds: number): boolean
 	local data = DataService.GetData(player)

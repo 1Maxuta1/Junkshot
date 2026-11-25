@@ -173,6 +173,10 @@ local GameConfig = {
 		TradeAction = { MaxRequests = 10, Window = 2 },
 	},
 
+	UI = {
+		ButtonStyle = "Chunky", -- "Chunky" | "Classic" (client ButtonStyleController)
+	},
+
 	Debug = {
 		-- Run server/DevTests.luau on startup (Studio only). Off by default: the tests teleport the
 		-- player for about a minute. Set ServerScriptService attribute RunDevTests = true to run once.

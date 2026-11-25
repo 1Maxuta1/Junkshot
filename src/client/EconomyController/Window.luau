@@ -242,10 +242,10 @@ function Window.Mount(screenGui: ScreenGui, name: string, title: string, tabs: {
 			list.Visible = tabName == tab
 		end
 		for tabName, button in tabButtons do
-			button.BackgroundColor3 = if tabName == tab then Theme.Colors.Accent else Theme.Colors.PanelTint
+			button.BackgroundColor3 = if tabName == tab then Theme.Colors.Accent else Theme.Colors.InkSoft
 			local label = button:FindFirstChild("Label") :: TextLabel?
 			if label ~= nil then
-				label.TextColor3 = if tabName == tab then Theme.Colors.White else Theme.Colors.Ink
+				label.TextColor3 = Theme.Colors.White
 			end
 		end
 		tabChanged:Fire(tab)

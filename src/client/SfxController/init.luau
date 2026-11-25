@@ -66,7 +66,11 @@ local function watchDeployed()
 		end
 		local base = model:FindFirstChild("Base")
 		if isNew and base ~= nil then
-			playItem(model:GetAttribute("ItemId"), base)
+			local itemId = model:GetAttribute("ItemId")
+			if type(itemId) == "string" and os.clock() - startedAt > QUIET_START then
+				local family, pitch = ItemSounds.ForPlace(itemId)
+				AudioController.PlayItem(family, pitch, base, 1, HEAR)
+			end
 		end
 		local function changed()
 			playItem(model:GetAttribute("ItemId"), model:FindFirstChild("Base"), 0.8)

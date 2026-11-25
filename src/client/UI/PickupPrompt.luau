@@ -115,20 +115,23 @@ function PickupPrompt.Mount(onTriggeredLocally: (prompt: ProximityPrompt) -> ())
 			local model = prompt:FindFirstAncestorWhichIsA("Model")
 			local base = if model ~= nil then model.PrimaryPart else nil
 			gui.StudsOffset = Vector3.zero
+			local low = false
 			if model ~= nil and base ~= nil then
 				local cf, bounds = model:GetBoundingBox()
 				-- Straight above the object, whatever way its Base is turned.
 				local anchor = Instance.new("Attachment")
 				anchor.Name = "PromptAnchor"
 				anchor.Parent = base
-				anchor.WorldPosition = Vector3.new(base.Position.X, cf.Position.Y + bounds.Y / 2 + 1.4, base.Position.Z)
+				low = model:GetAttribute("CardsLow") == true
+				local y = if low then cf.Position.Y - bounds.Y / 2 - 0.2 else cf.Position.Y + bounds.Y / 2 + 1.4
+				anchor.WorldPosition = Vector3.new(base.Position.X, y, base.Position.Z)
 				gui.Adornee = anchor
 				gui.Destroying:Once(function()
 					anchor:Destroy()
 				end)
 			end
 			local column = prompt:GetAttribute("CardColumn")
-			gui.SizeOffset = Vector2.new((if type(column) == "number" then column else 0) * 2.06 / 2, 0.5 + row * 1.12)
+			gui.SizeOffset = Vector2.new((if type(column) == "number" then column else 0) * 2.06 / 2, if low then -0.5 - row * 1.12 else 0.5 + row * 1.12)
 		end
 		local character = Players.LocalPlayer.Character
 		local humanoid = if character ~= nil then character:FindFirstChildOfClass("Humanoid") else nil

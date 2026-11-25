@@ -123,13 +123,13 @@ return {
 	}),
 
 	-- Legendary
-	item("golden_wrench", "Golden Wrench", "Legendary", {
+	withBehavior("Ability.GoldenWrench", item("golden_wrench", "Golden Wrench", "Legendary", {
 		part(Block, V(0.4, 0.3, 2.8), rgb(255, 200, 40), M.Metal),
 		part(Block, V(1.2, 0.3, 0.6), rgb(255, 200, 40), M.Metal, V(0, 0, -1.6)),
 		part(Block, V(0.35, 0.3, 0.7), rgb(255, 200, 40), M.Metal, V(-0.42, 0, -2.1)),
 		part(Block, V(0.35, 0.3, 0.7), rgb(255, 200, 40), M.Metal, V(0.42, 0, -2.1)),
 		part(Ball, V(0.35, 0.35, 0.35), rgb(255, 255, 200), M.Neon, V(0, 0.2, 0.9)),
-	}),
+	})),
 	item("aurora_orb", "Aurora Orb", "Legendary", {
 		part(Ball, V(1.8, 1.8, 1.8), rgb(120, 255, 200), M.Neon),
 		part(Cylinder, V(0.15, 2.4, 2.4), rgb(255, 210, 60), M.Metal, nil, V(0, 0, 90)),

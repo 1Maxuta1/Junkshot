@@ -255,7 +255,7 @@ function Panel.Mount(screenGui: ScreenGui, actions: Widgets.Actions, durationFor
 				tabFrame.Visible = tabName == name
 			end
 			for tabName, tabButton in tabButtons do
-				tabButton.BackgroundColor3 = if tabName == name then Theme.Colors.Accent else Theme.Colors.PanelTint
+				tabButton.BackgroundColor3 = if tabName == name then Theme.Colors.Accent else Theme.Colors.InkSoft
 			end
 		end)
 		tabButtons[name] = button

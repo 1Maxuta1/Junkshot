@@ -25,6 +25,7 @@ local Workspace = game:GetService("Workspace")
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
 local EconomyService = require(script.Parent.Parent.EconomyService)
+local MachineService = require(script.Parent.Parent.MachineService)
 local JunkService = require(script.Parent.Parent.JunkService)
 local CarryService = require(script.Parent.Parent.CarryService)
 local DataService = require(script.Parent.Parent.DataService)
@@ -197,6 +198,26 @@ function Ability.Use(player: Player, _carried: any, behavior: any): (boolean, st
 	local humanoid = (root.Parent :: Instance):FindFirstChildOfClass("Humanoid")
 	if config.Effect == "RocketJump" and humanoid ~= nil and humanoid.Sit then
 		return false, nil
+	end
+	if config.Effect == "TuneUp" then
+		local owner = MachineService.NearestWorking(root.Position, config.Range)
+		if owner == nil then
+			api.Notify(player, "Stand next to a machine that is working")
+			return false, nil
+		end
+		local removed = MachineService.TuneUp(owner, config.Seconds)
+		if removed <= 0 then
+			return false, nil
+		end
+		local minutes = math.max(1, math.floor(removed / 60 + 0.5))
+		EconomyService.Message(player, if owner == player then `Tune-up: {minutes} min faster!` else `You tuned up {owner.DisplayName}'s machine: {minutes} min faster!`, "Success")
+		if owner ~= player then
+			EconomyService.Message(owner, `{player.DisplayName} tuned up your machine: {minutes} min faster!`, "Success")
+		end
+		local model = MachineService.GetModel(owner)
+		if model ~= nil then
+			target = model:GetPivot().Position + Vector3.new(0, 7, 0)
+		end
 	end
 	if config.Effect == "Magnet" and Ability.PullScrap(player, root.Position, config.Range, config.Amount) == 0 then
 		api.Notify(player, "No loose scrap nearby")

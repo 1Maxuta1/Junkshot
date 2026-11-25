@@ -55,6 +55,10 @@ local Families: { [string]: Family } = {
 	Growl = family(9125596077, 0.5, 0, 0.8),
 	-- Cartoon spring: a twangy pipe with a rising, wobbling pitch (AudioController does the wobble).
 	Boing = table.freeze({ SoundId = "rbxassetid://9125739788", Volume = 0.35, Start = 0.24, Length = 0.8, Wobble = true }),
+	Ratchet = family(9118047781, 0.5, 0, 1.2),
+	CartRoll = family(9116906910, 3, 0, 2.4),
+	BoingShort = table.freeze({ SoundId = "rbxassetid://9125739793", Volume = 0.35, Start = 0.5, Length = 0.6, Wobble = true }),
+	BoingMetal = table.freeze({ SoundId = "rbxassetid://9119530884", Volume = 0.4, Start = 0.3, Length = 0.9, Wobble = true }),
 	Tire = family(9126103903, 0.25, 0.7, 0.9),
 	RobotVoice = family(9125850674, 0.8, 0, 0.7),
 	RobotTalk = family(9125854887, 0.6, 0.2, 1),
@@ -79,7 +83,7 @@ local Items: { [string]: { any } } = {
 	tin_robot = { "Tech", 1.1 }, snow_globe = { "Glass", 0.9 }, patched_mitten = { "Cloth", 1.2 }, copper_kettle = { "Whistle", 1.9 },
 	ice_skate = { "Metal", 1.3 }, spring_bot = { "Boing", 1.6 }, neon_gear = { "NeonHum", 1.7 }, arcade_joystick = { "Click", 0.8 },
 	frost_lantern = { "Glass", 1.2 }, plasma_toaster = { "Zap", 0.9 }, crystal_snowman = { "Crystal", 0.6 }, jet_sled = { "Metal", 1 },
-	golden_wrench = { "Bar", 1.2 }, aurora_orb = { "Toy", 1.3 }, frozen_crown = { "Coin", 1.3 }, starforged_core = { "Ding", 0.65 },
+	golden_wrench = { "Ratchet", 1 }, aurora_orb = { "Toy", 1.3 }, frozen_crown = { "Coin", 1.3 }, starforged_core = { "Ding", 0.65 },
 	dragon_egg = { "Growl", 1.1 }, comet_shard = { "Glass", 1.6 },
 	-- Components
 	battery_pack = { "PowerUp", 1.15 }, metal_frame = { "Metal", 0.8 }, small_engine = { "Metal", 0.65 }, electric_motor = { "Zap", 0.7 },
@@ -108,6 +112,11 @@ local Equip: { [string]: { any } } = {
 	crystal_shard = { "Ding", 1.2 }, aurora_orb = { "Ding", 0.75 }, starforged_core = { "Ding", 0.65 }, comet_shard = { "Ding", 1 },
 }
 
+-- Putting an item down in the world, when that sounds different from handling it.
+local Place: { [string]: { any } } = {
+	metal_cart = { "CartRoll", 1 },
+}
+
 -- Sounds that are not an item.
 local Events: { [string]: { any } } = {
 	Throw = { "Swish", 1 },
@@ -117,7 +126,11 @@ local Events: { [string]: { any } } = {
 	Window = { "Swish", 1.3 },
 	Toast = { "Lever", 1.2 },
 	Eat = { "Toy", 1.2 },
-	Boing = { "Boing", 1 },
+	Boing1 = { "Boing", 1 },
+	Boing2 = { "Boing", 1.45 },
+	Boing3 = { "BoingShort", 0.8 },
+	Boing4 = { "BoingMetal", 0.75 },
+	TuneUp = { "Ratchet", 1.1 },
 	FireworkRise = { "FireworkRise", 1 },
 	FireworkCrackle = { "FireworkCrackle", 1 },
 	Starfall = { "Shimmer", 1 },
@@ -142,6 +155,10 @@ end
 
 function ItemSounds.ForEquip(itemId: string): (Family?, number)
 	return resolve(Equip[itemId] or Items[itemId])
+end
+
+function ItemSounds.ForPlace(itemId: string): (Family?, number)
+	return resolve(Place[itemId] or Items[itemId])
 end
 
 function ItemSounds.ForEvent(name: string): (Family?, number)

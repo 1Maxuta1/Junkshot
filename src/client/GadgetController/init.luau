@@ -814,7 +814,7 @@ function Effects.Launcher(ctx)
 			humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
 			local velocity = root.AssemblyLinearVelocity
 			root.AssemblyLinearVelocity = Vector3.new(velocity.X, if powered then 125 else 95, velocity.Z)
-			local family, pitch = ItemSounds.ForEvent("Boing")
+			local family, pitch = ItemSounds.ForEvent(`Boing{math.random(1, 4)}`)
 			AudioController.PlayItem(family, pitch, ctx.Base, 1, 70)
 		end
 	end

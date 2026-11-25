@@ -327,6 +327,30 @@ function watchToasted()
 	end
 end
 
+-- Golden sparks fly from the wrench into the machine.
+local function tuneUp(userId: any, position: Vector3)
+	local gold = Color3.fromRGB(255, 210, 70)
+	local root = rootOf(userId)
+	local from = if root ~= nil then root.Position + Vector3.new(0, 1, 0) else position
+	local family, pitch = ItemSounds.ForEvent("TuneUp")
+	AudioController.PlayItem(family, pitch, root, 1, 70)
+	for index = 0, 5 do
+		task.delay(index * 0.12, function()
+			local spark = glowPart(Vector3.one * 0.7, gold)
+			spark.Position = from
+			addTrail(spark, gold, Color3.new(1, 1, 1), 0.6, 0.4)
+			spark.Parent = effectsFolder()
+			local fly = TweenService:Create(spark, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Position = position })
+			fly.Completed:Connect(function()
+				spark:Destroy()
+				sparkleBurst(position, gold, 14)
+			end)
+			fly:Play()
+			Debris:AddItem(spark, 1.5)
+		end)
+	end
+end
+
 local DRAGON_SECONDS = 20
 
 -- A baby ice dragon circles its owner and leaves frost behind (drawn by every client).
@@ -408,6 +432,8 @@ function Abilities.Start()
 			starfall(payload.Position)
 		elseif payload.Effect == "RocketJump" then
 			rocketJump(payload.UserId, direction)
+		elseif payload.Effect == "TuneUp" then
+			tuneUp(payload.UserId, payload.Position)
 		elseif payload.Effect == "DragonCall" then
 			dragonCall(payload.UserId)
 		elseif payload.Effect == "Magnet" then

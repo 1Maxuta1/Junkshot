@@ -106,10 +106,10 @@ function Bag.Mount(screenGui: ScreenGui, source: any): Bag
 			return
 		end
 		for name, chip in chips do
-			chip.BackgroundColor3 = if name == filter then Theme.Colors.Accent else Theme.Colors.PanelTint
+			chip.BackgroundColor3 = if name == filter then Theme.Colors.Accent else Theme.Colors.InkSoft
 			local label = chip:FindFirstChild("Label") :: TextLabel?
 			if label ~= nil then
-				label.TextColor3 = if name == filter then Theme.Colors.White else Theme.Colors.Ink
+				label.TextColor3 = Theme.Colors.White
 			end
 		end
 		local list = window.Content("BAG")
