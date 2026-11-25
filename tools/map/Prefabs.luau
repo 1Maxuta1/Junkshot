@@ -148,6 +148,104 @@ function Prefabs.Container(parent, cf, color, name)
 	return m
 end
 
+-- The same container with its doors (+X end) open and its load spilled out. Hollow: you can
+-- walk in. The invisible Body keeps ContainerController working.
+function Prefabs.OpenContainer(parent, cf, color)
+	local m = model(parent, "OpenContainer")
+	local function p(name, size, offset, partColor, extra)
+		local props = extra or {}
+		props.Name, props.Size, props.CFrame, props.Color = name, size, cf * offset, partColor
+		return Prefabs.Part(m, props)
+	end
+	local at = CFrame.new
+	local inside = color:Lerp(C.Ink, 0.45)
+	local body = p("Body", Vector3.new(24, 9, 9), at(0, 4.5, 0), color, { Transparency = 1, CanCollide = false, CanQuery = false, CastShadow = false })
+	p("Floor", Vector3.new(24, 0.5, 9), at(0, 0.25, 0), C.Wood, { Material = Enum.Material.WoodPlanks })
+	p("Roof", Vector3.new(24, 0.6, 9), at(0, 8.7, 0), color)
+	for _, z in { -4.3, 4.3 } do
+		p("Wall", Vector3.new(24, 8.6, 0.4), at(0, 4.5, z), color)
+		p("Lining", Vector3.new(23, 7.6, 0.1), at(0, 4.5, z * 0.94), inside, { CanCollide = false, CastShadow = false })
+	end
+	p("End", Vector3.new(0.4, 8.6, 9), at(-11.8, 4.5, 0), inside)
+	p("SnowCap", Vector3.new(24.6, 0.7, 9.6), at(0, 9.3, 0), C.Snow)
+	for _, y in { 0.35, 8.65 } do
+		for _, z in { -4.6, 4.6 } do
+			p("Rail", Vector3.new(24.1, 0.7, 0.4), at(0, y, z), color:Lerp(C.Ink, 0.35), { CanCollide = false, CanQuery = false, CastShadow = false })
+		end
+	end
+	-- Doors swung wide open
+	for _, side in { -1, 1 } do
+		local hinge = at(12, 4.5, side * 4.5) * CFrame.Angles(0, math.rad(side * 125), 0)
+		p("Door", Vector3.new(0.35, 8.2, 4.4), hinge * at(0, 0, side * -2.2), color:Lerp(C.Ink, 0.25))
+		for _, z in { 1.2, 3.2 } do
+			p("Bar", Vector3.new(7.8, 0.24, 0.24), hinge * at(0.3, 0, side * -z) * UPRIGHT, C.Metal, { Shape = Enum.PartType.Cylinder, CanCollide = false, CastShadow = false })
+			p("Bar", Vector3.new(7.8, 0.24, 0.24), hinge * at(-0.3, 0, side * -z) * UPRIGHT, C.Metal, { Shape = Enum.PartType.Cylinder, CanCollide = false, CastShadow = false })
+		end
+	end
+	-- A warm lamp inside
+	local lamp = p("Lamp", Vector3.new(1.4, 0.3, 0.7), at(4, 8.25, 0), C.Warm, { Material = Enum.Material.Neon, CanCollide = false, CastShadow = false })
+	local glow = Instance.new("PointLight")
+	glow.Color = C.Warm
+	glow.Range = 18
+	glow.Brightness = 1.2
+	glow.Parent = lamp
+
+	local function crate(x, y, z, size, turn, tilt)
+		local base = at(x, y + size / 2, z) * CFrame.Angles(math.rad(tilt or 0), math.rad(turn), 0)
+		p("Crate", Vector3.new(size, size, size), base, C.Wood, { Material = Enum.Material.WoodPlanks })
+		for _, dy in { -0.42, 0.42 } do
+			p("CrateBand", Vector3.new(size + 0.1, size * 0.14, size + 0.1), base * at(0, size * dy, 0), C.Trunk, { CanCollide = false, CastShadow = false })
+		end
+	end
+	local function tire(x, y, z, size, turn, flat)
+		local base = at(x, y, z) * CFrame.Angles(0, math.rad(turn), 0) * (if flat then UPRIGHT else CFrame.Angles(math.rad(14), 0, 0))
+		p("Tire", Vector3.new(size * 0.35, size, size), base, C.Rubber, { Shape = Enum.PartType.Cylinder, CanCollide = false })
+		p("TireHub", Vector3.new(size * 0.37, size * 0.45, size * 0.45), base, C.Yellow, { Shape = Enum.PartType.Cylinder, CanCollide = false, CastShadow = false })
+	end
+	local function gear(x, y, z, size, turn, gearColor)
+		local base = at(x, y, z) * CFrame.Angles(0, math.rad(turn), 0) * UPRIGHT
+		for index = 0, 3 do
+			p("GearTooth", Vector3.new(0.4, size * 0.24, size), base * CFrame.Angles(math.rad(index * 45), 0, 0), gearColor, { Material = Enum.Material.Metal, CanCollide = false, CastShadow = false })
+		end
+		p("GearHub", Vector3.new(0.5, size * 0.4, size * 0.4), base, C.Ink, { Shape = Enum.PartType.Cylinder, CanCollide = false, CastShadow = false })
+	end
+	local function pipe(x, y, z, length, turn, tilt)
+		p("Pipe", Vector3.new(length, 0.55, 0.55), at(x, y, z) * CFrame.Angles(0, math.rad(turn), math.rad(tilt or 0)), C.Metal, { Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, CanCollide = false })
+	end
+	-- Still inside
+	crate(-9.5, 0.5, -2, 3, 5)
+	crate(-9.4, 0.5, 2, 3.2, -8)
+	crate(-9.6, 3.6, 0, 2.8, 14)
+	crate(-5.5, 0.5, -2.4, 2.6, 22)
+	tire(-5.2, 2, 2.6, 3.4, 30, false)
+	tire(-2, 1, -2.4, 3, 0, true)
+	gear(0.5, 0.8, 2, 2.4, 10, C.Orange)
+	crate(3.5, 0.5, -2.2, 2, 40)
+	pipe(5, 0.9, 1.6, 6, 8)
+	pipe(6, 1.2, 2.4, 5, -6, 4)
+	gear(9.5, 0.8, -1.5, 2, 30, C.Yellow)
+	-- Tumbling out and lying in the snow
+	crate(13, 0, 0.4, 2.2, 28, 24)
+	crate(16.5, 0, -2.6, 2, 63)
+	crate(18.6, 0, 2.2, 1.6, 12)
+	tire(14.6, 0.55, -3.4, 3, 0, true)
+	tire(20.5, 1.4, -0.6, 3, 70, false)
+	tire(17.4, 0.45, 5, 2.4, 0, true)
+	gear(15.6, 0.25, 2.6, 2.6, 15, C.Orange)
+	gear(19.4, 0.25, -3.6, 1.8, 50, C.Teal)
+	gear(22.4, 0.25, 2.2, 1.5, 5, C.Red)
+	pipe(17.2, 0.3, 0, 5, 64)
+	pipe(21, 0.3, 4.4, 4, -24)
+	p("Barrel", Vector3.new(3.6, 2.6, 2.6), at(14.4, 1.3, 5.6) * CFrame.Angles(0, math.rad(35), 0), C.Blue, { Shape = Enum.PartType.Cylinder })
+	p("BarrelBand", Vector3.new(0.4, 2.75, 2.75), at(14.4, 1.3, 5.6) * CFrame.Angles(0, math.rad(35), 0), C.Ink, { Shape = Enum.PartType.Cylinder, CanCollide = false, CastShadow = false })
+	for index = 1, 9 do -- bolts everywhere
+		p("Bolt", Vector3.new(0.5, 0.28, 0.28), at(13 + index * 1.15, 0.16, math.sin(index * 2.4) * 4.6) * CFrame.Angles(0, index * 1.7, 0), if index % 2 == 0 then C.Yellow else C.Metal, { Shape = Enum.PartType.Cylinder, Material = Enum.Material.Metal, CanCollide = false, CastShadow = false })
+	end
+	m:AddTag("ScrapContainer")
+	m.PrimaryPart = body
+	return m
+end
+
 -- Stylized pine: trunk + three rotated tiers with snow on top. scale 1 = 20 studs tall.
 function Prefabs.Pine(parent, cf, scale)
 	scale = scale or 1

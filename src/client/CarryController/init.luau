@@ -46,7 +46,6 @@ local FOLDER_NAME = "CarryVisuals"
 local ROOT_NAME = "HumanoidRootPart"
 local ROOT_WAIT = 10
 
-local PACKED_SIZE = 0.62 -- studs, items looking out of a backpack
 local VISUAL_MAX_SIZE = 0.95 -- studs
 local COLUMN_X = 0.55
 local ROW_STEP = 0.95
@@ -113,12 +112,7 @@ end
 ---------------------------------------------------------------------------------------------
 
 -- Slots fill left/right, then top to bottom.
--- With an upgrade backpack they look out of its top, three in a row.
-local function slotOffset(index: number, packed: boolean, top: number): Vector3
-	if packed then
-		local i = index - 1
-		return Vector3.new((i % 3 - 1) * 0.6, top + (i // 6) * 0.6, 0.75 + (i // 3 % 2) * 0.55)
-	end
+local function slotOffset(index: number): Vector3
 	local zeroBased = index - 1
 	local column = zeroBased % 2
 	local row = (zeroBased // 2) % 3
@@ -257,7 +251,10 @@ local function refreshVisuals(player: Player)
 			wearOnHands(character, entry.Id, folder, models)
 			continue
 		end
-		local model = JunkFactory.Build(entry.Id, "Cosmetic", if inHand then HELD_SIZE elseif packed then PACKED_SIZE else VISUAL_MAX_SIZE)
+		if packed and not inHand then
+			continue -- it is inside the backpack
+		end
+		local model = JunkFactory.Build(entry.Id, "Cosmetic", if inHand then HELD_SIZE else VISUAL_MAX_SIZE)
 		if model == nil then
 			continue
 		end
@@ -277,7 +274,7 @@ local function refreshVisuals(player: Player)
 			table.insert(models, { Model = model, To = part })
 		else
 			slot += 1
-			model:PivotTo(root.CFrame * CFrame.new(slotOffset(slot, packed, if player:GetAttribute("Upgrade_CarryCapacity") == 2 then 1.15 else 1.4)))
+			model:PivotTo(root.CFrame * CFrame.new(slotOffset(slot)))
 			table.insert(models, { Model = model, To = root })
 		end
 		model.Parent = folder

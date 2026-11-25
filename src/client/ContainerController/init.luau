@@ -174,7 +174,7 @@ local function build(container: Model, body: BasePart, side: number): Model
 			part("SnowLump", V(random:NextNumber(2.5, 5), 0.75, 0.9), at(random:NextNumber(-9, 9), 4.65, s * 4.6), SNOW, M.Snow)
 		end
 	end
-	if side == 0 then
+	if side == 0 and container.Name ~= "OpenContainer" then
 		-- Door end (+X): seam, lock bars with handles, hinges
 		part("Seam", V(0.12, 8, 0.12), at(12.32, 0, 0), INK)
 		for _, z in { -3, -1.1, 1.1, 3 } do

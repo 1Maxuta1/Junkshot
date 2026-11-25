@@ -6,7 +6,7 @@
 	  screen     cards with pictures for places 1-3, rows for the rest (both sides)
 	  stage      on top: the leader's own avatar dances under a floating crown
 
-	Build(key, title, count, ground) -> Board
+	Build(key, title, count, ground, faceTo) -> Board   the leader looks at faceTo
 	  Set(entries, footer)   entries sorted, best first; redraws only what is given
 	LeaderboardController (client) animates it: tag "PlazaBoard" on the model, parts named Bulb /
 	Crown, UI named Card1-3 / Row<n> with the attribute UserId, model attribute LeaderId.
@@ -176,7 +176,7 @@ local function screen(board: BasePart, face: Enum.NormalId, title: string, count
 	return slots, footer
 end
 
-function Board.Build(key: string, title: string, count: number, base: CFrame): Board
+function Board.Build(key: string, title: string, count: number, base: CFrame, faceTo: Vector3): Board
 	local model = Instance.new("Model")
 	model.Name = `Leaderboard{key}`
 	local function part(name: string, size: Vector3, offset: CFrame, color: Color3, material: Enum.Material?, shape: Enum.PartType?): Part
@@ -345,7 +345,8 @@ function Board.Build(key: string, title: string, count: number, base: CFrame): B
 			humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
 			humanoid.EvaluateStateMachine = false
 			root.Anchored = true
-			rig:PivotTo(base * at(0, 20, 0))
+			local place = (base * at(0, 20, 0)).Position
+			rig:PivotTo(CFrame.lookAt(place, V(faceTo.X, place.Y, faceTo.Z)))
 			local box, size = rig:GetBoundingBox()
 			local feet = box.Position.Y - size.Y / 2
 			rig:PivotTo(rig:GetPivot() + V(0, stage.Position.Y + stage.Size.Y / 2 - feet, 0))

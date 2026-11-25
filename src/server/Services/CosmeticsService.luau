@@ -137,7 +137,7 @@ local function dress(player: Player)
 		weld.Parent = body
 		pack.Parent = folder
 	end
-	player:SetAttribute("PackWorn", pack ~= nil)
+	player:SetAttribute("PackWorn", pack ~= nil or CosmeticsService.GetEquipped(player, "Backpack") ~= nil) -- items are inside
 	local titleId = CosmeticsService.GetEquipped(player, "Title")
 	local title = if titleId ~= nil then CosmeticsConfig.Get(titleId) else nil
 	if title ~= nil and head ~= nil and head:IsA("BasePart") then

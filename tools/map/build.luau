@@ -211,10 +211,10 @@ local zones = {
 		Build = function(parent, at)
 			Prefabs.Container(parent, at(-16, 0, -28.5), C.Red)
 			Prefabs.Container(parent, at(-16, 9, -28.5), C.Yellow)
-			Prefabs.Container(parent, at(10, 0, -28.5), C.Blue)
+			Prefabs.OpenContainer(parent, at(9, 0, -29, -62), C.Blue)
 			Prefabs.Container(parent, at(33.5, 0, -12, 90), C.Teal)
 			Prefabs.Barrel(parent, at(26, 0, -29), C.Orange)
-			Prefabs.Barrel(parent, at(29.5, 0, -26), C.Red)
+			Prefabs.Barrel(parent, at(30, 0, -30.5), C.Red)
 			Prefabs.Lamp(parent, at(-31, 0, -31), true)
 		end,
 	},

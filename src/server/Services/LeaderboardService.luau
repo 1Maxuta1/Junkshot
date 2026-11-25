@@ -66,7 +66,7 @@ local function buildBoard(key: string, title: string, rowCount: number)
 	local ground = if site ~= nil and site:IsA("BasePart")
 		then CFrame.new(site.Position.X, site.Position.Y - site.Size.Y / 2, site.Position.Z)
 		else CFrame.new(0, 0.4, 0)
-	boards[key] = Board.Build(key, title, rowCount, ground * BOARD_POSITIONS[key])
+	boards[key] = Board.Build(key, title, rowCount, ground * BOARD_POSITIONS[key], ground.Position)
 end
 
 local function setRows(key: string, entries: { Board.Entry }, footer: string)
