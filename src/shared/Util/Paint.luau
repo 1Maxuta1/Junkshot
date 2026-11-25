@@ -3,7 +3,7 @@
 	Paint: recolors the painted parts of a placed object (Util/DeployModels). Shared: the server
 	paints the real object, the client the preview in the paint window.
 
-	  ITEM               the item id that paints (it is not used up)
+	  ITEM               the item id that paints (used up by one coat)
 	  Apply(model, color?)   nil = the original color
 	  ToHex(color) / FromHex(text)
 

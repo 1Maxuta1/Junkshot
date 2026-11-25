@@ -3,7 +3,8 @@
 	PaintService: painting your own placed objects with a Paint Bucket (Util/Paint).
 
 	ItemPaint remote (bucketUid, targetUid, hex | ""): the bucket must be carried, the object
-	must be yours, placed and close. "" takes the paint off. The bucket is not used up.
+	must be yours, placed and close. "" takes the paint off. One bucket is used up
+	for one coat; taking the paint off or the same color again costs nothing.
 
 	Saved in profile.Data.Paints = { [item uid] = "rrggbb" }: the color stays when the object is
 	picked up and placed again. Uids that the player no longer has are dropped on load; a traded
@@ -89,7 +90,11 @@ function PaintService.Paint(player: Player, bucketUid: any, targetUid: any, hex:
 	if root == nil or (root.Position - entry.Model:GetPivot().Position).Magnitude > GameConfig.Paint.Reach + REACH_TOLERANCE then
 		return false, PaintService.Errors.TooFar
 	end
-	paints[targetUid] = if hex == "" then nil else string.lower(hex)
+	local wanted = if hex == "" then nil else string.lower(hex)
+	if wanted ~= nil and wanted ~= paints[targetUid] and CarryService.TakeByUid(player, bucketUid) == nil then
+		return false, PaintService.Errors.NoBucket
+	end
+	paints[targetUid] = wanted
 	show(entry)
 	return true, nil
 end

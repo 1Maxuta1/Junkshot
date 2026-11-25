@@ -247,7 +247,7 @@ local function mount()
 	end
 
 	local original = Window.SmallButton(w.Footer, "ORIGINAL", Theme.Colors.InkSoft, UDim2.new(0.38, -6, 0, 42), UDim2.new(0, 0, 0.5, 0), Vector2.new(0, 0.5))
-	local confirm = Window.SmallButton(w.Footer, "PAINT IT!", Theme.Colors.Success, UDim2.new(0.62, -6, 0, 42), UDim2.new(1, 0, 0.5, 0), Vector2.new(1, 0.5))
+	local confirm = Window.SmallButton(w.Footer, "PAINT IT!  (1 bucket)", Theme.Colors.Success, UDim2.new(0.62, -6, 0, 42), UDim2.new(1, 0, 0.5, 0), Vector2.new(1, 0.5))
 	local function send(hex: string)
 		local bucket = bucketUid()
 		if bucket ~= nil and openFor ~= nil then
