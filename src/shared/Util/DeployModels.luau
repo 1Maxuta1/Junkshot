@@ -170,33 +170,129 @@ local builders: { [string]: Builder } = {
 		addPart(model, "Grip", Cylinder, V(1.1, 0.18, 0.18), rgb(236, 74, 70), M.SmoothPlastic, V(0, 1.6, -3))
 	end,
 
-	-- Homemade car: open-top body, 4 tires, roll bar, driver + passenger seat.
+	-- Homemade car: an off-road roadster welded together in the yard. The invisible Base is its
+	-- mass; body, fenders, doors, roll cage, lights and spare wheel are decoration.
 	HomemadeCar = function(model: Model, real: boolean)
-		local paint = rgb(236, 74, 70)
-		local base = addPart(model, "Base", Block, V(4.6, 1.3, 8.2), paint, M.SmoothPlastic, V(0, 1.55, 0))
+		local paint, dark, steel, chrome = rgb(206, 48, 44), rgb(28, 30, 38), rgb(112, 120, 134), rgb(206, 212, 222)
+		local cream, rust, black = rgb(246, 238, 218), rgb(146, 84, 48), rgb(18, 19, 24)
+		local glossy, metal = M.SmoothPlastic, M.Metal
+		local base = addPart(model, "Base", Block, V(4.6, 1.3, 8.2), paint, glossy, V(0, 1.55, 0))
 		base.CanCollide = true
-		for _, x in { -2.45, 2.45 } do
+		base.Transparency = 1
+		-- Wheels: knobbly tyre, steel rim, spokes, hub cap
+		for _, side in { -1, 1 } do
 			for _, z in { -2.7, 2.7 } do
-				local wheel = addPart(model, "Wheel", Cylinder, V(0.7, 2.2, 2.2), rgb(36, 38, 46), M.Slate, V(x, 1.1, z))
-				wheel:SetAttribute("Spin", 1.1)
+				local x = 2.45 * side
+				local function turning(p: Part)
+					p:SetAttribute("Spin", 1.1)
+				end
+				turning(addPart(model, "Wheel", Cylinder, V(0.8, 2.2, 2.2), black, M.Slate, V(x, 1.1, z)))
+				for lug = 0, 3 do
+					turning(addPart(model, "Lug", Block, V(0.86, 2.3, 0.34), black, M.Slate, V(x, 1.1, z), V(lug * 45, 0, 0)))
+				end
+				turning(addPart(model, "Rim", Cylinder, V(0.9, 1.3, 1.3), steel, metal, V(x, 1.1, z)))
+				for spoke = 0, 2 do
+					turning(addPart(model, "Spoke", Block, V(0.96, 1.24, 0.2), chrome, metal, V(x, 1.1, z), V(spoke * 60, 0, 0)))
+				end
+				addPart(model, "HubCap", Cylinder, V(1.02, 0.42, 0.42), rgb(255, 205, 50), metal, V(x, 1.1, z))
 				addCollider(model, 1.1, V(x, 1.1, z))
+				-- Fender around the wheel
+				addPart(model, "Fender", Block, V(1.1, 0.2, 1.7), paint, glossy, V(2.4 * side, 2.5, z))
+				addPart(model, "Fender", Block, V(1.1, 0.2, 1.1), paint, glossy, V(2.4 * side, 2.2, z - 1.22), V(-40, 0, 0))
+				addPart(model, "Fender", Block, V(1.1, 0.2, 1.1), paint, glossy, V(2.4 * side, 2.2, z + 1.22), V(40, 0, 0))
+				addPart(model, "Axle", Cylinder, V(1.6, 0.26, 0.26), dark, metal, V(1.4 * side, 1.1, z))
 			end
+			-- Running board, door, handle, number, mirror, side pipe
+			addPart(model, "Board", Block, V(0.8, 0.16, 2.7), dark, M.DiamondPlate, V(2.45 * side, 1.15, 0))
+			addPart(model, "Door", Block, V(0.24, 1.1, 2.3), paint, glossy, V(2.05 * side, 2.25, 0.35))
+			addPart(model, "DoorTop", Block, V(0.32, 0.14, 2.4), dark, M.Leather, V(2.05 * side, 2.85, 0.35))
+			addPart(model, "Handle", Block, V(0.12, 0.12, 0.5), chrome, metal, V(2.22 * side, 2.55, 1.05))
+			addPart(model, "Number", Cylinder, V(0.06, 0.9, 0.9), cream, glossy, V(2.19 * side, 2.25, 0.2))
+			addPart(model, "Seven", Block, V(0.07, 0.1, 0.4), dark, glossy, V(2.2 * side, 2.48, 0.2))
+			addPart(model, "Seven", Block, V(0.07, 0.5, 0.1), dark, glossy, V(2.2 * side, 2.25, 0.2 - 0.08 * side), V(22 * side, 0, 0))
+			addPart(model, "MirrorArm", Cylinder, V(0.5, 0.08, 0.08), chrome, metal, V(2.1 * side, 3.15, -1), V(0, 0, 20 * side))
+			addPart(model, "Mirror", Block, V(0.4, 0.3, 0.12), chrome, metal, V(2.4 * side, 3.25, -1))
+			addPart(model, "SidePipe", Cylinder, V(3, 0.28, 0.28), chrome, metal, V(2.15 * side, 1.35, -0.2), V(0, 90, 0))
+			-- Lights
+			addPart(model, "LampRing", Cylinder, V(0.3, 0.9, 0.9), chrome, metal, V(1.3 * side, 2.1, -4.02), V(0, 90, 0))
+			addPart(model, "Headlight", Cylinder, V(0.34, 0.68, 0.68), rgb(255, 242, 190), M.Neon, V(1.3 * side, 2.1, -4.04), V(0, 90, 0))
+			addPart(model, "Blinker", Block, V(0.4, 0.2, 0.1), rgb(255, 150, 40), M.Neon, V(1.45 * side, 1.5, -3.98))
+			addPart(model, "TailRing", Block, V(0.6, 0.4, 0.1), chrome, metal, V(1.6 * side, 1.95, 4.32))
+			addPart(model, "TailLight", Block, V(0.46, 0.28, 0.12), rgb(255, 50, 50), M.Neon, V(1.6 * side, 1.95, 4.34))
+			-- Windshield posts and roll cage
+			addPart(model, "Post", Cylinder, V(2.2, 0.16, 0.16), dark, metal, V(1.85 * side, 3.6, -0.85), V(0, 90, 70))
+			addPart(model, "Cage", Cylinder, V(3.6, 0.24, 0.24), steel, metal, V(1.8 * side, 3.9, 2.1), UPRIGHT)
+			addPart(model, "CageBrace", Cylinder, V(3.1, 0.2, 0.2), steel, metal, V(1.6 * side, 3.4, 3.2), V(0, 90, 38))
 		end
-		addPart(model, "Hood", Block, V(4.2, 0.5, 2.6), rgb(214, 60, 56), M.SmoothPlastic, V(0, 2.4, -2.6))
-		addPart(model, "Engine", Block, V(1.8, 0.8, 1.4), rgb(70, 80, 96), M.Metal, V(0, 2.95, -2.7))
-		addPart(model, "Windshield", Block, V(4.0, 1.4, 0.15), rgb(140, 210, 255), M.Glass, V(0, 2.9, -1.15), V(-15, 0, 0)).Transparency = 0.4
-		addPart(model, "RollBar", Block, V(4.2, 1.6, 0.3), rgb(200, 206, 214), M.Metal, V(0, 3.0, 2.6))
-		addPart(model, "SteeringColumn", Cylinder, V(1.2, 0.2, 0.2), rgb(60, 66, 80), M.Metal, V(-1.05, 3.05, -0.55), V(0, 90, -30))
-		addPart(model, "SteeringWheel", Cylinder, V(0.16, 1.3, 1.3), rgb(30, 32, 40), M.SmoothPlastic, V(-1.05, 3.3, -0.15), V(0, 90, -30))
-		addPart(model, "SteeringHub", Cylinder, V(0.2, 0.5, 0.5), rgb(255, 205, 50), M.Metal, V(-1.05, 3.32, -0.12), V(0, 90, -30))
-		addPart(model, "Dashboard", Block, V(4, 0.5, 0.5), rgb(40, 42, 50), M.SmoothPlastic, V(0, 2.75, -0.95))
-		addPart(model, "Bumper", Block, V(4.8, 0.5, 0.4), rgb(200, 206, 214), M.Metal, V(0, 1.2, -4.2))
-		for _, x in { -1.5, 1.5 } do
-			addPart(model, "Headlight", Cylinder, V(0.2, 0.6, 0.6), rgb(255, 240, 180), M.Neon, V(x, 1.75, -4.15), V(0, 90, 0))
+		-- Frame, cabin, engine bay, tail
+		addPart(model, "Chassis", Block, V(3.2, 0.4, 8), dark, metal, V(0, 1.05, 0))
+		addPart(model, "Cabin", Block, V(4, 0.7, 3), paint, glossy, V(0, 1.5, 0.5))
+		addPart(model, "Nose", Block, V(3.2, 1.2, 2.9), paint, glossy, V(0, 1.85, -2.45))
+		addPart(model, "Hood", Block, V(3.3, 0.22, 2.9), paint, glossy, V(0, 2.52, -2.45), V(-4, 0, 0))
+		addPart(model, "Tail", Block, V(3.6, 1.1, 2.2), paint, glossy, V(0, 1.85, 3.15))
+		addPart(model, "TailLid", Block, V(3.7, 0.16, 2.2), dark, M.DiamondPlate, V(0, 2.48, 3.15))
+		for _, x in { -0.5, 0.5 } do -- racing stripes
+			addPart(model, "Stripe", Block, V(0.36, 0.05, 2.9), cream, glossy, V(x, 2.65, -2.45), V(-4, 0, 0))
 		end
-		addPart(model, "Exhaust", Cylinder, V(1.2, 0.35, 0.35), rgb(120, 124, 132), M.Metal, V(1.6, 1.1, 4.4), V(0, 90, 0))
-		addSeat(model, "DriverSeat", true, V(1.5, 0.4, 1.5), V(-1.05, 2.4, 0.9), rgb(40, 42, 50), real)
-		addSeat(model, "PassengerSeat", false, V(1.5, 0.4, 1.5), V(1.05, 2.4, 0.9), rgb(40, 42, 50), real)
+		-- Engine: blower through the hood
+		addPart(model, "Blower", Block, V(1.2, 0.55, 1.2), steel, metal, V(0, 2.95, -2.5))
+		addPart(model, "Scoop", Block, V(1.3, 0.5, 0.7), chrome, metal, V(0, 3.4, -2.75), V(-10, 0, 0))
+		addPart(model, "ScoopMouth", Block, V(1.1, 0.3, 0.1), black, glossy, V(0, 3.44, -3.12), V(-10, 0, 0))
+		for _, z in { -2.95, -2.5, -2.05 } do
+			addPart(model, "Header", Cylinder, V(3.6, 0.22, 0.22), chrome, metal, V(0, 2.15, z))
+		end
+		-- Grille and bumpers
+		addPart(model, "Grille", Block, V(1.7, 0.95, 0.12), black, glossy, V(0, 1.95, -3.92))
+		for index = 0, 4 do
+			addPart(model, "GrilleBar", Block, V(0.1, 0.95, 0.12), chrome, metal, V(-0.7 + index * 0.35, 1.95, -4))
+		end
+		addPart(model, "Bumper", Cylinder, V(4.4, 0.4, 0.4), chrome, metal, V(0, 1.2, -4.25))
+		addPart(model, "BullBar", Cylinder, V(2.2, 0.2, 0.2), dark, metal, V(0, 1.75, -4.3))
+		for _, x in { -0.9, 0.9 } do
+			addPart(model, "BullPost", Cylinder, V(0.8, 0.2, 0.2), dark, metal, V(x, 1.5, -4.3), UPRIGHT)
+		end
+		addPart(model, "RearBumper", Cylinder, V(4, 0.36, 0.36), chrome, metal, V(0, 1.2, 4.4))
+		addPart(model, "Plate", Block, V(1.1, 0.5, 0.06), cream, glossy, V(0, 1.75, 4.3))
+		addPart(model, "PlateText", Block, V(0.8, 0.16, 0.07), rgb(40, 70, 150), glossy, V(0, 1.75, 4.31))
+		for _, x in { -0.7, 0.7 } do
+			addPart(model, "Exhaust", Cylinder, V(0.9, 0.34, 0.34), steel, metal, V(x, 1, 4.4), V(0, 90, 0))
+		end
+		-- Spare wheel and jerry can on the tail
+		addPart(model, "Spare", Cylinder, V(0.6, 1.9, 1.9), black, M.Slate, V(0.6, 2.88, 3.25), UPRIGHT)
+		addPart(model, "SpareRim", Cylinder, V(0.66, 1, 1), steel, metal, V(0.6, 2.88, 3.25), UPRIGHT)
+		addPart(model, "JerryCan", Block, V(0.9, 1, 0.5), rgb(90, 110, 60), glossy, V(-1, 3.05, 3.4), V(0, 12, 0))
+		addPart(model, "JerryCap", Cylinder, V(0.2, 0.24, 0.24), dark, metal, V(-1.2, 3.62, 3.4), UPRIGHT)
+		-- Patches of the yard: rust and a riveted plate
+		addPart(model, "Rust", Block, V(0.06, 0.5, 0.8), rust, M.CorrodedMetal, V(-1.62, 1.7, -2.2))
+		addPart(model, "Rust", Block, V(0.8, 0.05, 0.5), rust, M.CorrodedMetal, V(1.1, 2.64, -1.6), V(-4, 0, 0))
+		addPart(model, "Rust", Block, V(0.06, 0.4, 1), rust, M.CorrodedMetal, V(1.82, 1.7, 3.2))
+		addPart(model, "Patch", Block, V(0.08, 0.7, 0.9), steel, M.DiamondPlate, V(1.62, 1.8, -2.4))
+		-- Windshield, cage top, lamps
+		addPart(model, "Windshield", Block, V(3.6, 1.8, 0.1), rgb(150, 215, 255), M.Glass, V(0, 3.6, -0.85), V(20, 0, 0)).Transparency = 0.55
+		addPart(model, "ShieldTop", Cylinder, V(3.9, 0.18, 0.18), dark, metal, V(0, 4.6, -0.48))
+		addPart(model, "CageTop", Cylinder, V(3.8, 0.24, 0.24), steel, metal, V(0, 5.7, 2.1))
+		addPart(model, "CageMid", Cylinder, V(3.6, 0.2, 0.2), steel, metal, V(0, 3.6, 2.1))
+		addPart(model, "LampBar", Block, V(3, 0.14, 0.3), dark, metal, V(0, 5.9, 2.05))
+		for index = 0, 3 do
+			addPart(model, "RoofLamp", Cylinder, V(0.3, 0.56, 0.56), dark, metal, V(-1.2 + index * 0.8, 6.18, 2.05), V(0, 90, 0))
+			addPart(model, "RoofLight", Cylinder, V(0.32, 0.42, 0.42), rgb(255, 244, 200), M.Neon, V(-1.2 + index * 0.8, 6.18, 2.03), V(0, 90, 0))
+		end
+		-- Cockpit
+		addPart(model, "Dashboard", Block, V(3.8, 0.5, 0.5), dark, M.Leather, V(0, 2.7, -0.75))
+		for _, x in { -1.35, -0.75 } do
+			addPart(model, "Gauge", Cylinder, V(0.1, 0.36, 0.36), rgb(120, 240, 190), M.Neon, V(x, 2.75, -0.48), V(0, 90, 0))
+		end
+		addPart(model, "SteeringColumn", Cylinder, V(1.1, 0.18, 0.18), steel, metal, V(-1.05, 2.75, -0.35), V(0, 90, -30))
+		addPart(model, "SteeringWheel", Cylinder, V(0.16, 1.2, 1.2), black, M.Leather, V(-1.05, 3, 0.05), V(0, 90, -30))
+		addPart(model, "SteeringHub", Cylinder, V(0.2, 0.45, 0.45), rgb(255, 205, 50), metal, V(-1.05, 3.02, 0.08), V(0, 90, -30))
+		addPart(model, "GearStick", Cylinder, V(0.9, 0.12, 0.12), chrome, metal, V(0, 2.3, 0.2), V(0, 0, 80))
+		addPart(model, "GearKnob", Enum.PartType.Ball, V(0.3, 0.3, 0.3), paint, glossy, V(0.07, 2.78, 0.2))
+		for _, x in { -1.05, 1.05 } do
+			addPart(model, "SeatBack", Block, V(1.5, 1.6, 0.35), dark, M.Leather, V(x, 2.95, 1.85), V(10, 0, 0))
+			addPart(model, "SeatStripe", Block, V(0.4, 1.62, 0.37), paint, M.Leather, V(x, 2.95, 1.84), V(10, 0, 0))
+		end
+		addSeat(model, "DriverSeat", true, V(1.5, 0.4, 1.5), V(-1.05, 2.1, 0.95), dark, real)
+		addSeat(model, "PassengerSeat", false, V(1.5, 0.4, 1.5), V(1.05, 2.1, 0.95), dark, real)
 	end,
 
 	-- Metal cart: open tub on 4 small wheels with a handle at the front (towards the owner).

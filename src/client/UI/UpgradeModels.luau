@@ -2,7 +2,9 @@
 --[[
 	UpgradeModels: small pictures of upgrades for UI/UpgradeReveal. Every level looks richer.
 
-	  Build(id, level) -> Model?   WalkSpeed, PickupRange, Haggler, Speed, Storage, Base (level = slots)
+	  Build(id, level) -> Model?   WalkSpeed, PickupRange, Haggler, Speed, Storage, Level,
+	                             Base (level = slots)
+	  Copy(model) -> Model?        a copy of something in the world, for a picture
 ]]
 
 local UpgradeModels = {}
@@ -140,6 +142,19 @@ local builders: { [string]: (model: Model, level: number) -> () } = {
 			part(model, B, V(0.22, 1.36, 1.36), V(x, 0.8, 0), tier(level))
 		end
 	end,
+	Level = function(model, level) -- a little recycling machine
+		part(model, B, V(4.4, 0.5, 3.6), V(0, 0, 0), rgb(60, 130, 240))
+		part(model, B, V(3.4, 2.8, 2.6), V(0, 1.6, 0), tier(level + 3))
+		part(model, B, V(3.6, 0.4, 2.8), V(0, 3.1, 0), SNOW, M.Snow)
+		part(model, B, V(3.46, 0.4, 2.66), V(0, 0.6, 0), GOLD)
+		part(model, C, V(0.3, 1.4, 1.4), V(0.3, 1.9, -1.35), DARK, M.Metal, V(0, 90, 0))
+		part(model, C, V(0.36, 1.1, 1.1), V(0.3, 1.9, -1.36), rgb(90, 250, 255), M.Neon, V(0, 90, 0))
+		for index = 1, level do -- one chimney and one star for every level
+			local x = (index - (level + 1) / 2) * 1
+			part(model, C, V(1.2 + index * 0.2, 0.5, 0.5), V(x, 3.9, 0.5), STEEL, M.Metal, V(0, 0, 90))
+			part(model, B, V(0.34, 0.34, 0.16), V(x, 0.02, -1.8), GOLD, M.Neon, V(0, 0, 45))
+		end
+	end,
 	Base = function(model, slots)
 		part(model, B, V(8, 0.4, 6), V(0, 0, 0), rgb(225, 236, 250))
 		for _, z in { -3, 3 } do
@@ -158,6 +173,30 @@ local builders: { [string]: (model: Model, level: number) -> () } = {
 		part(model, B, V(1.3, 0.8, 0.1), V(2.5, 3, 1.9), rgb(255, 150, 40))
 	end,
 }
+
+-- A copy of something in the world without scripts, prompts and effects.
+function UpgradeModels.Copy(source: Instance?): Model?
+	if source == nil or not source:IsA("Model") then
+		return nil
+	end
+	local copy = source:Clone()
+	for _, tag in copy:GetTags() do
+		copy:RemoveTag(tag)
+	end
+	for _, d in copy:GetDescendants() do
+		if d:IsA("BaseScript") or d:IsA("ProximityPrompt") or d:IsA("Sound") or d:IsA("ParticleEmitter") or d:IsA("Light") or d:IsA("LayerCollector") then
+			d:Destroy()
+		else
+			for _, tag in d:GetTags() do
+				d:RemoveTag(tag)
+			end
+			if d:IsA("BasePart") and d.Transparency >= 1 then
+				d:Destroy() -- zones and prompt anchors would make the picture small
+			end
+		end
+	end
+	return copy
+end
 
 function UpgradeModels.Build(id: string, level: number): Model?
 	local builder = builders[id]

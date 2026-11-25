@@ -41,30 +41,6 @@ local function show(model: Model?, head: string, name: string, detail: string, l
 	end
 end
 
--- A copy of something in the world without scripts, prompts and effects.
-local function copyOf(source: Instance?): Model?
-	if source == nil or not source:IsA("Model") then
-		return nil
-	end
-	local copy = source:Clone()
-	for _, tag in copy:GetTags() do
-		copy:RemoveTag(tag)
-	end
-	for _, d in copy:GetDescendants() do
-		if d:IsA("BaseScript") or d:IsA("ProximityPrompt") or d:IsA("Sound") or d:IsA("ParticleEmitter") or d:IsA("Light") or d:IsA("LayerCollector") then
-			d:Destroy()
-		else
-			for _, tag in d:GetTags() do
-				d:RemoveTag(tag)
-			end
-			if d:IsA("BasePart") and d.Transparency >= 1 then
-				d:Destroy() -- zones and prompt anchors would make the picture small
-			end
-		end
-	end
-	return copy
-end
-
 local function watch(target: Instance, attribute: string, changed: (level: number) -> ())
 	local last = target:GetAttribute(attribute)
 	target:GetAttributeChangedSignal(attribute):Connect(function()
@@ -107,7 +83,7 @@ local function watchPlayer()
 		end
 		task.wait(0.3) -- the new chest replaces the old one in the world
 		local chest = ownOf("BaseChest")
-		show(copyOf(chest), "NEW CHEST!", string.upper(new.Name), `{old.Capacity} > {new.Capacity} SLOTS`, level)
+		show(UpgradeModels.Copy(chest), "NEW CHEST!", string.upper(new.Name), `{old.Capacity} > {new.Capacity} SLOTS`, level)
 	end)
 	watch(localPlayer, "BaseLevel", function(level: number)
 		local old, new = BaseConfig.BaseLevels[level - 1], BaseConfig.BaseLevels[level]
@@ -132,7 +108,7 @@ local function watchMachine(machine: Instance)
 				then `{math.round((1 - new) * 100)}% FASTER`
 				elseif id == "Storage" then `{old} > {new} OUTPUT SLOTS`
 				else "NEW RECIPES UNLOCKED"
-			local model = if id == "Level" then copyOf(machine) else UpgradeModels.Build(id, index)
+			local model = if id == "Level" then UpgradeModels.Copy(machine) else UpgradeModels.Build(id, index)
 			show(model, "MACHINE UPGRADED!", `{if id == "Level" then "MACHINE" else string.upper(upgrade.DisplayName)}  LV {index}`, detail, index)
 		end)
 	end
@@ -158,7 +134,7 @@ local function watchBase(chest: Instance)
 		levels[key] = level
 		local definition = (BaseConfig.Buildings :: any)[id]
 		if isNew and level == before + 1 and definition ~= nil and os.clock() - since > 5 then -- 5 s: the base is being set up
-			show(copyOf(child), if level == 1 then "NEW BUILDING!" else "UPGRADED!", string.upper(definition.DisplayName),
+			show(UpgradeModels.Copy(child), if level == 1 then "NEW BUILDING!" else "UPGRADED!", string.upper(definition.DisplayName),
 				if level == 1 then definition.Description else `LEVEL {level}`, level + 1)
 		end
 	end

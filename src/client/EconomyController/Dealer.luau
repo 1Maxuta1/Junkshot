@@ -24,8 +24,8 @@ local ItemValue = require(ReplicatedStorage.Shared.Util.ItemValue)
 local BackpackModels = require(ReplicatedStorage.Shared.Util.BackpackModels)
 local KlunksFormat = require(ReplicatedStorage.Shared.Util.KlunksFormat)
 
-local Preview = require(script.Parent.Parent.UI.Preview)
 local Theme = require(script.Parent.Parent.UI.Theme)
+local UpgradeModels = require(script.Parent.Parent.UI.UpgradeModels)
 local Window = require(script.Parent.Window)
 
 export type Source = {
@@ -239,19 +239,8 @@ function Dealer.Mount(screenGui: ScreenGui, source: Source): Dealer
 				then `{upgrade.Description}  ·  {now} -> {formatUpgradeValue(upgrade.Id, nextLevel.Value)}`
 				else `{upgrade.Description}  ·  {now} (max)`
 			local row = Window.Row(list, index, `{upgrade.DisplayName}  ·  Lv {current}/{#upgrade.Levels}`, subtitle, nil)
-			if upgrade.Id == "CarryCapacity" then -- what the next backpack looks like
-				local icon = Instance.new("ViewportFrame")
-				icon.Name = "Pack"
-				icon.Position = UDim2.fromOffset(14, 2)
-				icon.Size = UDim2.fromOffset(48, 48)
-				Preview.StyleViewport(icon)
-				icon.Parent = row.Frame
-				Preview.Model(icon, BackpackModels.Build(math.min(current + 1, #upgrade.Levels)), 4.4)
-				for _, l in { row.Title, row.Subtitle } do
-					l.Position += UDim2.fromOffset(50, 0)
-					l.Size -= UDim2.fromOffset(50, 0)
-				end
-			end
+			local shown = math.min(current + 1, #upgrade.Levels) -- what the next level looks like
+			Window.RowIcon(row, if upgrade.Id == "CarryCapacity" then BackpackModels.Build(shown) else UpgradeModels.Build(upgrade.Id, shown))
 			local text, color, enabled
 			if nextLevel == nil then
 				text, color, enabled = "MAX", Theme.Colors.InkSoft, false

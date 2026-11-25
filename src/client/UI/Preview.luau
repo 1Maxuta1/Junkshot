@@ -25,23 +25,24 @@ local function show(viewport: ViewportFrame, model: Model?, distance: number?)
 	model:PivotTo(CFrame.Angles(0, math.rad(-25), 0))
 	model.Parent = viewport
 
-	local center = model:GetBoundingBox().Position
+	local box, size = model:GetBoundingBox()
+	local center = box.Position
 	local camera = Instance.new("Camera")
 	camera.FieldOfView = 40
-	camera.CFrame = CFrame.lookAt(center + CAMERA_DIRECTION * (distance or CAMERA_DISTANCE), center)
+	camera.CFrame = CFrame.lookAt(center + CAMERA_DIRECTION * (distance or size.Magnitude * 1.45), center)
 	camera.Parent = viewport
 	viewport.CurrentCamera = camera
 end
 
 function Preview.Junk(viewport: ViewportFrame, junkId: string)
-	show(viewport, JunkFactory.Build(junkId, "Cosmetic", PREVIEW_SIZE))
+	show(viewport, JunkFactory.Build(junkId, "Cosmetic", PREVIEW_SIZE), CAMERA_DISTANCE)
 end
 
 function Preview.Item(viewport: ViewportFrame, itemId: string)
-	show(viewport, JunkFactory.Build(itemId, "Cosmetic", PREVIEW_SIZE))
+	show(viewport, JunkFactory.Build(itemId, "Cosmetic", PREVIEW_SIZE), CAMERA_DISTANCE)
 end
 
--- Any other model.
+-- Any other model (distance: fitted to it when nil).
 function Preview.Model(viewport: ViewportFrame, model: Model?, distance: number?)
 	show(viewport, model, distance)
 end

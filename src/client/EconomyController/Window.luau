@@ -18,6 +18,7 @@ local TweenService = game:GetService("TweenService")
 local ItemConfig = require(ReplicatedStorage.Shared.Config.ItemConfig)
 local Rarities = require(ReplicatedStorage.Shared.Config.Rarities)
 
+local Preview = require(script.Parent.Parent.UI.Preview)
 local Theme = require(script.Parent.Parent.UI.Theme)
 
 export type Window = {
@@ -140,6 +141,28 @@ function Window.Row(parent: Instance, order: number, title: string, subtitle: st
 	right.Parent = frame
 	frame.Parent = parent
 	return { Frame = frame, Title = titleLabel, Subtitle = subtitleLabel, Right = right }
+end
+
+-- A 3D picture at the left end of a row; the texts make room for it.
+function Window.RowIcon(row: Row, model: Model?)
+	local disc = Instance.new("Frame")
+	disc.Name = "Icon"
+	disc.AnchorPoint = Vector2.new(0, 0.5)
+	disc.Position = UDim2.new(0, 16, 0.5, 0)
+	disc.Size = UDim2.fromOffset(46, 46)
+	disc.BackgroundColor3 = Theme.Colors.InkSoft
+	Theme.Corner(disc, UDim.new(0, 10))
+	Theme.Stroke(disc, Theme.Colors.Accent, 2)
+	local viewport = Instance.new("ViewportFrame")
+	viewport.Size = UDim2.fromScale(1, 1)
+	Preview.StyleViewport(viewport)
+	viewport.Parent = disc
+	disc.Parent = row.Frame
+	Preview.Model(viewport, model)
+	for _, label in { row.Title, row.Subtitle } do
+		label.Position += UDim2.fromOffset(52, 0)
+		label.Size -= UDim2.fromOffset(52, 0)
+	end
 end
 
 -- A section header inside a list.

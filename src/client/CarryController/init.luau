@@ -138,7 +138,7 @@ local function heldUidOf(player: Player): string?
 	return if type(value) == "string" then value else nil
 end
 
--- Items that are put on like gloves instead of being held.
+-- Items that are worn as long as they are carried (selected or not); never held in the hand.
 local WORN_ON_HANDS: { [string]: boolean } = { patched_mitten = true }
 local WORN_ON_HEAD: { [string]: boolean } = { frozen_crown = true }
 local CROWN_SIZE = 1.6
@@ -240,17 +240,20 @@ local function refreshVisuals(player: Player)
 
 	local models: { { Model: Model, To: BasePart } } = {}
 	local slot = 0
+	local worn: { [string]: boolean } = {}
 	local packed = player:GetAttribute("PackWorn") == true
 	for _, entry in entries do
-		local inHand = entry.Uid == heldUid and hand ~= nil and hand:IsA("BasePart")
-		if inHand and WORN_ON_HEAD[entry.Id] then
-			wearOnHead(character, entry.Id, folder, models)
+		local wearable = WORN_ON_HEAD[entry.Id] or WORN_ON_HANDS[entry.Id]
+		if wearable and not worn[entry.Id] then
+			worn[entry.Id] = true -- one of each; a second one is carried like any other item
+			if WORN_ON_HEAD[entry.Id] then
+				wearOnHead(character, entry.Id, folder, models)
+			else
+				wearOnHands(character, entry.Id, folder, models)
+			end
 			continue
 		end
-		if inHand and WORN_ON_HANDS[entry.Id] then
-			wearOnHands(character, entry.Id, folder, models)
-			continue
-		end
+		local inHand = not wearable and entry.Uid == heldUid and hand ~= nil and hand:IsA("BasePart")
 		if packed and not inHand then
 			continue -- it is inside the backpack
 		end

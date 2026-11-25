@@ -28,6 +28,7 @@ local Rarities = require(ReplicatedStorage.Shared.Config.Rarities)
 local DataController = require(script.Parent.DataController)
 local InputController = require(script.Parent.InputController)
 local Theme = require(script.Parent.UI.Theme)
+local UpgradeModels = require(script.Parent.UI.UpgradeModels)
 local Window = require(script.Parent.EconomyController.Window)
 
 local BaseController = {}
@@ -120,6 +121,7 @@ local function mount()
 		local nextBase = BaseConfig.BaseLevels[baseLevel + 1]
 		local baseRow = Window.Row(list, add(), `BASE LEVEL {baseLevel}/{#BaseConfig.BaseLevels}  ·  {slots} building slot{if slots == 1 then "" else "s"}`,
 			if nextBase ~= nil then `Expand to unlock {nextBase.Slots - slots} more slot(s)` else "Fully expanded", nil)
+		Window.RowIcon(baseRow, UpgradeModels.Build("Base", if nextBase ~= nil then nextBase.Slots else slots))
 		if nextBase ~= nil then
 			local locked = playerLevel < (nextBase.RequiredLevel or 1)
 			local button = Window.SmallButton(baseRow.Right, if locked then `LV {nextBase.RequiredLevel}` else `EXPAND {KlunksFormat.Format(nextBase.Price)}`,
@@ -146,6 +148,15 @@ local function mount()
 			local definition = (BaseConfig.Buildings :: any)[builtId]
 			local level = pad and pad:GetAttribute("BuildingLevel") or 1
 			local row = Window.Row(list, add(), `{definition.DisplayName}  ·  Lv {level}/{#definition.Levels}`, definition.Description, nil)
+			local nearest: Model? = nil -- the building on this slot, as its picture
+			for _, child in (pad :: Instance).Parent:GetChildren() do
+				if child:IsA("Model") and child ~= pad and child:GetAttribute("BuildingId") == builtId
+					and (child:GetPivot().Position - (pad :: Model):GetPivot().Position).Magnitude < 3
+				then
+					nearest = child
+				end
+			end
+			Window.RowIcon(row, UpgradeModels.Copy(nearest))
 			local nextLevel = definition.Levels[level + 1]
 			if nextLevel ~= nil then
 				local locked = playerLevel < (nextLevel.RequiredLevel or 1)

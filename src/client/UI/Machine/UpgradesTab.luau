@@ -10,6 +10,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local MachineConfig = require(ReplicatedStorage.Shared.Config.MachineConfig)
 local MonetizationConfig = require(ReplicatedStorage.Shared.Config.MonetizationConfig)
 local KlunksFormat = require(ReplicatedStorage.Shared.Util.KlunksFormat)
+local Preview = require(script.Parent.Parent.Preview)
+local UpgradeModels = require(script.Parent.Parent.UpgradeModels)
 local Theme = require(script.Parent.Parent.Theme)
 local Widgets = require(script.Parent.Widgets)
 
@@ -75,12 +77,29 @@ function UpgradesTab.Mount(container: Frame, actions: Widgets.Actions): Widgets.
 	end
 
 	local upgradeRows: { [string]: Row } = {}
+	local icons: { [string]: { Viewport: ViewportFrame, Level: number } } = {}
 	for index, upgradeId in MachineConfig.UpgradeOrder do
 		local definition = (MachineConfig.Upgrades :: any)[upgradeId]
 		local entry = row(index, definition.DisplayName)
 		entry.Button.Activated:Connect(function()
 			actions.Upgrade(upgradeId)
 		end)
+		local disc = Instance.new("Frame")
+		disc.Name = "Icon"
+		disc.AnchorPoint = Vector2.new(0, 0.5)
+		disc.Position = UDim2.new(0, 6, 0.5, 0)
+		disc.Size = UDim2.fromOffset(44, 44)
+		disc.BackgroundColor3 = Theme.Colors.InkSoft
+		Theme.Corner(disc, UDim.new(0, 10))
+		Theme.Stroke(disc, Theme.Colors.Accent, 2)
+		local viewport = Instance.new("ViewportFrame")
+		viewport.Size = UDim2.fromScale(1, 1)
+		Preview.StyleViewport(viewport)
+		viewport.Parent = disc
+		disc.Parent = entry.Info.Parent
+		entry.Info.Position += UDim2.fromOffset(50, 0)
+		entry.Info.Size -= UDim2.fromOffset(50, 0)
+		icons[upgradeId] = { Viewport = viewport, Level = 0 }
 		upgradeRows[upgradeId] = entry
 	end
 
@@ -136,6 +155,11 @@ function UpgradesTab.Mount(container: Frame, actions: Widgets.Actions): Widgets.
 			local level = (view.Upgrades :: any)[upgradeId] :: number
 			local current = definition.Levels[level].Value
 			local nextLevel = definition.Levels[level + 1]
+			local icon, shown = icons[upgradeId], math.min(level + 1, #definition.Levels)
+			if icon.Level ~= shown then -- the next level's picture; drawn only when it changes
+				icon.Level = shown
+				Preview.Model(icon.Viewport, UpgradeModels.Build(upgradeId, shown))
+			end
 			if nextLevel == nil then
 				entry.Info.Text = `<b>{definition.DisplayName}</b>  MAX\n{describe(upgradeId, current)}`
 				entry.Label.Text = "MAX"
