@@ -25,6 +25,7 @@ local NotifyController = require(script.Parent.Parent.Parent.NotifyController)
 local Theme = require(script.Parent.Parent.Theme)
 local Widgets = require(script.Parent.Widgets)
 local RecycleTab = require(script.Parent.RecycleTab)
+local Menus = require(script.Parent.Parent.Menus)
 local CraftTab = require(script.Parent.CraftTab)
 local MythicTab = require(script.Parent.MythicTab)
 local UpgradesTab = require(script.Parent.UpgradesTab)
@@ -88,6 +89,7 @@ function Panel.Mount(screenGui: ScreenGui, actions: Widgets.Actions, durationFor
 		Color = Theme.Colors.Danger,
 		Parent = root,
 	})
+	closeButton.ZIndex = 5
 
 	-- Status
 	local statusLabel = Theme.Label({
@@ -131,24 +133,30 @@ function Panel.Mount(screenGui: ScreenGui, actions: Widgets.Actions, durationFor
 	local speedButton, speedLabel = Widgets.Button({
 		Name = "SpeedUp",
 		Text = "SPEED UP\n-1s",
-		Size = UDim2.fromScale(0.13, 0.16),
-		Position = UDim2.fromScale(1, 0.1),
+		Size = UDim2.new(0.11, 0, 0.28, -62),
+		Position = UDim2.new(1, 0, 0, 54),
 		AnchorPoint = Vector2.new(1, 0),
 		Color = Theme.Colors.Ice,
-		MinSize = Vector2.new(60, 44),
+		MinSize = Vector2.new(60, 32),
 		Parent = root,
 	})
 	-- Finish for Robux: 10 per started hour (MonetizationConfig Skip1h .. Skip6h).
 	local skipButton, skipLabel = Widgets.Button({
 		Name = "SkipTime",
 		Text = "",
-		Size = UDim2.fromScale(0.13, 0.16),
-		Position = UDim2.fromScale(0.86, 0.1),
+		Size = UDim2.new(0.11, 0, 0.28, -62),
+		Position = UDim2.new(0.88, 0, 0, 54),
 		AnchorPoint = Vector2.new(1, 0),
 		Color = Theme.Colors.Success,
-		MinSize = Vector2.new(60, 44),
+		MinSize = Vector2.new(60, 32),
 		Parent = root,
 	})
+	for _, button in { speedButton, skipButton } do -- below the X, above the tray
+		local most = button:FindFirstChildOfClass("UISizeConstraint")
+		if most ~= nil then
+			most.MaxSize = Vector2.new(110, 56)
+		end
+	end
 	local skipKey = "Skip1h"
 	skipButton.Activated:Connect(function()
 		local product = (MonetizationConfig.Products :: any)[skipKey]
@@ -213,8 +221,8 @@ function Panel.Mount(screenGui: ScreenGui, actions: Widgets.Actions, durationFor
 		place(statusLabel, UDim2.fromScale(0, 0.11), UDim2.fromScale(0.55, 0.08), UDim2.fromOffset(0, 22), UDim2.new(0.42, 0, 0, 20))
 		place(timeLabel, UDim2.fromScale(0.56, 0.11), UDim2.fromScale(0.15, 0.08), UDim2.new(0.43, 0, 0, 22), UDim2.new(0.12, 0, 0, 20))
 		place(barBack, UDim2.fromScale(0, 0.2), UDim2.fromScale(0.71, 0.045), UDim2.fromOffset(0, 46), UDim2.new(0.55, 0, 0, 12))
-		place(speedButton, UDim2.fromScale(1, 0.1), UDim2.fromScale(0.13, 0.16), UDim2.new(1, -52, 0, 0), UDim2.fromOffset(96, 56))
-		place(skipButton, UDim2.fromScale(0.86, 0.1), UDim2.fromScale(0.13, 0.16), UDim2.new(1, -154, 0, 0), UDim2.fromOffset(84, 56))
+		place(speedButton, UDim2.new(1, 0, 0, 54), UDim2.new(0.11, 0, 0.28, -62), UDim2.new(1, -56, 0, 4), UDim2.fromOffset(86, 48))
+		place(skipButton, UDim2.new(0.88, 0, 0, 54), UDim2.new(0.11, 0, 0.28, -62), UDim2.new(1, -150, 0, 4), UDim2.fromOffset(78, 48))
 		place(tray, UDim2.fromScale(0, 0.28), UDim2.fromScale(1, 0.1), UDim2.fromOffset(0, 64), UDim2.new(1, 0, 0, 38))
 		place(tabRow, UDim2.fromScale(0, 0.4), UDim2.fromScale(1, 0.09), UDim2.fromOffset(0, 106), UDim2.new(1, 0, 0, 40))
 		place(content, UDim2.fromScale(0, 0.52), UDim2.fromScale(1, 0.48), UDim2.fromOffset(0, 152), UDim2.new(1, 0, 1, -152))
@@ -396,6 +404,7 @@ function Panel.Mount(screenGui: ScreenGui, actions: Widgets.Actions, durationFor
 		Open = function(gamepad: boolean)
 			if not open then
 				open = true
+				Menus.Opened(close)
 				root.Visible = true
 				Theme.PopIn(root)
 				ContextActionService:BindAction(CLOSE_ACTION, function(_, inputState)

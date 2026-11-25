@@ -18,6 +18,7 @@ local TweenService = game:GetService("TweenService")
 local ItemConfig = require(ReplicatedStorage.Shared.Config.ItemConfig)
 local Rarities = require(ReplicatedStorage.Shared.Config.Rarities)
 
+local Menus = require(script.Parent.Parent.UI.Menus)
 local Preview = require(script.Parent.Parent.UI.Preview)
 local Theme = require(script.Parent.Parent.UI.Theme)
 
@@ -354,6 +355,7 @@ function Window.Mount(screenGui: ScreenGui, name: string, title: string, tabs: {
 				return
 			end
 			open = true
+			Menus.Opened(close)
 			root.Visible = true
 			Theme.PopIn(root)
 			backdrop.Visible = true

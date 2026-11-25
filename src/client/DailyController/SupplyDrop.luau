@@ -19,6 +19,7 @@ local Rarities = require(ReplicatedStorage.Shared.Config.Rarities)
 
 local AudioController = require(script.Parent.Parent.AudioController)
 local Preview = require(script.Parent.Parent.UI.Preview)
+local Menus = require(script.Parent.Parent.UI.Menus)
 local Theme = require(script.Parent.Parent.UI.Theme)
 
 local SupplyDrop = {}
@@ -343,6 +344,7 @@ function SupplyDrop.Mount(gui: ScreenGui, onClaim: () -> ()): SupplyDrop
 		end
 		open = true
 		overlay.Visible = true
+		Menus.Opened(close)
 		overlay.BackgroundTransparency = 1
 		panelScale.Scale = 0.4
 		TweenService:Create(overlay, TweenInfo.new(0.25), { BackgroundTransparency = 0.45 }):Play()
