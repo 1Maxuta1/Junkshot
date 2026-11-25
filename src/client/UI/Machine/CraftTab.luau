@@ -1,13 +1,12 @@
 --!strict
 --[[
-	CraftTab: browse recipes (Config/Recipes) by category, see which ingredients the player
-	carries, and start crafting. The list and the "can craft" marks are only a convenience;
+	CraftTab: browse recipes (Config/Recipes) by category as icon cells, see the ingredients as
+	pictures with how many the player carries, and start crafting. The list and the "can craft" marks are only a convenience;
 	the server checks recipe, level, ingredients and machine state again.
 ]]
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local ItemConfig = require(ReplicatedStorage.Shared.Config.ItemConfig)
 local MachineConfig = require(ReplicatedStorage.Shared.Config.MachineConfig)
 local Rarities = require(ReplicatedStorage.Shared.Config.Rarities)
 local Recipes = require(ReplicatedStorage.Shared.Config.Recipes)
@@ -66,86 +65,96 @@ function CraftTab.Mount(container: Frame, actions: Widgets.Actions, durationFor:
 	categoryLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	categoryLayout.Parent = categoryRow
 
+	local listPanel = Widgets.SteelPanel(container, "RecipePanel", UDim2.fromScale(0, 0.23), UDim2.fromScale(0.44, 0.77))
 	local list = Instance.new("ScrollingFrame")
 	list.Name = "Recipes"
-	list.Position = UDim2.fromScale(0, 0.23)
-	list.Size = UDim2.fromScale(0.44, 0.77)
-	list.BackgroundColor3 = Theme.Colors.PanelTint
-	list.BackgroundTransparency = 0.3
+	list.Position = UDim2.fromOffset(3, 3)
+	list.Size = UDim2.new(1, -6, 1, -6)
+	list.BackgroundTransparency = 1
 	list.BorderSizePixel = 0
 	list.ScrollBarThickness = 6
+	list.ScrollBarImageColor3 = Color3.fromRGB(255, 205, 60)
+	list.ScrollingDirection = Enum.ScrollingDirection.Y
 	list.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	list.CanvasSize = UDim2.new()
-	Theme.Corner(list, UDim.new(0, 10))
-	list.Parent = container
-	local listLayout = Instance.new("UIListLayout")
-	listLayout.Padding = UDim.new(0, 9)
-	listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	list.Parent = listPanel
+	local listLayout = Instance.new("UIGridLayout")
+	listLayout.CellPadding = UDim2.fromOffset(8, 8)
+	listLayout.CellSize = UDim2.new(0.25, -8, 0, 76)
+	listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	local listPadding = Instance.new("UIPadding")
 	listPadding.PaddingTop = UDim.new(0, 6)
 	listPadding.PaddingBottom = UDim.new(0, 6)
-	listPadding.PaddingRight = UDim.new(0, 8) -- the scroll bar
+	listPadding.PaddingLeft = UDim.new(0, 5)
+	listPadding.PaddingRight = UDim.new(0, 7) -- the scroll bar
 	listPadding.Parent = list
-	listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	listLayout.Parent = list
+	local function fit() -- narrow screens: three in a row
+		local width = list.AbsoluteSize.X
+		listLayout.CellSize = UDim2.new(if width < 300 then 1 / 3 else 0.25, -9, 0, if width < 300 then 68 else 76)
+	end
+	list:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
+	fit()
+	Widgets.Divider(container, 0.46)
 
-	-- Right: details
-	local detail = Instance.new("Frame")
-	detail.Name = "Detail"
-	detail.Position = UDim2.fromScale(0.47, 0)
-	detail.Size = UDim2.fromScale(0.53, 1)
-	detail.BackgroundTransparency = 1
-	detail.Parent = container
+	-- Right: what it is (picture, name), what it needs (icon cells), the button
+	local detail = Widgets.SteelPanel(container, "Detail", UDim2.fromScale(0.48, 0), UDim2.fromScale(0.52, 1))
 
+	local previewBox = Instance.new("Frame")
+	previewBox.Name = "PreviewBox"
+	previewBox.Position = UDim2.new(0, 6, 0, 6)
+	previewBox.Size = UDim2.fromScale(0.22, 0.36)
+	previewBox.BackgroundColor3 = Color3.new(1, 1, 1)
+	Theme.Corner(previewBox, UDim.new(0, 10))
+	local previewStroke = Theme.Stroke(previewBox, Theme.Colors.Ink, 2.5)
+	previewBox.Parent = detail
+	local preview = Instance.new("ViewportFrame")
+	preview.Name = "Preview"
+	preview.Size = UDim2.fromScale(1, 1)
+	Preview.StyleViewport(preview)
+	preview.Parent = previewBox
 	local title = Theme.Label({
 		Name = "Title",
 		Text = "",
-		Size = UDim2.fromScale(1, 0.15),
-		Color = Theme.Colors.Ink,
+		Size = UDim2.new(0.75, -22, 0.16, 0),
+		Position = UDim2.new(0.22, 16, 0, 5),
+		Color = Theme.Colors.White,
 		MinTextSize = 14,
 		MaxTextSize = 24,
 		XAlignment = Enum.TextXAlignment.Left,
 		Parent = detail,
 	})
-	Theme.TextStroke(title, Theme.Colors.Ink, 0)
+	Theme.TextStroke(title, Widgets.Night, 1.5)
 	local description = Theme.Label({
 		Name = "Description",
 		Text = "",
-		Size = UDim2.fromScale(1, 0.12),
-		Position = UDim2.fromScale(0, 0.15),
-		Color = Theme.Colors.InkSoft,
+		Size = UDim2.new(0.75, -22, 0.21, 0),
+		Position = UDim2.new(0.22, 16, 0.18, 4),
+		Color = Color3.fromRGB(214, 224, 246),
 		Font = Theme.FontBody,
 		MinTextSize = 10,
 		MaxTextSize = 15,
 		XAlignment = Enum.TextXAlignment.Left,
 		Parent = detail,
 	})
-	local ingredients = Theme.Label({
-		Name = "Ingredients",
-		Text = "",
-		Size = UDim2.fromScale(0.62, 0.44),
-		Position = UDim2.fromScale(0, 0.29),
-		Color = Theme.Colors.Ink,
-		Font = Theme.FontBody,
-		MinTextSize = 10,
-		MaxTextSize = 16,
-		XAlignment = Enum.TextXAlignment.Left,
-		Parent = detail,
-	})
-	ingredients.RichText = true
-	ingredients.TextYAlignment = Enum.TextYAlignment.Top
-	local preview = Instance.new("ViewportFrame")
-	preview.Name = "Preview"
-	preview.Position = UDim2.fromScale(0.64, 0.27)
-	preview.Size = UDim2.fromScale(0.36, 0.46)
-	Preview.StyleViewport(preview)
-	preview.Parent = detail
+	description.TextWrapped = true
+	local needs = Instance.new("Frame")
+	needs.Name = "Ingredients"
+	needs.Position = UDim2.new(0, 8, 0.4, 3)
+	needs.Size = UDim2.new(1, -16, 0.35, 0)
+	needs.BackgroundTransparency = 1
+	local needsLayout = Instance.new("UIListLayout")
+	needsLayout.FillDirection = Enum.FillDirection.Horizontal
+	needsLayout.Padding = UDim.new(0, 8)
+	needsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	needsLayout.Parent = needs
+	needs.Parent = detail
 	local info = Theme.Label({
 		Name = "Info",
 		Text = "",
-		Size = UDim2.fromScale(0.5, 0.25),
-		Position = UDim2.fromScale(0, 0.75),
-		Color = Theme.Colors.InkSoft,
+		Size = UDim2.new(0.52, -8, 0.17, 0),
+		Position = UDim2.new(0, 8, 0.82, -2),
+		Color = Color3.fromRGB(214, 224, 246),
 		Font = Theme.FontBody,
 		MinTextSize = 10,
 		MaxTextSize = 15,
@@ -156,10 +165,10 @@ function CraftTab.Mount(container: Frame, actions: Widgets.Actions, durationFor:
 	local craftButton, craftLabel = Widgets.Button({
 		Name = "Craft",
 		Text = "CRAFT",
-		Size = UDim2.fromScale(0.42, 0.21),
-		Position = UDim2.new(1, -4, 1, -4),
+		Size = UDim2.fromScale(0.42, 0.18),
+		Position = UDim2.new(1, -6, 1, -6),
 		AnchorPoint = Vector2.new(1, 1),
-		MinSize = Vector2.new(104, 40),
+		MinSize = Vector2.new(104, 34),
 		Parent = detail,
 	})
 
@@ -168,6 +177,9 @@ function CraftTab.Mount(container: Frame, actions: Widgets.Actions, durationFor:
 	local canStart = false
 	local lastView: Widgets.View? = nil
 	local listKey = ""
+	local shownId = "" -- recipe whose pictures are built
+	local cells: { [string]: Widgets.IconCell } = {} -- recipe id -> cell
+	local needCells: { [string]: Widgets.IconCell } = {} -- item id -> cell
 	local categoryButtons: { [string]: TextButton } = {}
 	local render: (view: Widgets.View) -> ()
 
@@ -226,67 +238,61 @@ function CraftTab.Mount(container: Frame, actions: Widgets.Actions, durationFor:
 			chip.BackgroundColor3 = if name == category then Theme.Colors.Accent else Theme.Colors.PanelTint
 		end
 
-		-- Rebuild the list only when the category or the craftable set changes.
+		-- Pictures are built once per category (or set of ready recipes); only marks change.
 		local marks = {}
 		for _, entry in Recipes.List do
 			if isListed(entry, category, have, view.MachineLevel) then
-				table.insert(marks, entry.RecipeId .. (if hasAll(entry, have) then "+" else "-"))
+				table.insert(marks, entry.RecipeId)
 			end
 		end
-		local newKey = category .. table.concat(marks, ",") .. tostring(view.MachineLevel)
+		local newKey = category .. table.concat(marks, ",")
 		if newKey ~= listKey then
 			listKey = newKey
-			Widgets.Clear(list)
+			for _, cell in cells do
+				cell.Root:Destroy()
+			end
+			table.clear(cells)
+			local oldEmpty = listPanel:FindFirstChild("Empty")
+			if oldEmpty ~= nil then
+				oldEmpty:Destroy()
+			end
 			if #marks == 0 then
 				Theme.Label({
 					Name = "Empty",
 					Text = "Pick up more junk: nothing can be crafted right now",
-					Size = UDim2.new(1, -8, 0, 48),
-					Color = Theme.Colors.InkSoft,
+					Size = UDim2.new(1, -16, 0, 48),
+					Position = UDim2.fromScale(0.5, 0.5),
+					AnchorPoint = Vector2.new(0.5, 0.5),
+					Color = Color3.fromRGB(200, 212, 240),
 					Font = Theme.FontBody,
 					MinTextSize = 11,
 					MaxTextSize = 15,
-					Parent = list,
+					Parent = listPanel,
 				}).TextWrapped = true
 			end
 			for index, entry in Recipes.List do
 				if isListed(entry, category, have, view.MachineLevel) then
-					local row = Instance.new("TextButton")
-					row.Name = entry.RecipeId
-					row.LayoutOrder = index
-					row.Size = UDim2.new(1, -14, 0, 34)
-					row.BackgroundColor3 = Theme.Colors.Panel
-					row.Text = ""
-					Theme.Corner(row, UDim.new(0, 8))
-					Theme.Stroke(row, Rarities.GetColor(entry.Rarity), 2)
-					local locked = entry.RequiredLevel > view.MachineLevel
-					local ready = not locked and hasAll(entry, have)
-					Theme.Label({
-						Name = "Label",
-						Text = (if ready then "✔ " elseif locked then "🔒 " else "") .. entry.DisplayName,
-						Size = UDim2.new(1, -16, 1, -8),
-						Position = UDim2.fromOffset(8, 4),
-						Color = if locked then Theme.Colors.InkSoft else Theme.Colors.Ink,
-						Font = Theme.FontBody,
-						MinTextSize = 10,
-						MaxTextSize = 16,
-						XAlignment = Enum.TextXAlignment.Left,
-						Parent = row,
-					})
 					local id = entry.RecipeId
-					row.Activated:Connect(function()
+					cells[id] = Widgets.IconCell(list, entry.OutputItemId, index, function()
 						selectedId = id
 						if lastView ~= nil then
 							render(lastView)
 						end
 					end)
-					row.Parent = list
 				end
 			end
 		end
-		for _, row in list:GetChildren() do
-			if row:IsA("TextButton") then
-				row.BackgroundColor3 = if row.Name == selectedId then Color3.fromRGB(255, 236, 200) else Theme.Colors.Panel
+		for id, cell in cells do
+			local entry = Recipes.Get(id)
+			if entry ~= nil then
+				local locked = entry.RequiredLevel > view.MachineLevel
+				local ready = not locked and hasAll(entry, have)
+				cell.Veil.Visible = locked
+				cell.Badge.Text = if locked then `LV {entry.RequiredLevel}` elseif ready then "✔" else ""
+				cell.Badge.TextColor3 = if ready then Theme.Colors.Success else Color3.new(1, 1, 1)
+				local selected = id == selectedId
+				cell.Stroke.Color = if selected then Color3.new(1, 1, 1) else Rarities.GetColor(entry.Rarity)
+				cell.Stroke.Thickness = if selected then 4.5 else 2.5
 			end
 		end
 
@@ -295,28 +301,42 @@ function CraftTab.Mount(container: Frame, actions: Widgets.Actions, durationFor:
 			return
 		end
 		title.Text = recipe.DisplayName
-		title.TextColor3 = Rarities.GetColor(recipe.Rarity)
+		title.TextColor3 = Rarities.GetColor(recipe.Rarity):Lerp(Color3.new(1, 1, 1), 0.35)
 		description.Text = recipe.Description
-		local lines = {}
-		for _, ingredient in recipe.Ingredients do
-			local count = have[ingredient.Id] or 0
-			local ok = count >= ingredient.Count
-			table.insert(lines, string.format(
-				'<font color="#%s">%d/%d</font>  %s',
-				(if ok then Theme.Colors.Success else Theme.Colors.Danger):ToHex(),
-				math.min(count, ingredient.Count),
-				ingredient.Count,
-				ItemConfig.GetDisplayName(ingredient.Id)
-			))
+		local rarityColor = Rarities.GetColor(recipe.Rarity)
+		if shownId ~= selectedId then
+			shownId = selectedId
+			previewBox.BackgroundColor3 = rarityColor:Lerp(Color3.fromRGB(246, 250, 255), 0.72)
+			previewStroke.Color = rarityColor
+			Preview.Item(preview, recipe.OutputItemId)
+			for _, cell in needCells do
+				cell.Root:Destroy()
+			end
+			table.clear(needCells)
+			local total = math.max(#recipe.Ingredients, 4)
+			for index, ingredient in recipe.Ingredients do
+				local cell = Widgets.IconCell(needs, ingredient.Id, index, nil)
+				cell.Root.Size = UDim2.new(1 / total, -8, 1, 0)
+				needCells[ingredient.Id] = cell
+			end
 		end
-		ingredients.Text = table.concat(lines, "\n")
-		Preview.Item(preview, recipe.OutputItemId)
+		for _, ingredient in recipe.Ingredients do
+			local cell = needCells[ingredient.Id]
+			if cell ~= nil then
+				local count = math.min(have[ingredient.Id] or 0, ingredient.Count)
+				local ok = count >= ingredient.Count
+				cell.Badge.Text = `{count}/{ingredient.Count}`
+				cell.Badge.TextColor3 = if ok then Color3.fromRGB(120, 255, 150) else Color3.fromRGB(255, 120, 110)
+				cell.Stroke.Color = if ok then Theme.Colors.Success else Theme.Colors.Danger
+				cell.Viewport.ImageTransparency = if ok then 0 else 0.5
+			end
+		end
 
 		local base = recipe.DurationOverride or (MachineConfig.CraftDurations :: any)[recipe.Rarity]
 		local locked = recipe.RequiredLevel > view.MachineLevel
 		info.Text = string.format(
 			'<font color="#%s">%s</font>\nTime %s · Level %d',
-			Rarities.GetColor(recipe.Rarity):ToHex(),
+			rarityColor:Lerp(Color3.new(1, 1, 1), 0.35):ToHex(),
 			recipe.Rarity,
 			Widgets.FormatTime(durationFor(base)),
 			recipe.RequiredLevel
