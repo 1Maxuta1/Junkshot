@@ -17,7 +17,7 @@ local CAMERA_DISTANCE = 3.8
 
 local Preview = {}
 
-local function show(viewport: ViewportFrame, model: Model?)
+local function show(viewport: ViewportFrame, model: Model?, distance: number?)
 	viewport:ClearAllChildren()
 	if model == nil then
 		return
@@ -28,7 +28,7 @@ local function show(viewport: ViewportFrame, model: Model?)
 	local center = model:GetBoundingBox().Position
 	local camera = Instance.new("Camera")
 	camera.FieldOfView = 40
-	camera.CFrame = CFrame.lookAt(center + CAMERA_DIRECTION * CAMERA_DISTANCE, center)
+	camera.CFrame = CFrame.lookAt(center + CAMERA_DIRECTION * (distance or CAMERA_DISTANCE), center)
 	camera.Parent = viewport
 	viewport.CurrentCamera = camera
 end
@@ -39,6 +39,11 @@ end
 
 function Preview.Item(viewport: ViewportFrame, itemId: string)
 	show(viewport, JunkFactory.Build(itemId, "Cosmetic", PREVIEW_SIZE))
+end
+
+-- Any other model.
+function Preview.Model(viewport: ViewportFrame, model: Model?, distance: number?)
+	show(viewport, model, distance)
 end
 
 -- Default lighting for preview frames, so every preview looks the same.

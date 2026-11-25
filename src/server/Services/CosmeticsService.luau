@@ -8,7 +8,9 @@
 	                               category; nil / "" takes it off
 	  IsOwned(player, id)
 	Visuals (server-built, replicate to everyone):
-	  Backpack, ToolSkin   welded to the character's torso on every spawn
+	  Backpack, ToolSkin   welded to the character's torso on every spawn; without a Backpack
+	                     cosmetic the pack of the Bigger Backpack upgrade is worn
+	                     (Util/BackpackModels)
 	  Title                a small BillboardGui above the head
 	  Companion            CompanionService
 	Published for the UI as Player attributes "CosmeticsOwned" (comma list) and
@@ -19,6 +21,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local CosmeticsConfig = require(ReplicatedStorage.Shared.Config.CosmeticsConfig)
+local BackpackModels = require(ReplicatedStorage.Shared.Util.BackpackModels)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Signal = require(ReplicatedStorage.Shared.Util.Signal)
 local Validate = require(ReplicatedStorage.Shared.Util.Validate)
@@ -118,6 +121,23 @@ local function dress(player: Player)
 			model.Parent = folder
 		end
 	end
+	local packLevel = player:GetAttribute("Upgrade_CarryCapacity")
+	local pack = if CosmeticsService.GetEquipped(player, "Backpack") == nil and type(packLevel) == "number"
+		then BackpackModels.Build(packLevel)
+		else nil
+	if pack ~= nil and pack.PrimaryPart ~= nil then
+		local body = pack.PrimaryPart
+		local origin = CFrame.new(0, 0, torso.Size.Z / 2 - 0.5) -- thinner and thicker avatars
+		pack:PivotTo(torso.CFrame * origin)
+		local weld = Instance.new("Weld") -- swayed by BackpackController
+		weld.Name = "PackWeld"
+		weld.Part0 = torso
+		weld.Part1 = body
+		weld.C0 = torso.CFrame:ToObjectSpace(body.CFrame)
+		weld.Parent = body
+		pack.Parent = folder
+	end
+	player:SetAttribute("PackWorn", pack ~= nil)
 	local titleId = CosmeticsService.GetEquipped(player, "Title")
 	local title = if titleId ~= nil then CosmeticsConfig.Get(titleId) else nil
 	if title ~= nil and head ~= nil and head:IsA("BasePart") then
@@ -194,6 +214,9 @@ function CosmeticsService.Start()
 	started = true
 
 	local function hook(player: Player)
+		player:GetAttributeChangedSignal("Upgrade_CarryCapacity"):Connect(function()
+			dress(player)
+		end)
 		player.CharacterAdded:Connect(function(character: Model)
 			character:WaitForChild("Head", 10)
 			if DataService.GetData(player) ~= nil then

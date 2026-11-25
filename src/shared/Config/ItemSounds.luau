@@ -123,6 +123,7 @@ local Events: { [string]: { any } } = {
 	Throw = { "Swish", 1 },
 	Sell = { "Coin", 1.15 },
 	Button = { "Click", 1 },
+	PackUpgrade = { "Shimmer", 1.1 },
 	ChestOpen = { "Chest", 1 },
 	Window = { "Swish", 1.3 },
 	Toast = { "Lever", 1.2 },

@@ -1470,6 +1470,9 @@ local function runEconomyTests(player: Player)
 	local carryOk = PlayerUpgradeService.Buy(player, guid(), "CarryCapacity")
 	check("Bigger Backpack adds a hand slot", carryOk and CarryService.GetCapacity(player) == GameConfig.Carry.MaxJunk + 1
 		and player:GetAttribute("CarryMax") == GameConfig.Carry.MaxJunk + 1)
+	task.wait(0.3)
+	local worn = if player.Character ~= nil then player.Character:FindFirstChild("UpgradeBackpack", true) else nil
+	check("the bigger backpack is worn", worn ~= nil and worn:GetAttribute("Level") == 2 and player:GetAttribute("PackWorn") == true)
 	data.PlayerUpgrades.WalkSpeed = 5
 	local maxOk, maxCode = PlayerUpgradeService.Buy(player, guid(), "WalkSpeed")
 	check("an upgrade at its max level cannot be bought", not maxOk and maxCode == PlayerUpgradeService.Errors.MaxLevel, tostring(maxCode))
@@ -1482,6 +1485,9 @@ local function runEconomyTests(player: Player)
 	PlayerUpgradeService.Refresh(player)
 	check("resetting the upgrades restores the default effects", humanoid.WalkSpeed == 16
 		and CarryService.GetCapacity(player) == GameConfig.Carry.MaxJunk and player:GetAttribute("Upgrade_WalkSpeed") == 1)
+
+	task.wait(0.3)
+	check("without the upgrade no backpack is worn", player:GetAttribute("PackWorn") == false)
 
 	-- Storage (hands <-> base)
 	local boxUid = give("wooden_crate")

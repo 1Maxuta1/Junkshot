@@ -116,6 +116,9 @@ local function dress(button: TextButton)
 		scale.Parent = button
 	end
 	local s = scale :: UIScale
+	-- Inside a list a bigger button would push its neighbours.
+	local inList = button.Parent ~= nil and button.Parent:FindFirstChildOfClass("UIListLayout") ~= nil
+	local hover = if inList then 1 else 1.04
 	local function to(value: number, info: TweenInfo)
 		TweenService:Create(s, info, { Scale = value }):Play()
 	end
@@ -123,14 +126,14 @@ local function dress(button: TextButton)
 		to(0.93, PRESS)
 	end)
 	button.MouseButton1Up:Connect(function()
-		to(if touching() then 1 else 1.04, RELEASE)
+		to(if touching() then 1 else hover, RELEASE)
 	end)
 	button.MouseEnter:Connect(function()
 		gradient.Offset = Vector2.new(0, 0.18)
 		if touching() then
 			return
 		end
-		to(1.04, RELEASE)
+		to(hover, RELEASE)
 		sweepGradient.Offset = Vector2.new(-1, 0)
 		TweenService:Create(sweepGradient, TweenInfo.new(0.55, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Offset = Vector2.new(1, 0) }):Play()
 	end)
