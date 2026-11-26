@@ -167,8 +167,16 @@ return {
 	}),
 
 	def("toxic_barrel", "Toxic Barrel", 3, {
-		part(Cylinder, V(2.4, 1.9, 1.9), rgb(60, 200, 90), Enum.Material.Metal, nil, UPRIGHT),
-		part(Cylinder, V(0.25, 2.0, 2.0), rgb(40, 40, 45), Enum.Material.Metal, V(0, 0.7, 0), UPRIGHT),
-		part(Cylinder, V(0.25, 2.0, 2.0), rgb(40, 40, 45), Enum.Material.Metal, V(0, -0.7, 0), UPRIGHT),
+		-- Drum with rolled rims, hoops, a yellow hazard band, lid, bung and glowing ooze.
+		part(Cylinder, V(2.4, 1.86, 1.86), rgb(60, 200, 90), Enum.Material.Metal, nil, UPRIGHT),
+		part(Cylinder, V(0.16, 1.94, 1.94), rgb(40, 40, 45), Enum.Material.Metal, V(0, 1.12, 0), UPRIGHT),
+		part(Cylinder, V(0.16, 1.94, 1.94), rgb(40, 40, 45), Enum.Material.Metal, V(0, -1.12, 0), UPRIGHT),
+		part(Cylinder, V(0.14, 1.96, 1.96), rgb(40, 40, 45), Enum.Material.Metal, V(0, 0.62, 0), UPRIGHT),
+		part(Cylinder, V(0.14, 1.96, 1.96), rgb(40, 40, 45), Enum.Material.Metal, V(0, -0.62, 0), UPRIGHT),
+		part(Cylinder, V(0.5, 1.9, 1.9), rgb(255, 204, 48), Enum.Material.SmoothPlastic, V(0, 0, 0), UPRIGHT),
+		part(Cylinder, V(0.06, 1.6, 1.6), rgb(36, 120, 60), Enum.Material.Metal, V(0, 1.22, 0), UPRIGHT),
+		part(Cylinder, V(0.14, 0.32, 0.32), rgb(176, 188, 204), Enum.Material.Metal, V(0.45, 1.28, 0.2), UPRIGHT),
+		part(Ball, V(0.5, 0.3, 0.5), rgb(120, 255, 90), Enum.Material.Neon, V(-0.35, 1.22, -0.3)),
+		part(Block, V(0.22, 0.7, 0.08), rgb(120, 255, 90), Enum.Material.Neon, V(-0.55, 0.85, -0.74)),
 	}),
 }

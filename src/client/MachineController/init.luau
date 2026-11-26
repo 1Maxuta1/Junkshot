@@ -604,6 +604,16 @@ function MachineController.Start()
 			local currentPanel = panel
 			if currentPanel ~= nil and currentPanel.IsOpen() then
 				currentPanel.Tick()
+				-- Left the base (ran off, teleported, drove away): the panel closes.
+				local view = ownView()
+				local anchor = if view ~= nil then view.Model:FindFirstChild("PromptAnchor") else nil
+				local character = localPlayer.Character
+				local root = if character ~= nil then character:FindFirstChild("HumanoidRootPart") else nil
+				if anchor == nil or not anchor:IsA("BasePart") or root == nil or not root:IsA("BasePart")
+					or (root.Position - anchor.Position).Magnitude > MachineConfig.PromptDistance + 10
+				then
+					currentPanel.Close()
+				end
 			end
 		end
 	end)

@@ -45,6 +45,31 @@ local function rgb(r: number, g: number, b: number): Color3
 	return Color3.fromRGB(r, g, b)
 end
 
+-- Steel drum standing on the ground at `base` (3.4 tall, 2.6 wide): rims, hoops, lid, bung.
+local function drum(model: Model, base: CFrame, color: Color3)
+	local dark = color:Lerp(rgb(44, 56, 82), 0.45)
+	local upright = CFrame.Angles(0, 0, math.rad(90))
+	local function ring(name: string, y: number, diameter: number, height: number, ringColor: Color3): Part
+		local p = part(model, name, Vector3.new(height, diameter, diameter), base * CFrame.new(0, y, 0) * upright, ringColor, Enum.Material.Metal)
+		p.Shape = Enum.PartType.Cylinder
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CastShadow = false
+		return p
+	end
+	local body = ring("Barrel", 1.7, 2.5, 3.2, color)
+	body.CanCollide = true
+	body.CanQuery = true
+	body.CastShadow = true
+	ring("BarrelRim", 0.1, 2.6, 0.2, dark)
+	ring("BarrelRim", 3.3, 2.6, 0.2, dark)
+	ring("BarrelHoop", 1.15, 2.64, 0.18, dark)
+	ring("BarrelHoop", 2.25, 2.64, 0.18, dark)
+	ring("BarrelLid", 3.33, 2.2, 0.06, color:Lerp(rgb(44, 56, 82), 0.25))
+	local bung = ring("BarrelBung", 3.42, 0.36, 0.14, rgb(176, 188, 204))
+	bung.CFrame = base * CFrame.new(0.6, 3.42, 0.25) * upright
+end
+
 -- Placeholder booth: counter, awning, sign, scale and a pile of coins. Front = -Z (towards +Z
 -- of the plaza is fine: players reach it from every side through the prompt distance).
 local function buildBooth(ground: CFrame): Model
@@ -98,9 +123,7 @@ local function buildBooth(ground: CFrame): Model
 		part(model, "Goods", Vector3.new(1.1, 1.1, 0.9), at(-4.8 + index * 1.9, 4.9 + (index % 2) * 2, 3.7) * CFrame.Angles(0, index, 0), goods[index + 1])
 	end
 	for _, x in { -8.6, 8.6 } do
-		local barrel = part(model, "Barrel", Vector3.new(3.4, 2.6, 2.6), at(x, 1.7, -2), if x < 0 then rgb(36, 188, 186) else rgb(236, 74, 70), Enum.Material.Metal)
-		barrel.Shape = Enum.PartType.Cylinder
-		barrel.CFrame = barrel.CFrame * CFrame.Angles(0, 0, math.rad(90))
+		drum(model, at(x, 0, -2), if x < 0 then rgb(36, 188, 186) else rgb(236, 74, 70))
 		part(model, "Crate", Vector3.new(2.6, 2.6, 2.6), at(x, 1.3, 1.4) * CFrame.Angles(0, 0.2, 0), rgb(176, 124, 74), Enum.Material.WoodPlanks)
 		part(model, "CrateTop", Vector3.new(1.8, 1.8, 1.8), at(x, 3.5, 1.4) * CFrame.Angles(0, 0.7, 0), rgb(196, 144, 92), Enum.Material.WoodPlanks)
 		local lantern = part(model, "Lantern", Vector3.new(1, 1.2, 1), at(x * 0.77, 8.2, -3.9), rgb(255, 205, 110), Enum.Material.Neon)

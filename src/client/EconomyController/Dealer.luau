@@ -166,12 +166,16 @@ function Dealer.Mount(screenGui: ScreenGui, source: Source): Dealer
 	sellAllButton.Activated:Connect(function()
 		local now = os.clock()
 		if now > confirmUntil then
-			-- First tap: ask for confirmation.
+			-- First tap: every sellable item turns green (selected) and the button asks to confirm.
 			local total = 0
 			for _, entry in sellableEntries() do
 				total += entry.Price
+				if entry.Price > 0 then
+					selected[entry.Uid] = true
+				end
 			end
 			confirmUntil = now + CONFIRM_SECONDS
+			renderSell()
 			sellAllLabel.Text = `SURE? {KlunksFormat.Format(total + bonusOf(total))}`
 			task.delay(CONFIRM_SECONDS, function()
 				if os.clock() >= confirmUntil then

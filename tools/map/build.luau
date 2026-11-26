@@ -28,6 +28,7 @@ local fs = require("@lune/fs")
 local roblox = require("@lune/roblox")
 local Prefabs = require("./Prefabs")
 local Plaza = require("./Plaza")
+local Locations = require("./Locations")
 local RaceZone = require("./RaceZone")
 
 local Instance = roblox.Instance
@@ -164,7 +165,7 @@ for index, edge in {
 	Part(plaza, {
 		Name = `SiteFrame{index}`,
 		Size = edge[1],
-		CFrame = CFrame.new(edge[2] + Vector3.new(0, 0.45, 0)),
+		CFrame = CFrame.new(edge[2] + Vector3.new(0, 0.67, 0)), -- top 0.08 above the plaza's Ring4
 		Color = C.Yellow,
 		CastShadow = false,
 	})
@@ -222,14 +223,9 @@ local zones = {
 		Name = "Tire Mountain",
 		Degrees = 135,
 		Accent = C.Purple,
+		SpawnArea = { X = 46, Z = 52, CenterZ = 5 }, -- narrower: the mountain stands behind it
 		Build = function(parent, at)
-			Prefabs.JunkHeap(parent, at(-20, 0, -34), 1, 11)
-			Prefabs.JunkHeap(parent, at(16, 0, -33), 0.8, 23)
-			Prefabs.TireStack(parent, at(-1, 0, -28), 4)
-			Prefabs.TireStack(parent, at(33, 0, -10), 3)
-			Prefabs.TireStack(parent, at(33, 0, 2), 2)
-			Prefabs.SnowPile(parent, at(-37, 0, -8, 90), 0.6)
-			Prefabs.Lamp(parent, at(31, 0, -27), false)
+			Locations.TireMountain(parent, at)
 		end,
 	},
 	{
@@ -392,12 +388,11 @@ local function cornerCFrame(degrees, radius)
 	return facing(position, ORIGIN)
 end
 
-do -- North-east: the crane and a container stack
-	local cf = cornerCFrame(45, 262)
-	Prefabs.Crane(landmarks, cf * yaw(135))
-	Prefabs.Container(landmarks, cf * CFrame.new(-16, 0, -6) * yaw(20), C.Purple)
-	Prefabs.Container(landmarks, cf * CFrame.new(-16, 9, -6) * yaw(28), C.Orange)
-	Prefabs.Container(landmarks, cf * CFrame.new(16, 0, -2) * yaw(-25), C.Green)
+do -- North-east: the Crane Yard (junk falls here too)
+	local position = polar(262, 45)
+	-- Built by hand (not lookAt): -Z really points at the yard's center here.
+	local cf = CFrame.new(position) * CFrame.Angles(0, math.atan2(position.X, position.Z), 0)
+	Locations.CraneYard(landmarks, cf)
 end
 do -- North-west: Junk Mountain
 	local cf = cornerCFrame(135, 262)

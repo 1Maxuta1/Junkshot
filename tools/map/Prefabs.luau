@@ -462,15 +462,64 @@ function Prefabs.TireStack(parent, cf, tires)
 	return m
 end
 
+-- Steel drum (4 tall, 3 wide): rolled rims, two rolling hoops, a lid with its bung, paint
+-- running down from the top and a little snow on the lid. Small details cast no shadow.
 function Prefabs.Barrel(parent, cf, color)
-	return Prefabs.Part(parent, {
-		Name = "Barrel",
+	local m = model(parent, "Barrel")
+	local dark = color:Lerp(C.Ink, 0.45)
+	local function ring(name, y, diameter, height, ringColor, shadow)
+		return Prefabs.Part(m, {
+			Name = name,
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(height, diameter, diameter),
+			CFrame = cf * CFrame.new(0, y, 0) * UPRIGHT,
+			Color = ringColor,
+			Material = Enum.Material.Metal,
+			CanCollide = false,
+			CanQuery = false,
+			CastShadow = shadow == true,
+		})
+	end
+	local body = ring("Body", 2, 2.9, 3.8, color, true)
+	body.CanCollide = true
+	body.CanQuery = true
+	ring("RimBottom", 0.12, 3, 0.24, dark)
+	ring("RimTop", 3.88, 3, 0.24, dark)
+	ring("Hoop1", 1.33, 3.04, 0.2, dark)
+	ring("Hoop2", 2.67, 3.04, 0.2, dark)
+	ring("Lid", 3.93, 2.6, 0.06, color:Lerp(C.Ink, 0.25))
+	Prefabs.Part(m, {
+		Name = "Bung",
 		Shape = Enum.PartType.Cylinder,
-		Size = Vector3.new(4, 3, 3),
-		CFrame = cf * CFrame.new(0, 2, 0) * UPRIGHT,
-		Color = color,
+		Size = Vector3.new(0.16, 0.42, 0.42),
+		CFrame = cf * CFrame.new(0.75, 4.02, 0.3) * UPRIGHT,
+		Color = C.Metal,
 		Material = Enum.Material.Metal,
+		CanCollide = false,
+		CanQuery = false,
+		CastShadow = false,
 	})
+	Prefabs.Part(m, {
+		Name = "Drip",
+		Size = Vector3.new(0.34, 1.3, 0.12),
+		CFrame = cf * CFrame.Angles(0, math.rad(25), 0) * CFrame.new(0, 3.2, -1.43),
+		Color = color:Lerp(Color3.new(1, 1, 1), 0.25),
+		CanCollide = false,
+		CanQuery = false,
+		CastShadow = false,
+	})
+	Prefabs.Part(m, {
+		Name = "Snow",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.22, 1.9, 1.9),
+		CFrame = cf * CFrame.new(-0.25, 4.03, -0.2) * UPRIGHT,
+		Color = C.Snow,
+		Material = Enum.Material.Snow,
+		CanCollide = false,
+		CanQuery = false,
+		CastShadow = false,
+	})
+	return m
 end
 
 -- Small industrial shed (14 x 9 x 12) with a snowy roof and a warm glowing window.

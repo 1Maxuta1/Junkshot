@@ -219,12 +219,16 @@ function Station.Build(ground: CFrame): (Model, BasePart)
 		end
 	end
 	for side = -1, 1, 2 do
-		for index = 0, 2 do -- gears on the sign's ends
-			local tooth = part("Tooth", V(0.5, 2.2, 0.5), at(side * 7, 11.8, 4) * deg(0, 0, index * 60), rgb(255, 160, 50), M.Metal)
-			spin(tooth, at(side * 7, 11.8, 4), V(0, 0, 1), side * 0.7)
+		-- Gears beside the sign's ends: fully outside the frame (it ends at x = 6.8), so the
+		-- spinning teeth never cut through it (that flickered).
+		local gearAt = at(side * 8.3, 11.8, 4)
+		for index = 0, 2 do
+			local tooth = part("Tooth", V(0.5, 2.2, 0.5), gearAt * deg(0, 0, index * 60), rgb(255, 160, 50), M.Metal)
+			spin(tooth, gearAt, V(0, 0, 1), side * 0.7)
 		end
-		part("Gear", V(0.6, 1.6, 1.6), at(side * 7, 11.8, 4) * deg(0, 90, 0), rgb(255, 160, 50), M.Metal, C)
-		part("GearHub", V(0.7, 0.6, 0.6), at(side * 7, 11.8, 4) * deg(0, 90, 0), INK, M.Metal, C)
+		part("Gear", V(0.6, 1.6, 1.6), gearAt * deg(0, 90, 0), rgb(255, 160, 50), M.Metal, C)
+		part("GearHub", V(0.7, 0.6, 0.6), gearAt * deg(0, 90, 0), INK, M.Metal, C)
+		part("GearAxle", V(1.4, 0.3, 0.3), at(side * 7.55, 11.8, 4), STEEL, M.Metal) -- holds it to the frame
 	end
 	for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
 		local gui = Instance.new("SurfaceGui")

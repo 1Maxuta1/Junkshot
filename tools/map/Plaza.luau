@@ -47,13 +47,14 @@ local function polar(radius, degrees)
 	return Vector3.new(radius * math.cos(a), 0, radius * math.sin(a))
 end
 
--- A thin disc on the floor. Every layer is a little higher than the one below (no z-fighting).
+-- A thin disc on the floor. Every layer is 0.06 higher than the one below: smaller steps
+-- flicker (z-fighting) when the floor is seen from far away.
 local function disc(parent, name, radius, layer, color)
 	Part(parent, {
 		Name = name,
 		Shape = Enum.PartType.Cylinder,
 		Size = Vector3.new(0.1, radius * 2, radius * 2),
-		CFrame = CFrame.new(0, FLOOR - 0.04 + layer * 0.02, 0) * UPRIGHT,
+		CFrame = CFrame.new(0, FLOOR - 0.05 + layer * 0.06, 0) * UPRIGHT, -- top = FLOOR + layer * 0.06
 		Color = color,
 		CanCollide = false,
 		CanQuery = false,
@@ -70,7 +71,7 @@ local function floor(parent)
 		Part(parent, {
 			Name = "Blade",
 			Size = Vector3.new(if index % 2 == 0 then 1.6 else 0.9, 0.1, 10.5),
-			CFrame = yaw(index * 45) * CFrame.new(0, FLOOR + 0.06, -30.2),
+			CFrame = yaw(index * 45) * CFrame.new(0, FLOOR + 0.15, -30.2), -- top 0.06 above Ring2
 			Color = if index % 2 == 0 then C.Orange else C.Teal,
 			CanCollide = false,
 			CanQuery = false,
@@ -82,7 +83,7 @@ local function floor(parent)
 			Name = "Bolt",
 			Shape = Enum.PartType.Cylinder,
 			Size = Vector3.new(0.16, 1, 1),
-			CFrame = CFrame.new(polar(37.5, 11.25 + index * 22.5) + Vector3.new(0, FLOOR + 0.02, 0)) * UPRIGHT,
+			CFrame = CFrame.new(polar(37.5, 11.25 + index * 22.5) + Vector3.new(0, FLOOR + 0.13, 0)) * UPRIGHT,
 			Color = C.Metal,
 			CanCollide = false,
 			CanQuery = false,
