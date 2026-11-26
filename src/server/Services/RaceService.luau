@@ -156,7 +156,7 @@ function RaceService.Leave(player: Player)
 end
 
 local MESSAGES: { [string]: string } = {
-	Closed = "The race is not open - it starts every full hour",
+	Closed = "The race is not open - it starts every 30 minutes",
 	Full = "The race is full",
 	NoVehicle = "You need a placed vehicle (a bicycle is enough!)",
 }
@@ -603,7 +603,7 @@ function RaceService.Start()
 			local prompt = Instance.new("ProximityPrompt")
 			prompt.Name = "RacePrompt"
 			prompt.ActionText = "Join / leave"
-			prompt.ObjectText = "Hourly race"
+			prompt.ObjectText = "Race every 30 minutes"
 			prompt.KeyboardKeyCode = GameConfig.Input.MachineKey
 			prompt.GamepadKeyCode = GameConfig.Input.MachineGamepadKey
 			prompt.HoldDuration = 0

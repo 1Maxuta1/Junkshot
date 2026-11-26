@@ -20,6 +20,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 ReplicatedStorage:WaitForChild("Shared")
 
 local CONTROLLER_NAMES = {
+	"LocalizationController", -- first: texts are translated from the very first frame
 	"DataController",
 	"NotifyController",
 	"CarryController",
