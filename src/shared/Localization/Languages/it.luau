@@ -306,7 +306,7 @@ return {
 	["SELECTED"] = "SCELTO",
 	["Your hands are empty - bring items from the yard or your chest!"] = "Hai le mani vuote - porta oggetti dal deposito o dal baule!",
 	["{} selected  ·  you get {}"] = "{} scelti  ·  ricevi {}",
-	["  (+{} Haggler)"] = "  (+{} Contrattatore)",
+	["{}  (+{} Haggler)"] = "{}  (+{} Contrattatore)",
 	["{}  ·  sells for {}"] = "{}  ·  si vende a {}",
 	["{}  ·  {} (max)"] = "{}  ·  {} (max)",
 	["{} slots"] = "{} posti",
@@ -808,4 +808,11 @@ return {
 	["HANDLE WITH MITTENS"] = "MANEGGIARE CON MUFFOLE",
 	["SCRAP LIFE"] = "VITA DA ROTTAMAIO",
 	["FREE TIRES ->"] = "GOMME GRATIS ->",
+
+	-- Added after the first check in the game
+	["{} ({}/{})"] = "{} ({}/{})",
+	["PARTS"] = "PEZZI",
+	["UTILITY"] = "UTILITÀ",
+	["Build"] = "Edifici",
+	["Upgrade"] = "Potenzia",
 }

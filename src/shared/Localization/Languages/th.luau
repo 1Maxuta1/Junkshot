@@ -306,7 +306,7 @@ return {
 	["SELECTED"] = "เลือกแล้ว",
 	["Your hands are empty - bring items from the yard or your chest!"] = "มือคุณว่าง - เอาของจากลานขยะหรือหีบมา!",
 	["{} selected  ·  you get {}"] = "เลือก {}  ·  คุณได้ {}",
-	["  (+{} Haggler)"] = "  (+{} นักต่อรอง)",
+	["{}  (+{} Haggler)"] = "{}  (+{} นักต่อรอง)",
 	["{}  ·  sells for {}"] = "{}  ·  ขายได้ {}",
 	["{}  ·  {} (max)"] = "{}  ·  {} (สูงสุด)",
 	["{} slots"] = "{} ช่อง",
@@ -808,4 +808,11 @@ return {
 	["HANDLE WITH MITTENS"] = "จับด้วยถุงมือ",
 	["SCRAP LIFE"] = "ชีวิตเศษเหล็ก",
 	["FREE TIRES ->"] = "ยางฟรี ->",
+
+	-- Added after the first check in the game
+	["{} ({}/{})"] = "{} ({}/{})",
+	["PARTS"] = "ชิ้นส่วน",
+	["UTILITY"] = "ของใช้",
+	["Build"] = "สร้าง",
+	["Upgrade"] = "อัปเกรด",
 }

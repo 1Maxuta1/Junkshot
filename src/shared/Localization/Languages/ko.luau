@@ -306,7 +306,7 @@ return {
 	["SELECTED"] = "선택됨",
 	["Your hands are empty - bring items from the yard or your chest!"] = "손이 비어 있어요 - 고철장이나 상자에서 물건을 가져오세요!",
 	["{} selected  ·  you get {}"] = "{}개 선택  ·  받을 금액 {}",
-	["  (+{} Haggler)"] = "  (+{} 흥정꾼)",
+	["{}  (+{} Haggler)"] = "{}  (+{} 흥정꾼)",
 	["{}  ·  sells for {}"] = "{}  ·  판매가 {}",
 	["{}  ·  {} (max)"] = "{}  ·  {} (최대)",
 	["{} slots"] = "{}칸",
@@ -808,4 +808,11 @@ return {
 	["HANDLE WITH MITTENS"] = "장갑 끼고 취급",
 	["SCRAP LIFE"] = "고철 인생",
 	["FREE TIRES ->"] = "무료 타이어 ->",
+
+	-- Added after the first check in the game
+	["{} ({}/{})"] = "{} ({}/{})",
+	["PARTS"] = "부품",
+	["UTILITY"] = "유틸리티",
+	["Build"] = "건설",
+	["Upgrade"] = "업그레이드",
 }

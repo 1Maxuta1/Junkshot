@@ -17,7 +17,7 @@ return {
 	["Deployable"] = "Posicionável",
 	["Deployables"] = "Posicionáveis",
 	["Tool"] = "Ferramenta",
-	["Tools"] = "Ferramentas",
+	["Tools"] = "Úteis",
 	["Vehicle"] = "Veículo",
 	["Vehicles"] = "Veículos",
 	["Cosmetic"] = "Cosmético",
@@ -25,7 +25,7 @@ return {
 	["Permanent"] = "Permanente",
 	["Utility"] = "Utilidade",
 	["Parts"] = "Peças",
-	["Rides"] = "Veículos",
+	["Rides"] = "Rodas",
 	["Special"] = "Especial",
 
 	["Rusty Can"] = "Lata enferrujada",
@@ -306,7 +306,7 @@ return {
 	["SELECTED"] = "ESCOLHIDO",
 	["Your hands are empty - bring items from the yard or your chest!"] = "Suas mãos estão vazias - traga itens do ferro-velho ou do baú!",
 	["{} selected  ·  you get {}"] = "{} escolhidos  ·  você ganha {}",
-	["  (+{} Haggler)"] = "  (+{} Pechincheiro)",
+	["{}  (+{} Haggler)"] = "{}  (+{} Pechincheiro)",
 	["{}  ·  sells for {}"] = "{}  ·  vende por {}",
 	["{}  ·  {} (max)"] = "{}  ·  {} (máx.)",
 	["{} slots"] = "{} espaços",
@@ -808,4 +808,11 @@ return {
 	["HANDLE WITH MITTENS"] = "MANUSEAR COM LUVAS",
 	["SCRAP LIFE"] = "VIDA DE SUCATA",
 	["FREE TIRES ->"] = "PNEUS GRÁTIS ->",
+
+	-- Added after the first check in the game
+	["{} ({}/{})"] = "{} ({}/{})",
+	["PARTS"] = "PEÇAS",
+	["UTILITY"] = "UTILIDADE",
+	["Build"] = "Obras",
+	["Upgrade"] = "Melhorar",
 }

@@ -306,7 +306,7 @@ return {
 	["SELECTED"] = "選択中",
 	["Your hands are empty - bring items from the yard or your chest!"] = "手が空っぽ - 置き場かチェストから持ってこよう!",
 	["{} selected  ·  you get {}"] = "{}個選択  ·  受け取り {}",
-	["  (+{} Haggler)"] = "  (+{} 値切り上手)",
+	["{}  (+{} Haggler)"] = "{}  (+{} 値切り上手)",
 	["{}  ·  sells for {}"] = "{}  ·  売値 {}",
 	["{}  ·  {} (max)"] = "{}  ·  {} (最大)",
 	["{} slots"] = "{}枠",
@@ -808,4 +808,11 @@ return {
 	["HANDLE WITH MITTENS"] = "ミトンで取り扱い",
 	["SCRAP LIFE"] = "スクラップ人生",
 	["FREE TIRES ->"] = "タイヤ無料 ->",
+
+	-- Added after the first check in the game
+	["{} ({}/{})"] = "{} ({}/{})",
+	["PARTS"] = "パーツ",
+	["UTILITY"] = "便利アイテム",
+	["Build"] = "建てる",
+	["Upgrade"] = "強化",
 }

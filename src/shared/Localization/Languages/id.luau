@@ -24,8 +24,8 @@ return {
 	["Cosmetics"] = "Kosmetik",
 	["Permanent"] = "Permanen",
 	["Utility"] = "Berguna",
-	["Parts"] = "Suku cadang",
-	["Rides"] = "Kendaraan",
+	["Parts"] = "Komponen",
+	["Rides"] = "Roda",
 	["Special"] = "Spesial",
 
 	["Rusty Can"] = "Kaleng karatan",
@@ -306,7 +306,7 @@ return {
 	["SELECTED"] = "DIPILIH",
 	["Your hands are empty - bring items from the yard or your chest!"] = "Tanganmu kosong - bawa barang dari tempat rongsok atau petimu!",
 	["{} selected  ·  you get {}"] = "{} dipilih  ·  kamu dapat {}",
-	["  (+{} Haggler)"] = "  (+{} Penawar)",
+	["{}  (+{} Haggler)"] = "{}  (+{} Penawar)",
 	["{}  ·  sells for {}"] = "{}  ·  dijual {}",
 	["{}  ·  {} (max)"] = "{}  ·  {} (maks)",
 	["{} slots"] = "{} slot",
@@ -808,4 +808,11 @@ return {
 	["HANDLE WITH MITTENS"] = "PEGANG PAKAI SARUNG TANGAN",
 	["SCRAP LIFE"] = "HIDUP RONGSOKAN",
 	["FREE TIRES ->"] = "BAN GRATIS ->",
+
+	-- Added after the first check in the game
+	["{} ({}/{})"] = "{} ({}/{})",
+	["PARTS"] = "SUKU CADANG",
+	["UTILITY"] = "BERGUNA",
+	["Build"] = "Bangun",
+	["Upgrade"] = "Tingkatkan",
 }

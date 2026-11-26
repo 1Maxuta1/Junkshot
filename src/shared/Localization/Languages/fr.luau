@@ -25,7 +25,7 @@ return {
 	["Permanent"] = "Permanent",
 	["Utility"] = "Utilitaire",
 	["Parts"] = "Pièces",
-	["Rides"] = "Véhicules",
+	["Rides"] = "Roues",
 	["Special"] = "Spécial",
 
 	["Rusty Can"] = "Canette rouillée",
@@ -306,7 +306,7 @@ return {
 	["SELECTED"] = "CHOISI",
 	["Your hands are empty - bring items from the yard or your chest!"] = "Tes mains sont vides - apporte des objets de la casse ou de ton coffre !",
 	["{} selected  ·  you get {}"] = "{} choisis  ·  tu reçois {}",
-	["  (+{} Haggler)"] = "  (+{} Marchandeur)",
+	["{}  (+{} Haggler)"] = "{}  (+{} Marchandeur)",
 	["{}  ·  sells for {}"] = "{}  ·  se vend {}",
 	["{}  ·  {} (max)"] = "{}  ·  {} (max)",
 	["{} slots"] = "{} places",
@@ -808,4 +808,11 @@ return {
 	["HANDLE WITH MITTENS"] = "MANIPULER AVEC MOUFLES",
 	["SCRAP LIFE"] = "VIE DE FERRAILLE",
 	["FREE TIRES ->"] = "PNEUS GRATUITS ->",
+
+	-- Added after the first check in the game
+	["{} ({}/{})"] = "{} ({}/{})",
+	["PARTS"] = "PIÈCES",
+	["UTILITY"] = "UTILITAIRE",
+	["Build"] = "Bâtir",
+	["Upgrade"] = "Améliorer",
 }

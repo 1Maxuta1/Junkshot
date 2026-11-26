@@ -12,8 +12,9 @@
 	  In the translation "{}" are filled in order, "{1}", "{2}"... by number (any order,
 	  a value may be left out). Every filled-in value is translated too, so item names inside a
 	  message come out in the player's language; a player's name simply stays as it is.
-	Lookup order: the exact text -> rich text (each text run alone) -> each line alone ->
-	"{}" patterns (more specific ones first). Nothing found: the English text stays.
+	Lookup order: the exact text -> "{}" patterns (more specific ones first) -> rich text
+	(each text run alone) -> parts between "·" alone -> each line alone. Nothing found: the
+	English text stays.
 
 	Language: LocalizationService.RobloxLocaleId (the player's Roblox language setting), the
 	Studio override ReplicatedStorage attribute "ForceLanguage" (e.g. "es"), else English.
@@ -116,13 +117,26 @@ function Localization.NewTranslator(code: string, entries: { [string]: string },
 				return (head :: string) .. inner .. (tail :: string)
 			end
 		end
+		-- Patterns are tried on the text without its outer spaces, which are put back after.
+		local outerHead, inner, outerTail = "", text, ""
+		if body ~= nil and body ~= "" and body ~= text then
+			outerHead, inner, outerTail = head :: string, body :: string, tail :: string
+		end
 		for _, entry in patterns do
-			local values = { string.match(text, entry.Pattern) }
-			if #values > 0 then
+			local values = { string.match(inner, entry.Pattern) }
+			local joined = false
+			for _, value in values do
+				-- A "{}" never swallows a separator: "6 slots -> 7 slots" is two parts, not "{} slots".
+				if string.find(value, "·", 1, true) or string.find(value, " -> ", 1, true) then
+					joined = true
+					break
+				end
+			end
+			if #values > 0 and not joined then
 				for index, value in values do
 					values[index] = translate(value, depth + 1)
 				end
-				return fill(entry.Translation, values)
+				return outerHead .. fill(entry.Translation, values) .. outerTail
 			end
 		end
 		return nil
@@ -158,6 +172,20 @@ function Localization.NewTranslator(code: string, entries: { [string]: string },
 			end
 			result = table.concat(parts)
 		end
+		if result == nil and string.find(text, "·", 1, true) then
+			-- "Common  ·  HANDS  ·  12 K": every part between the dots on its own.
+			result = string.gsub(text, "([^·]+)", function(part: string): string
+				return translate(part, level + 1, own)
+			end)
+		end
+		if result == nil and string.find(text, " -> ", 1, true) then
+			-- "6 slots -> 7 slots": both sides of the arrow on their own.
+			local sides = string.split(text, " -> ")
+			for index, side in sides do
+				sides[index] = translate(side, level + 1, own)
+			end
+			result = table.concat(sides, " -> ")
+		end
 		if result == nil and string.find(text, "\n", 1, true) then
 			local lines = string.split(text, "\n")
 			for index, line in lines do
@@ -166,7 +194,7 @@ function Localization.NewTranslator(code: string, entries: { [string]: string },
 			result = table.concat(lines, "\n")
 		end
 		if result == nil then
-			if record and own then
+			if record and own and string.find(text, "%a%a") then -- amounts like "12 K" need nothing
 				missing[text] = true
 			end
 			result = text

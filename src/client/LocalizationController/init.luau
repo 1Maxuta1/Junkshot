@@ -8,8 +8,8 @@
 	type into them. English players: nothing is watched at all.
 
 	Studio only: ReplicatedStorage attribute ForceLanguage = "es" (or any code) picks the
-	language, and _G.JunkshotMissingText lists the texts that had no translation, for
-	tools/i18n.
+	language, and PlayerGui.LocalizationDebug:Invoke() lists the texts that had no
+	translation, for tools/i18n.
 ]]
 
 local LocalizationService = game:GetService("LocalizationService")
@@ -42,6 +42,25 @@ local function languageCode(): string
 	return Localization.CodeFor(localPlayer.LocaleId)
 end
 
+-- Labels are sized for English. A longer translation in a scaled label may shrink further
+-- instead of breaking a word in the middle ("Транспо рт"). TextWrapped stays as it is:
+-- switching it off makes a scaled label pick a much smaller size.
+local LONGER = 1.15
+local MIN_SIZE = 8
+
+local function fitLonger(label: TextLabel | TextButton, english: string, translated: string)
+	if not label.TextScaled or utf8.len(translated) == nil or utf8.len(english) == nil then
+		return
+	end
+	if (utf8.len(translated) :: number) <= (utf8.len(english) :: number) * LONGER then
+		return
+	end
+	local constraint = label:FindFirstChildOfClass("UITextSizeConstraint")
+	if constraint ~= nil and constraint.MinTextSize > MIN_SIZE then
+		constraint.MinTextSize = MIN_SIZE
+	end
+end
+
 local function apply(label: TextLabel | TextButton)
 	local active = translator
 	if active == nil then
@@ -55,6 +74,7 @@ local function apply(label: TextLabel | TextButton)
 	written[label] = translated
 	if translated ~= text then
 		label.Text = translated
+		fitLonger(label, text, translated)
 	end
 end
 
@@ -111,7 +131,18 @@ function LocalizationController.Start()
 	local active = Localization.NewTranslator(code, entries, RunService:IsStudio())
 	translator = active
 	if RunService:IsStudio() then
-		(_G :: any).JunkshotMissingText = active.Missing
+		-- tools/i18n: PlayerGui.LocalizationDebug:Invoke() lists the texts that had no translation.
+		local debug = Instance.new("BindableFunction")
+		debug.Name = "LocalizationDebug"
+		debug.OnInvoke = function(): { string }
+			local list = {}
+			for text in active.Missing do
+				table.insert(list, text)
+			end
+			table.sort(list)
+			return list
+		end
+		debug.Parent = localPlayer:WaitForChild("PlayerGui")
 	end
 	task.spawn(function()
 		watchTree(localPlayer:WaitForChild("PlayerGui"))

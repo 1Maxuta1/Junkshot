@@ -17,7 +17,7 @@ return {
 	["Deployable"] = "Do postawienia",
 	["Deployables"] = "Do postawienia",
 	["Tool"] = "Narzędzie",
-	["Tools"] = "Narzędzia",
+	["Tools"] = "Sprzęt",
 	["Vehicle"] = "Pojazd",
 	["Vehicles"] = "Pojazdy",
 	["Cosmetic"] = "Wygląd",
@@ -306,7 +306,7 @@ return {
 	["SELECTED"] = "WYBRANO",
 	["Your hands are empty - bring items from the yard or your chest!"] = "Masz puste ręce - przynieś rzeczy ze składowiska lub ze skrzyni!",
 	["{} selected  ·  you get {}"] = "Wybrano: {}  ·  dostaniesz {}",
-	["  (+{} Haggler)"] = "  (+{} Targowanie)",
+	["{}  (+{} Haggler)"] = "{}  (+{} Targowanie)",
 	["{}  ·  sells for {}"] = "{}  ·  sprzedaż za {}",
 	["{}  ·  {} (max)"] = "{}  ·  {} (maks.)",
 	["{} slots"] = "{} miejsc",
@@ -808,4 +808,11 @@ return {
 	["HANDLE WITH MITTENS"] = "NOSIĆ W RĘKAWICACH",
 	["SCRAP LIFE"] = "ŻYCIE NA ZŁOMIE",
 	["FREE TIRES ->"] = "OPONY ZA DARMO ->",
+
+	-- Added after the first check in the game
+	["{} ({}/{})"] = "{} ({}/{})",
+	["PARTS"] = "CZĘŚCI",
+	["UTILITY"] = "PRZYDATNE",
+	["Build"] = "Zbuduj",
+	["Upgrade"] = "Ulepsz",
 }

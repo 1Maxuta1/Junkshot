@@ -306,7 +306,7 @@ return {
 	["SELECTED"] = "已选择",
 	["Your hands are empty - bring items from the yard or your chest!"] = "你手里是空的 - 从废品场或箱子里拿点东西来!",
 	["{} selected  ·  you get {}"] = "已选 {}  ·  可得 {}",
-	["  (+{} Haggler)"] = "  (+{} 砍价高手)",
+	["{}  (+{} Haggler)"] = "{}  (+{} 砍价高手)",
 	["{}  ·  sells for {}"] = "{}  ·  售价 {}",
 	["{}  ·  {} (max)"] = "{}  ·  {}(最高)",
 	["{} slots"] = "{} 格",
@@ -808,4 +808,11 @@ return {
 	["HANDLE WITH MITTENS"] = "请戴手套搬运",
 	["SCRAP LIFE"] = "废品人生",
 	["FREE TIRES ->"] = "免费轮胎 ->",
+
+	-- Added after the first check in the game
+	["{} ({}/{})"] = "{} ({}/{})",
+	["PARTS"] = "零件",
+	["UTILITY"] = "实用",
+	["Build"] = "建造",
+	["Upgrade"] = "升级",
 }

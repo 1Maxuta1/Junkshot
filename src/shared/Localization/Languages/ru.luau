@@ -19,7 +19,7 @@ return {
 	["Deployable"] = "Устанавливаемый",
 	["Deployables"] = "Устанавливаемое",
 	["Tool"] = "Инструмент",
-	["Tools"] = "Инструменты",
+	["Tools"] = "Орудия",
 	["Vehicle"] = "Транспорт",
 	["Vehicles"] = "Транспорт",
 	["Cosmetic"] = "Внешний вид",
@@ -27,7 +27,7 @@ return {
 	["Permanent"] = "Навсегда",
 	["Utility"] = "Полезное",
 	["Parts"] = "Детали",
-	["Rides"] = "Транспорт",
+	["Rides"] = "Колёса",
 	["Special"] = "Особое",
 
 	-- Junk
@@ -225,7 +225,7 @@ return {
 	["Threw {}!"] = "Брошено: {}!",
 	["Nothing to throw - pick up some junk!"] = "Нечего бросать — подбери хлам!",
 	["YOU"] = "ТЫ",
-	["R$ SHOP"] = "МАГАЗИН R$",
+	["R$ SHOP"] = "ДОНАТ",
 	["SOUND"] = "ЗВУК",
 	["BAG"] = "СУМКА",
 	["QUESTS"] = "ЗАДАНИЯ",
@@ -320,7 +320,7 @@ return {
 	["SELECTED"] = "ВЫБРАНО",
 	["Your hands are empty - bring items from the yard or your chest!"] = "Руки пусты — принеси вещи со свалки или из сундука!",
 	["{} selected  ·  you get {}"] = "Выбрано: {}  ·  получишь {}",
-	["  (+{} Haggler)"] = "  (+{} Торгаш)",
+	["{}  (+{} Haggler)"] = "{}  (+{} Торгаш)",
 	["{}  ·  sells for {}"] = "{}  ·  продаётся за {}",
 	["{}  ·  {} (max)"] = "{}  ·  {} (макс.)",
 	["{} slots"] = "{} мест",
@@ -753,7 +753,7 @@ return {
 	[" SWAP IN {} "] = " ОБМЕН ЧЕРЕЗ {} ",
 	["Swap with {} in {}"] = "Обмен с {} через {}",
 	["Trading with {}"] = "Обмен с {}",
-	["Ready"] = "Готов",
+	["Ready"] = "Готово",
 	["{} wants to trade"] = "{} хочет обменяться",
 	["Accept to open the trade"] = "Прими, чтобы открыть обмен",
 	["ACCEPT"] = "ПРИНЯТЬ",
@@ -837,4 +837,11 @@ return {
 	["HANDLE WITH MITTENS"] = "БРАТЬ В ВАРЕЖКАХ",
 	["SCRAP LIFE"] = "ЖИЗНЬ НА СВАЛКЕ",
 	["FREE TIRES ->"] = "ШИНЫ ДАРОМ ->",
+
+	-- Added after the first check in the game
+	["{} ({}/{})"] = "{} ({}/{})",
+	["PARTS"] = "ДЕТАЛИ",
+	["UTILITY"] = "ПОЛЕЗНОЕ",
+	["Build"] = "Стройка",
+	["Upgrade"] = "Улучшить",
 }

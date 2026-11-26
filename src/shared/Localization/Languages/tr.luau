@@ -306,7 +306,7 @@ return {
 	["SELECTED"] = "SEÇİLDİ",
 	["Your hands are empty - bring items from the yard or your chest!"] = "Ellerin boş - hurdalıktan ya da sandığından eşya getir!",
 	["{} selected  ·  you get {}"] = "{} seçildi  ·  alacağın {}",
-	["  (+{} Haggler)"] = "  (+{} Pazarlıkçı)",
+	["{}  (+{} Haggler)"] = "{}  (+{} Pazarlıkçı)",
 	["{}  ·  sells for {}"] = "{}  ·  satış fiyatı {}",
 	["{}  ·  {} (max)"] = "{}  ·  {} (maks)",
 	["{} slots"] = "{} yer",
@@ -808,4 +808,11 @@ return {
 	["HANDLE WITH MITTENS"] = "ELDİVENLE TUTUN",
 	["SCRAP LIFE"] = "HURDA HAYATI",
 	["FREE TIRES ->"] = "BEDAVA LASTİK ->",
+
+	-- Added after the first check in the game
+	["{} ({}/{})"] = "{} ({}/{})",
+	["PARTS"] = "PARÇALAR",
+	["UTILITY"] = "YARARLI",
+	["Build"] = "İnşa et",
+	["Upgrade"] = "Geliştir",
 }

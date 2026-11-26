@@ -306,7 +306,7 @@ return {
 	["SELECTED"] = "ĐÃ CHỌN",
 	["Your hands are empty - bring items from the yard or your chest!"] = "Tay bạn trống - mang đồ từ bãi hoặc rương tới!",
 	["{} selected  ·  you get {}"] = "Đã chọn {}  ·  bạn nhận {}",
-	["  (+{} Haggler)"] = "  (+{} Mặc cả)",
+	["{}  (+{} Haggler)"] = "{}  (+{} Mặc cả)",
 	["{}  ·  sells for {}"] = "{}  ·  bán được {}",
 	["{}  ·  {} (max)"] = "{}  ·  {} (tối đa)",
 	["{} slots"] = "{} ô",
@@ -808,4 +808,11 @@ return {
 	["HANDLE WITH MITTENS"] = "CẦM BẰNG GĂNG TAY",
 	["SCRAP LIFE"] = "ĐỜI PHẾ LIỆU",
 	["FREE TIRES ->"] = "LỐP MIỄN PHÍ ->",
+
+	-- Added after the first check in the game
+	["{} ({}/{})"] = "{} ({}/{})",
+	["PARTS"] = "LINH KIỆN",
+	["UTILITY"] = "TIỆN ÍCH",
+	["Build"] = "Xây",
+	["Upgrade"] = "Nâng cấp",
 }

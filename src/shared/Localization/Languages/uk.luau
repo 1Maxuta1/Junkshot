@@ -17,7 +17,7 @@ return {
 	["Deployable"] = "Встановлюваний",
 	["Deployables"] = "Встановлюване",
 	["Tool"] = "Інструмент",
-	["Tools"] = "Інструменти",
+	["Tools"] = "Знаряддя",
 	["Vehicle"] = "Транспорт",
 	["Vehicles"] = "Транспорт",
 	["Cosmetic"] = "Зовнішній вигляд",
@@ -25,7 +25,7 @@ return {
 	["Permanent"] = "Назавжди",
 	["Utility"] = "Корисне",
 	["Parts"] = "Деталі",
-	["Rides"] = "Транспорт",
+	["Rides"] = "Колеса",
 	["Special"] = "Особливе",
 
 	["Rusty Can"] = "Іржава бляшанка",
@@ -306,7 +306,7 @@ return {
 	["SELECTED"] = "ОБРАНО",
 	["Your hands are empty - bring items from the yard or your chest!"] = "Руки порожні — принеси речі зі звалища або зі скрині!",
 	["{} selected  ·  you get {}"] = "Обрано: {}  ·  отримаєш {}",
-	["  (+{} Haggler)"] = "  (+{} Торгаш)",
+	["{}  (+{} Haggler)"] = "{}  (+{} Торгаш)",
 	["{}  ·  sells for {}"] = "{}  ·  продається за {}",
 	["{}  ·  {} (max)"] = "{}  ·  {} (макс.)",
 	["{} slots"] = "{} місць",
@@ -727,7 +727,7 @@ return {
 	[" SWAP IN {} "] = " ОБМІН ЧЕРЕЗ {} ",
 	["Swap with {} in {}"] = "Обмін із {} через {}",
 	["Trading with {}"] = "Обмін із {}",
-	["Ready"] = "Готовий",
+	["Ready"] = "Готово",
 	["{} wants to trade"] = "{} хоче обмінятися",
 	["Accept to open the trade"] = "Прийми, щоб відкрити обмін",
 	["ACCEPT"] = "ПРИЙНЯТИ",
@@ -808,4 +808,11 @@ return {
 	["HANDLE WITH MITTENS"] = "БРАТИ В РУКАВИЦЯХ",
 	["SCRAP LIFE"] = "ЖИТТЯ НА ЗВАЛИЩІ",
 	["FREE TIRES ->"] = "ШИНИ ДАРМА ->",
+
+	-- Added after the first check in the game
+	["{} ({}/{})"] = "{} ({}/{})",
+	["PARTS"] = "ДЕТАЛІ",
+	["UTILITY"] = "КОРИСНЕ",
+	["Build"] = "Будова",
+	["Upgrade"] = "Покращити",
 }
