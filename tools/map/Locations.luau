@@ -89,6 +89,7 @@ local function tire(parent, cf, diameter, color, hole)
 		Size = Vector3.new(width, diameter, diameter),
 		CFrame = cf * UPRIGHT,
 		Color = color,
+		CanCollide = true, -- you climb the heap, you never walk through it
 	})
 	if hole then
 		detail(parent, {
@@ -173,7 +174,7 @@ local function puddle(parent, cf, size)
 			Name = "Oil",
 			Shape = Enum.PartType.Cylinder,
 			Size = Vector3.new(0.04, size * piece[3], size * piece[3] * 0.8),
-			CFrame = cf * CFrame.new(piece[1], 0.14 + index * 0.05, piece[2]) * UPRIGHT,
+			CFrame = cf * CFrame.new(piece[1], 0.33 + index * 0.06, piece[2]) * UPRIGHT,
 			Color = rgb(24, 24, 32),
 			Material = Enum.Material.Glass,
 		})
@@ -191,8 +192,8 @@ local function wreck(parent, cf, color)
 	solid(m, { Name = "Body", Size = Vector3.new(9, 1.8, 4.2), CFrame = cf * CFrame.new(0, 1.9, 0) * CFrame.Angles(0, 0, 0.04), Color = color, Material = Enum.Material.Metal })
 	solid(m, { Name = "Roof", Size = Vector3.new(4.6, 1.6, 3.8), CFrame = cf * CFrame.new(-0.6, 3.5, 0), Color = color, Material = Enum.Material.Metal })
 	detail(m, { Name = "Windshield", Size = Vector3.new(0.2, 1.4, 3.6), CFrame = cf * CFrame.new(1.8, 3.4, 0) * CFrame.Angles(0, 0, math.rad(-30)), Color = rgb(150, 190, 220), Material = Enum.Material.Glass })
-	detail(m, { Name = "Window", Size = Vector3.new(3.6, 1, 3.85), CFrame = cf * CFrame.new(-0.8, 3.55, 0), Color = rgb(60, 80, 100), Material = Enum.Material.Glass })
-	detail(m, { Name = "Rust", Size = Vector3.new(2.4, 1.2, 4.25), CFrame = cf * CFrame.new(-2.6, 1.9, 0), Color = rgb(150, 82, 46), Material = Enum.Material.CorrodedMetal })
+	detail(m, { Name = "Window", Size = Vector3.new(3.6, 1, 4.0), CFrame = cf * CFrame.new(-0.8, 3.55, 0), Color = rgb(60, 80, 100), Material = Enum.Material.Glass })
+	detail(m, { Name = "Rust", Size = Vector3.new(2.4, 1.2, 4.4), CFrame = cf * CFrame.new(-2.6, 1.9, 0), Color = rgb(150, 82, 46), Material = Enum.Material.CorrodedMetal })
 	detail(m, { Name = "Bumper", Size = Vector3.new(0.4, 0.5, 4.4), CFrame = cf * CFrame.new(4.6, 1.4, 0), Color = C.Metal, Material = Enum.Material.Metal })
 	detail(m, { Name = "Snow", Size = Vector3.new(4.4, 0.25, 3.6), CFrame = cf * CFrame.new(-0.6, 4.4, 0), Color = C.Snow, Material = Enum.Material.Snow })
 	for _, z in { -1.4, 1.4 } do
@@ -218,7 +219,7 @@ end
 
 -- `at(x, y, z, yaw)` is the zone's frame. In this zone local -X points away from the plaza
 -- (build.luau's lookAt is mirrored), local Z runs along the zone's edge. The junk field is
--- x in [-23, 23], z in [-21, 31] (SpawnArea in build.luau), so everything here stays outside.
+-- x in [-21, 21], z in [-21, 31] (SpawnArea in build.luau), so everything here stays outside.
 function Locations.TireMountain(parent, at)
 	-- Behind the field: the mountain itself and two smaller heaps beside it.
 	tirePile(parent, at(-37, 0, 4), 12.5, 14, 11)
@@ -325,24 +326,52 @@ local function towerCrane(parent, cf)
 	-- Mast
 	local mastTop = 48
 	lattice(m, cf, 3.6, 2.2, mastTop, 4.6)
+	-- Ladder up the outside of the mast (a TrussPart: characters climb it by themselves), from
+	-- the footing to just above the platform. The rail opening on that side lets you step on.
+	Prefabs.Part(m, {
+		ClassName = "TrussPart",
+		Name = "Ladder",
+		-- Up to 4 above the platform's floor so you climb past it and step on through the gap
+		-- in the railing; beside the cab (x < 0), which stands on the other half.
+		Size = Vector3.new(2, mastTop + 2.4, 2),
+		CFrame = cf * CFrame.new(-1.1, 1.6 + (mastTop + 2.4) / 2, -2.85),
+		Color = rgb(255, 148, 36),
+		Material = Enum.Material.Metal,
+		CastShadow = false,
+	})
 	-- Slewing unit, cab, A-frame
 	local head = cf * CFrame.new(0, mastTop, 0)
 	solid(m, { Name = "Slew", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.2, 5, 5), CFrame = head * CFrame.new(0, 0.6, 0) * UPRIGHT, Color = C.Ink, Material = Enum.Material.Metal })
 	solid(m, { Name = "Platform", Size = Vector3.new(6, 0.8, 5), CFrame = head * CFrame.new(0, 1.6, 0), Color = YELLOW, Material = Enum.Material.Metal })
-	solid(m, { Name = "Cab", Size = Vector3.new(3.6, 3.4, 3.4), CFrame = head * CFrame.new(1.2, 3.6, -3.4), Color = rgb(236, 74, 70), Material = Enum.Material.Metal })
-	detail(m, { Name = "CabGlass", Size = Vector3.new(3.4, 2, 0.2), CFrame = head * CFrame.new(1.2, 4, -5.15), Color = rgb(140, 200, 240), Material = Enum.Material.Glass, Transparency = 0.2 })
-	detail(m, { Name = "CabGlassSide", Size = Vector3.new(0.2, 2, 3), CFrame = head * CFrame.new(3.05, 4, -3.4), Color = rgb(140, 200, 240), Material = Enum.Material.Glass, Transparency = 0.2 })
-	local cabLight = detail(m, { Name = "CabLight", Size = Vector3.new(1, 0.3, 1), CFrame = head * CFrame.new(1.2, 5.2, -3.4), Color = rgb(255, 220, 150), Material = Enum.Material.Neon })
+	solid(m, { Name = "Cab", Size = Vector3.new(3.6, 3.4, 3.4), CFrame = head * CFrame.new(1.9, 3.6, -3.4), Color = rgb(236, 74, 70), Material = Enum.Material.Metal })
+	detail(m, { Name = "CabGlass", Size = Vector3.new(3.4, 2, 0.2), CFrame = head * CFrame.new(1.9, 4, -5.15), Color = rgb(140, 200, 240), Material = Enum.Material.Glass, Transparency = 0.2 })
+	detail(m, { Name = "CabGlassSide", Size = Vector3.new(0.2, 2, 3), CFrame = head * CFrame.new(3.75, 4, -3.4), Color = rgb(140, 200, 240), Material = Enum.Material.Glass, Transparency = 0.2 })
+	local cabLight = detail(m, { Name = "CabLight", Size = Vector3.new(1, 0.3, 1), CFrame = head * CFrame.new(1.9, 5.2, -3.4), Color = rgb(255, 220, 150), Material = Enum.Material.Neon })
 	local glow = Instance.new("PointLight")
 	glow.Color = rgb(255, 210, 140)
 	glow.Range = 8
 	glow.Brightness = 0.8
 	glow.Shadows = false
 	glow.Parent = cabLight
-	for _, z in { -1.2, 1.2 } do
-		detail(m, { Name = "AFrame", Size = Vector3.new(0.4, 9, 0.4), CFrame = head * CFrame.new(0, 6.5, z) * CFrame.Angles(math.rad(z > 0 and -8 or 8), 0, 0), Color = YELLOW, Material = Enum.Material.Metal })
+	-- A-frame: four legs from the platform's corners to one apex, where the pendants hang.
+	local apexPoint = (head * CFrame.new(0, 11, 0)).Position
+	for _, x in { -1.6, 1.6 } do
+		for _, z in { -1.4, 1.4 } do
+			-- No collision: you stand on the platform, not on the slanted legs.
+			bar(m, (head * CFrame.new(x, 2, z)).Position, apexPoint, 0.4, YELLOW, true).CanCollide = false
+		end
 	end
 	warningLight(m, head * CFrame.new(0, 11.4, 0))
+	-- Railing around the platform (players get up here by the ladder).
+	-- The -Z side has a gap above the ladder (x from -2.1 to -0.1).
+	for _, rail in { { -2.6, -2.5, 0.8, 0.2 }, { 1.5, -2.5, 3, 0.2 }, { 0, 2.5, 6, 0.2 }, { -3, 0, 0.2, 5 }, { 3, 0, 0.2, 5 } } do
+		solid(m, { Name = "Rail", Size = Vector3.new(rail[3], 0.2, rail[4]), CFrame = head * CFrame.new(rail[1], 3.2, rail[2]), Color = rgb(255, 148, 36), Material = Enum.Material.Metal, CastShadow = false })
+	end
+	for _, x in { -3, 3 } do
+		for _, z in { -2.5, 2.5 } do
+			solid(m, { Name = "RailPost", Size = Vector3.new(0.2, 1.2, 0.2), CFrame = head * CFrame.new(x, 2.6, z), Color = rgb(255, 148, 36), Material = Enum.Material.Metal, CastShadow = false })
+		end
+	end
 	-- Jib (+X) and counter-jib (-X)
 	boom(m, head * CFrame.new(2.4, 1.2, 0), 40, 2.6, 2.2, 3.3)
 	boom(m, head * CFrame.new(-14.4, 1.2, 0), 12, 1.6, 2.6, 3)
@@ -390,12 +419,13 @@ end
 local function cabin(parent, cf)
 	local m = model(parent, "SiteCabin")
 	solid(m, { Name = "Body", Size = Vector3.new(14, 6, 7), CFrame = cf * CFrame.new(0, 3.6, 0), Color = rgb(236, 236, 240), Material = Enum.Material.Metal })
-	for _, x in { -6.6, 6.6 } do
-		detail(m, { Name = "Corner", Size = Vector3.new(0.8, 6.2, 7.2), CFrame = cf * CFrame.new(x, 3.6, 0), Color = rgb(58, 138, 236), Material = Enum.Material.Metal })
+	-- Every trim piece stands at least 0.2 out of the walls (closer faces flicker).
+	for _, x in { -6.85, 6.85 } do
+		detail(m, { Name = "Corner", Size = Vector3.new(0.8, 6.4, 7.5), CFrame = cf * CFrame.new(x, 3.6, 0), Color = rgb(58, 138, 236), Material = Enum.Material.Metal })
 	end
-	detail(m, { Name = "Stripe", Size = Vector3.new(12.4, 0.5, 7.1), CFrame = cf * CFrame.new(0, 1.2, 0), Color = rgb(58, 138, 236), Material = Enum.Material.Metal })
+	detail(m, { Name = "Stripe", Size = Vector3.new(12.6, 0.5, 7.4), CFrame = cf * CFrame.new(0, 1.2, 0), Color = rgb(58, 138, 236), Material = Enum.Material.Metal })
 	for index, x in { -3.6, 3.2 } do
-		local window = detail(m, { Name = "Window", Size = Vector3.new(3, 1.8, 0.2), CFrame = cf * CFrame.new(x, 4.2, -3.55), Color = rgb(255, 214, 140), Material = Enum.Material.Neon })
+		local window = detail(m, { Name = "Window", Size = Vector3.new(3, 1.8, 0.2), CFrame = cf * CFrame.new(x, 4.2, -3.65), Color = rgb(255, 214, 140), Material = Enum.Material.Neon })
 		if index == 1 then
 			local light = Instance.new("PointLight")
 			light.Color = rgb(255, 200, 130)
@@ -404,9 +434,9 @@ local function cabin(parent, cf)
 			light.Shadows = false
 			light.Parent = window
 		end
-		detail(m, { Name = "Frame", Size = Vector3.new(3.4, 0.25, 0.3), CFrame = cf * CFrame.new(x, 3.25, -3.55), Color = C.Ink })
+		detail(m, { Name = "Frame", Size = Vector3.new(3.4, 0.25, 0.4), CFrame = cf * CFrame.new(x, 3.25, -3.7), Color = C.Ink })
 	end
-	detail(m, { Name = "Door", Size = Vector3.new(1.8, 3.8, 0.2), CFrame = cf * CFrame.new(0, 2.9, -3.55), Color = rgb(58, 138, 236), Material = Enum.Material.Metal })
+	detail(m, { Name = "Door", Size = Vector3.new(1.8, 3.8, 0.2), CFrame = cf * CFrame.new(0, 2.9, -3.65), Color = rgb(58, 138, 236), Material = Enum.Material.Metal })
 	for step = 0, 2 do
 		detail(m, { Name = "Step", Size = Vector3.new(2.4, 0.3, 0.9), CFrame = cf * CFrame.new(0, 0.3 + step * 0.35, -4.4 + step * 0.4), Color = STEEL, Material = Enum.Material.DiamondPlate, CanCollide = true })
 	end
@@ -424,7 +454,7 @@ local function jerseyBarrier(parent, cf, color)
 	solid(m, { Name = "Base", Size = Vector3.new(6, 1, 2), CFrame = cf * CFrame.new(0, 0.5, 0), Color = CONCRETE, Material = Enum.Material.Concrete })
 	solid(m, { Name = "Top", Size = Vector3.new(6, 1.4, 0.9), CFrame = cf * CFrame.new(0, 1.7, 0), Color = CONCRETE, Material = Enum.Material.Concrete })
 	for index = 0, 2 do
-		detail(m, { Name = "Stripe", Size = Vector3.new(1, 0.9, 0.95), CFrame = cf * CFrame.new(-2 + index * 2, 1.8, 0) * CFrame.Angles(0, 0, math.rad(35)), Color = if index % 2 == 0 then color else C.Snow })
+		detail(m, { Name = "Stripe", Size = Vector3.new(1, 0.9, 1.1), CFrame = cf * CFrame.new(-2 + index * 2, 1.8, 0) * CFrame.Angles(0, 0, math.rad(35)), Color = if index % 2 == 0 then color else C.Snow })
 	end
 	return m
 end
@@ -432,7 +462,7 @@ end
 local function cone(parent, cf)
 	detail(parent, { Name = "ConeBase", Size = Vector3.new(1.4, 0.2, 1.4), CFrame = cf * CFrame.new(0, 0.1, 0), Color = C.Ink })
 	detail(parent, { Name = "Cone", Shape = Enum.PartType.Cylinder, Size = Vector3.new(1.6, 0.9, 0.9), CFrame = cf * CFrame.new(0, 1, 0) * UPRIGHT, Color = rgb(255, 120, 30) })
-	detail(parent, { Name = "ConeStripe", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.35, 0.95, 0.95), CFrame = cf * CFrame.new(0, 1.15, 0) * UPRIGHT, Color = C.Snow })
+	detail(parent, { Name = "ConeStripe", Shape = Enum.PartType.Cylinder, Size = Vector3.new(0.35, 1.02, 1.02), CFrame = cf * CFrame.new(0, 1.15, 0) * UPRIGHT, Color = C.Snow })
 end
 
 local function pallet(parent, cf, withCrates)
@@ -443,7 +473,7 @@ local function pallet(parent, cf, withCrates)
 	solid(m, { Name = "Deck", Size = Vector3.new(4, 0.2, 4), CFrame = cf * CFrame.new(0, 0.5, 0), Color = rgb(196, 144, 92), Material = Enum.Material.WoodPlanks })
 	if withCrates then
 		solid(m, { Name = "Crate", Size = Vector3.new(3.6, 2.4, 3.6), CFrame = cf * CFrame.new(0, 1.8, 0), Color = rgb(176, 124, 74), Material = Enum.Material.WoodPlanks })
-		detail(m, { Name = "Strap", Size = Vector3.new(3.7, 2.45, 0.2), CFrame = cf * CFrame.new(0, 1.8, 0), Color = C.Ink })
+		detail(m, { Name = "Strap", Size = Vector3.new(3.85, 2.6, 0.2), CFrame = cf * CFrame.new(0, 1.8, 0), Color = C.Ink })
 		detail(m, { Name = "Snow", Size = Vector3.new(3.4, 0.25, 3.4), CFrame = cf * CFrame.new(0, 3.1, 0), Color = C.Snow, Material = Enum.Material.Snow })
 	end
 	return m
@@ -519,10 +549,10 @@ end
 function Locations.CraneYard(parent, cf)
 	local m = model(parent, "CraneYard")
 	-- Ground: packed snow and gravel, a darker work area, tire tracks.
-	solid(m, { Name = "Ground", Size = Vector3.new(70, 0.1, 66), CFrame = cf * CFrame.new(0, 0.05, -8), Color = rgb(226, 232, 242), Material = Enum.Material.Snow, CastShadow = false })
-	solid(m, { Name = "WorkArea", Size = Vector3.new(44, 0.1, 40), CFrame = cf * CFrame.new(0, 0.11, -14), Color = rgb(196, 204, 218), Material = Enum.Material.Pebble, CastShadow = false })
+	solid(m, { Name = "Ground", Size = Vector3.new(70, 0.3, 66), CFrame = cf * CFrame.new(0, 0.15, -8), Color = rgb(226, 232, 242), Material = Enum.Material.Snow, CastShadow = false })
+	solid(m, { Name = "WorkArea", Size = Vector3.new(44, 0.1, 40), CFrame = cf * CFrame.new(0, 0.4, -14), Color = rgb(196, 204, 218), Material = Enum.Material.Pebble, CastShadow = false })
 	for _, x in { -9, -5.5, 6, 9.5 } do
-		detail(m, { Name = "Track", Size = Vector3.new(1.4, 0.1, 56), CFrame = cf * CFrame.new(x, 0.21, -10) * yaw(x * 0.4), Color = rgb(170, 180, 198), Material = Enum.Material.Pebble })
+		detail(m, { Name = "Track", Size = Vector3.new(1.4, 0.1, 56), CFrame = cf * CFrame.new(x, 0.5, -10) * yaw(x * 0.4), Color = rgb(170, 180, 198), Material = Enum.Material.Pebble })
 	end
 	towerCrane(m, cf * CFrame.new(0, 0, 16) * yaw(108)) -- jib over the yard (-Z)
 	cabin(m, cf * CFrame.new(-24, 0, -30) * yaw(60))
@@ -555,7 +585,10 @@ function Locations.CraneYard(parent, cf)
 	Prefabs.SnowPile(m, cf * CFrame.new(-33, 0, -26) * yaw(60), 0.45)
 	Prefabs.Sign(m, cf * CFrame.new(-18, 0, -40) * yaw(10), "CRANE YARD", C.Orange)
 	-- Junk falls on the work area.
-	return Prefabs.JunkSpawnArea(m, cf * CFrame.new(0, 0.1, -16), 36, 32, "JunkSpawnArea")
+	local area = Prefabs.JunkSpawnArea(m, cf * CFrame.new(0, 0.3, -16), 36, 32, "JunkSpawnArea")
+	area:SetAttribute("SpawnWeight", 0.3) -- MinItems keeps 8 here (JunkService); few more on top
+	area:SetAttribute("MinItems", 8)
+	return area
 end
 
 return Locations

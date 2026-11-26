@@ -215,17 +215,52 @@ local function findGround(origin: Vector3, length: number, excluded: { Instance 
 	return result.Position
 end
 
+-- Share of new junk for one spawn area: its floor area, times its SpawnWeight attribute
+-- (default 1; a small area such as the Crane Yard gets more so it is never nearly empty).
+local function spawnWeight(marker: BasePart): number
+	local weight = marker:GetAttribute("SpawnWeight")
+	return marker.Size.X * marker.Size.Z * (if type(weight) == "number" and weight > 0 then weight else 1)
+end
+
+-- Natural items lying inside a spawn area (seen from above).
+local function naturalCountIn(marker: BasePart): number
+	local count = 0
+	local halfX, halfZ = marker.Size.X / 2, marker.Size.Z / 2
+	for _, entry in active do
+		if entry.Natural then
+			local here = marker.CFrame:PointToObjectSpace(entry.Position)
+			if math.abs(here.X) <= halfX and math.abs(here.Z) <= halfZ then
+				count += 1
+			end
+		end
+	end
+	return count
+end
+
 local function randomOrigin(markers: { BasePart }): Vector3
+	-- An area with a MinItems attribute gets new junk first while it holds fewer than that
+	-- (small areas like the Crane Yard and the corners are never left empty by chance).
+	for _, marker in markers do
+		local minimum = marker:GetAttribute("MinItems")
+		if type(minimum) == "number" and naturalCountIn(marker) < minimum then
+			local offset = Vector3.new(
+				(random:NextNumber() - 0.5) * marker.Size.X,
+				marker.Size.Y / 2,
+				(random:NextNumber() - 0.5) * marker.Size.Z
+			)
+			return marker.CFrame:PointToWorldSpace(offset) + Vector3.new(0, MARKER_RAY_LIFT, 0)
+		end
+	end
 	local totalArea = 0
 	for _, marker in markers do
-		totalArea += marker.Size.X * marker.Size.Z
+		totalArea += spawnWeight(marker)
 	end
 
 	if totalArea > 0 then
 		local pick = random:NextNumber() * totalArea
 		local chosen = markers[#markers]
 		for _, marker in markers do
-			pick -= marker.Size.X * marker.Size.Z
+			pick -= spawnWeight(marker)
 			if pick <= 0 then
 				chosen = marker
 				break

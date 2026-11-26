@@ -223,7 +223,8 @@ local zones = {
 		Name = "Tire Mountain",
 		Degrees = 135,
 		Accent = C.Purple,
-		SpawnArea = { X = 46, Z = 52, CenterZ = 5 }, -- narrower: the mountain stands behind it
+		SpawnArea = { X = 42, Z = 52, CenterZ = 5 }, -- narrower: the mountain stands behind it
+		Sign = { -5, 41 }, -- left of the field, clear of the small tire heap
 		Build = function(parent, at)
 			Locations.TireMountain(parent, at)
 		end,
@@ -322,15 +323,17 @@ for index, zone in zones do
 
 	Part(zoneFolder, {
 		Name = "Ground",
-		Size = Vector3.new(ZONE_SIZE + 2, 0.1, ZONE_SIZE + 2),
-		CFrame = zoneCFrame * CFrame.new(0, 0.05, 0),
+		-- Top 0.3 above the yard's ground: 0.1 flickered (z-fighting) when seen from afar.
+		Size = Vector3.new(ZONE_SIZE + 2, 0.3, ZONE_SIZE + 2),
+		CFrame = zoneCFrame * CFrame.new(0, 0.15, 0),
 		Color = C.Snow:Lerp(zone.Accent, 0.1),
 		CastShadow = false,
 	})
 	local area = zone.SpawnArea or SPAWN_AREA
 	Prefabs.JunkSpawnArea(zoneFolder, at(0, 0.1, area.CenterZ), area.X, area.Z, "JunkSpawnArea")
 	-- Sign at the inner corner, readable from the plaza.
-	Prefabs.Sign(zoneFolder, at(-22, 0, 35, 180), string.upper(zone.Name), zone.Accent)
+	local signAt = zone.Sign or { -22, 35 }
+	Prefabs.Sign(zoneFolder, at(signAt[1], 0, signAt[2], 180), string.upper(zone.Name), zone.Accent)
 
 	local props = folder(zoneFolder, "Props")
 	zone.Build(props, at)
@@ -393,6 +396,15 @@ do -- North-east: the Crane Yard (junk falls here too)
 	-- Built by hand (not lookAt): -Z really points at the yard's center here.
 	local cf = CFrame.new(position) * CFrame.Angles(0, math.atan2(position.X, position.Z), 0)
 	Locations.CraneYard(landmarks, cf)
+end
+-- The other three corners: a small JunkSpawn area each, between the base plot and the corner's
+-- landmark: at least 3 items lie in each (MinItems, JunkService), rarely more (SpawnWeight 0.3).
+for _, degrees in { 135, 225, 315 } do
+	local position = polar(if degrees == 135 then 218 else 226, degrees) -- 135: clear of Junk Mountain
+	local cf = CFrame.new(position) * CFrame.Angles(0, math.atan2(position.X, position.Z), 0)
+	local area = Prefabs.JunkSpawnArea(landmarks, cf, 24, 20, "CornerSpawnArea")
+	area:SetAttribute("SpawnWeight", 0.3) -- MinItems keeps 3 here; few more on top
+	area:SetAttribute("MinItems", 3)
 end
 do -- North-west: Junk Mountain
 	local cf = cornerCFrame(135, 262)
