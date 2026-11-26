@@ -132,7 +132,7 @@ local Behaviors = {
 		Ability = {
 			Effect = "Comet",
 			Name = "Summon Comet",
-			Cooldown = 300, -- seconds
+			Cooldown = 60, -- seconds
 			Distance = 22, -- studs in front of the player where it lands
 		},
 	},
@@ -206,7 +206,7 @@ local Behaviors = {
 	["Ability.RocketBoots"] = {
 		Kind = "Ability",
 		Mode = "Activate",
-		Ability = { Effect = "RocketJump", Name = "Rocket Jump", Cooldown = 8, Distance = 0 },
+		Ability = { Effect = "RocketJump", Name = "Rocket Jump", Cooldown = 8, Distance = 0, ThrustSeconds = 2 },
 	},
 	-- Plasma Toaster: launches plasma toasts that anybody can eat (see Behaviors/Ability).
 	["Ability.PlasmaToast"] = {
@@ -234,11 +234,12 @@ local Behaviors = {
 		Gadget = { Effect = "Teleporter", Action = "Teleport", Label = "Teleport", TravelCooldown = 5 } },
 	["Deploy.CrystalSnowman"] = { Kind = "Gadget", Mode = "Place", Model = "Item:crystal_snowman:2", Storable = true, FacePlayer = true,
 		Gadget = { Effect = "CrystalSnowman", Action = "Cycle", Modes = { "Light off", "Violet glow", "Ice glow", "Aurora glow" } } },
-	-- Golden Wrench: tunes up the nearest working machine, also a friend's. Never the Wish Furnace.
+	-- Golden Wrench: tunes up the nearest working machine, also a friend's: up to 1 hour off
+	-- any job, the Wish Furnace too.
 	["Ability.GoldenWrench"] = {
 		Kind = "Ability",
 		Mode = "Activate",
-		Ability = { Effect = "TuneUp", Name = "Golden Tune-Up", Cooldown = 20 * 60, Distance = 0, Range = 24, Seconds = 10 * 60 },
+		Ability = { Effect = "TuneUp", Name = "Golden Tune-Up", Cooldown = 20 * 60, Distance = 0, Range = 24, Seconds = 60 * 60 },
 	},
 	["Deploy.Panel"]  = { Kind = "Gadget", Mode = "Place", Model = "Item:glass_panel:2.4", Storable = true, FacePlayer = true,
 		Gadget = { Effect = "Panel", Action = "Cycle", Modes = { "Clear", "Blue", "Red", "Gold", "Green", "Dark" } } },

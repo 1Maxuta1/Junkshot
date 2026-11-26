@@ -164,6 +164,7 @@ export type JunkPartSpec = {
 	Material: Enum.Material,
 	Offset: Vector3, -- position relative to the item's origin
 	Rotation: Vector3, -- degrees (X, Y, Z) relative to the item's origin
+	Transparency: number?, -- default 0 (deployed copies show Glass at 0.4 when unset)
 }
 
 -- One recipe of the machine's Crafting mode (Config/Recipes).

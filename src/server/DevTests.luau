@@ -2367,7 +2367,7 @@ local function runGadgetTests(player: Player)
 		check("wrench: it finds the working machine", MachineService.NearestWorking(machineAnchor.Position, 24) == player)
 		check("wrench: removes the seconds", math.abs(MachineService.TuneUp(player, 5) - 5) < 0.01 and math.abs(left - (MachineService.GetRemaining(player) or 0) - 5) < 0.5)
 		machineData.Job.Kind = "Mythic"
-		check("wrench: never the Wish Furnace", MachineService.TuneUp(player, 5) == 0 and MachineService.NearestWorking(machineAnchor.Position, 24) == nil)
+		check("wrench: the Wish Furnace too", MachineService.NearestWorking(machineAnchor.Position, 24) == player and math.abs(MachineService.TuneUp(player, 5) - 5) < 0.01)
 		machineData.Job.Kind = "Craft"
 		check("wrench: never more than what is left", MachineService.TuneUp(player, 99999) < 100 and MachineService.GetRemaining(player) == nil)
 		local made = machineData.Output[1]

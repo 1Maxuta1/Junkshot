@@ -541,8 +541,13 @@ local function itemBuilder(name: string): Builder?
 		for index, spec in parts do
 			local part = addPart(model, if index == 1 then "Base" else `Part{index}`, spec.Shape, spec.Size * scale, spec.Color,
 				spec.Material, (spec.Offset - Vector3.new(0, bounds.Min.Y, 0)) * scale, spec.Rotation)
-			part.CanCollide = true
-			if spec.Material == M.Glass then
+			-- Small details neither collide nor cast shadows (cheap even with many parts).
+			local detail = math.max(spec.Size.X, spec.Size.Y, spec.Size.Z) * scale < 0.9
+			part.CanCollide = index == 1 or not detail
+			part.CastShadow = not detail
+			if spec.Transparency ~= nil then
+				part.Transparency = spec.Transparency
+			elseif spec.Material == M.Glass then
 				part.Transparency = 0.4
 			end
 		end

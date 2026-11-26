@@ -141,6 +141,7 @@ end
 -- Items that are worn as long as they are carried (selected or not); never held in the hand.
 local WORN_ON_HANDS: { [string]: boolean } = { patched_mitten = true }
 local WORN_ON_HEAD: { [string]: boolean } = { frozen_crown = true }
+local WORN_ON_FEET: { [string]: boolean } = { rocket_boots = true }
 local CROWN_SIZE = 1.6
 local GLOVE_SIZE = 1.55 -- studs, largest side
 
@@ -165,6 +166,75 @@ local function wearOnHands(character: Model, itemId: string, folder: Instance, m
 			model:PivotTo(hand.CFrame * CFrame.new(0, y, 0) * CFrame.Angles(0, 0, math.pi) * CFrame.Angles(0, side * math.pi / 2, 0))
 			model.Parent = folder
 			table.insert(models, { Model = model, To = hand })
+		end
+	end
+end
+
+-- One rocket boot around `foot` (built here, not from the item model: each foot gets its own
+-- and they follow the walking animation). Sizes scale with the foot's width.
+local function buildBoot(foot: BasePart, r6: boolean): Model
+	local model = Instance.new("Model")
+	model.Name = "RocketBoot"
+	local s = math.clamp(foot.Size.X, 0.6, 1.2)
+	local base = foot.CFrame * CFrame.new(0, -foot.Size.Y / 2, if r6 then 0 else -0.05)
+	local root: BasePart? = nil
+	local function piece(name: string, shape: Enum.PartType, size: Vector3, offset: Vector3, color: Color3, material: Enum.Material, upright: boolean?): BasePart
+		local part = Instance.new("Part")
+		part.Name = if root == nil then "Root" else name
+		part.Shape = shape
+		part.Size = size * s
+		part.CFrame = base * CFrame.new(offset * s) * (if upright then CFrame.Angles(0, 0, math.pi / 2) else CFrame.identity)
+		part.Color = color
+		part.Material = material
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CanTouch = false
+		part.Massless = true
+		part.TopSurface = Enum.SurfaceType.Smooth
+		part.BottomSurface = Enum.SurfaceType.Smooth
+		part.Parent = model
+		if root == nil then
+			root = part
+			model.PrimaryPart = part
+		else
+			local weld = Instance.new("WeldConstraint")
+			weld.Part0 = root
+			weld.Part1 = part
+			weld.Parent = part
+		end
+		return part
+	end
+	local navy, orange, chrome, black = Color3.fromRGB(38, 46, 74), Color3.fromRGB(255, 132, 30), Color3.fromRGB(205, 212, 224), Color3.fromRGB(26, 27, 32)
+	local block, cylinder = Enum.PartType.Block, Enum.PartType.Cylinder
+	piece("Sole", block, Vector3.new(1.16, 0.2, 1.5), Vector3.new(0, 0.1, -0.05), black, Enum.Material.Slate)
+	piece("Foot", block, Vector3.new(1.1, 0.5, 1.2), Vector3.new(0, 0.42, 0.05), navy, Enum.Material.SmoothPlastic)
+	piece("Toe", block, Vector3.new(1.12, 0.42, 0.5), Vector3.new(0, 0.38, -0.56), orange, Enum.Material.Metal)
+	piece("Shaft", block, Vector3.new(1.06, 1.05, 0.98), Vector3.new(0, 1.12, 0.15), navy, Enum.Material.SmoothPlastic)
+	piece("Cuff", block, Vector3.new(1.16, 0.2, 1.08), Vector3.new(0, 1.7, 0.15), orange, Enum.Material.Metal)
+	piece("Stripe", block, Vector3.new(1.1, 0.1, 1.02), Vector3.new(0, 0.9, 0.15), Color3.fromRGB(90, 230, 255), Enum.Material.Neon)
+	piece("Booster", cylinder, Vector3.new(0.95, 0.48, 0.48), Vector3.new(0, 1.0, 0.82), chrome, Enum.Material.Metal, true)
+	piece("BoosterCap", cylinder, Vector3.new(0.12, 0.52, 0.52), Vector3.new(0, 1.5, 0.82), orange, Enum.Material.Metal, true)
+	piece("Nozzle", cylinder, Vector3.new(0.22, 0.56, 0.56), Vector3.new(0, 0.42, 0.82), black, Enum.Material.Metal, true)
+	piece("Glow", cylinder, Vector3.new(0.06, 0.38, 0.38), Vector3.new(0, 0.29, 0.82), Color3.fromRGB(255, 170, 60), Enum.Material.Neon, true)
+	for _, x in { -0.32, 0.32 } do
+		piece("Fin", block, Vector3.new(0.06, 0.4, 0.32), Vector3.new(x, 0.62, 1.0), Color3.fromRGB(236, 74, 70), Enum.Material.Metal)
+	end
+	return model
+end
+
+-- Rocket boots sit on both feet while carried (R15 feet, or the bottom of R6 legs).
+local function wearOnFeet(character: Model, folder: Instance, models: { { Model: Model, To: BasePart } })
+	for _, side in { "Left", "Right" } do
+		local foot = character:FindFirstChild(side .. "Foot")
+		local r6 = false
+		if foot == nil then
+			foot = character:FindFirstChild(side .. " Leg")
+			r6 = true
+		end
+		if foot ~= nil and foot:IsA("BasePart") then
+			local model = buildBoot(foot, r6)
+			model.Parent = folder
+			table.insert(models, { Model = model, To = foot })
 		end
 	end
 end
@@ -224,7 +294,7 @@ local function refreshVisuals(player: Player)
 	local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
 	local holding = false
 	for _, entry in entries do
-		if entry.Uid == heldUid and hand ~= nil and not WORN_ON_HANDS[entry.Id] and not WORN_ON_HEAD[entry.Id] then
+		if entry.Uid == heldUid and hand ~= nil and not WORN_ON_HANDS[entry.Id] and not WORN_ON_HEAD[entry.Id] and not WORN_ON_FEET[entry.Id] then
 			holding = true
 		end
 	end
@@ -243,11 +313,13 @@ local function refreshVisuals(player: Player)
 	local worn: { [string]: boolean } = {}
 	local packed = player:GetAttribute("PackWorn") == true
 	for _, entry in entries do
-		local wearable = WORN_ON_HEAD[entry.Id] or WORN_ON_HANDS[entry.Id]
+		local wearable = WORN_ON_HEAD[entry.Id] or WORN_ON_HANDS[entry.Id] or WORN_ON_FEET[entry.Id]
 		if wearable and not worn[entry.Id] then
 			worn[entry.Id] = true -- one of each; a second one is carried like any other item
 			if WORN_ON_HEAD[entry.Id] then
 				wearOnHead(character, entry.Id, folder, models)
+			elseif WORN_ON_FEET[entry.Id] then
+				wearOnFeet(character, folder, models)
 			else
 				wearOnHands(character, entry.Id, folder, models)
 			end

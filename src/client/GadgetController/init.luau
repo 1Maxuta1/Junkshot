@@ -282,6 +282,14 @@ end
 function Effects.Disco(ctx)
 	local ball = part(ctx, 2)
 	local home = ball.CFrame
+	-- The mirror tiles on the ball turn with it (everything close to the ball's surface).
+	local tiles: { { Part: BasePart, Offset: CFrame } } = {}
+	local reach = ball.Size.X / 2 * 1.15
+	for _, child in ctx.Model:GetChildren() do
+		if child:IsA("BasePart") and child ~= ball and child ~= ctx.Base and (child.Position - home.Position).Magnitude <= reach then
+			table.insert(tiles, { Part = child, Offset = home:ToObjectSpace(child.CFrame) })
+		end
+	end
 	local light = pointLight(ctx, ball, rgb(255, 255, 255))
 	local rays = {}
 	for index = 1, 8 do
@@ -295,6 +303,9 @@ function Effects.Disco(ctx)
 		light.Enabled = on
 		sparkle.Enabled = on
 		ball.CFrame = home * CFrame.Angles(0, if on then t * 1.5 else 0, 0)
+		for _, tile in tiles do
+			tile.Part.CFrame = ball.CFrame * tile.Offset
+		end
 		local scale = if powered then 1.5 else 1
 		for index, ray in rays do
 			ray.Part.Transparency = if on then 0.72 else 1
@@ -594,20 +605,57 @@ end
 function Effects.Incubator(ctx)
 	local egg = part(ctx, 2)
 	local home = egg.Position
-	local body = piece(ctx.Folder, Enum.PartType.Block, Vector3.new(0.9, 0.8, 1.8), rgb(120, 220, 255))
-	local head = piece(ctx.Folder, Enum.PartType.Block, Vector3.new(0.8, 0.7, 0.8), rgb(150, 235, 255))
-	local tail = piece(ctx.Folder, Enum.PartType.Block, Vector3.new(0.3, 0.3, 1.4), rgb(90, 190, 240))
-	local left = piece(ctx.Folder, Enum.PartType.Block, Vector3.new(1.8, 0.1, 1), rgb(255, 150, 60))
-	local right = piece(ctx.Folder, Enum.PartType.Block, Vector3.new(1.8, 0.1, 1), rgb(255, 150, 60))
-	local all = { body, head, tail, left, right }
-	for _, p in all do
-		p.Material = Enum.Material.SmoothPlastic
+	-- A little polar dragon (client-only parts, ~30 of them, only while it flies): body with a
+	-- pale belly, a neck, head with snout, horns and glowing eyes, spikes on the back, a
+	-- swaying three-part tail with a spade, tucked legs and two-part wings that flap.
+	local scales, belly, bone, membrane = rgb(120, 220, 255), rgb(225, 248, 255), rgb(50, 70, 130), rgb(170, 140, 255)
+	local all: { BasePart } = {}
+	local function make(size: Vector3, color: Color3, shape: Enum.PartType?, material: Enum.Material?, see: number?): BasePart
+		local p = piece(ctx.Folder, shape or Enum.PartType.Block, size, color)
+		p.Material = material or Enum.Material.SmoothPlastic
+		p:SetAttribute("Shown", see or 0)
+		table.insert(all, p)
+		return p
+	end
+	local Ball = Enum.PartType.Ball
+	-- fixed to the body: { part, offset }
+	local fixed: { { any } } = {
+		{ make(Vector3.new(1, 0.9, 2), scales), CFrame.identity },
+		{ make(Vector3.new(0.8, 0.3, 1.7), belly), CFrame.new(0, -0.4, 0) },
+		{ make(Vector3.new(1.1, 1.1, 1.1), scales, Ball), CFrame.new(0, 0.05, -0.8) },
+		{ make(Vector3.new(0.55, 0.55, 0.9), scales), CFrame.new(0, 0.45, -1.35) * CFrame.Angles(math.rad(30), 0, 0) },
+		{ make(Vector3.new(0.75, 0.6, 0.85), scales), CFrame.new(0, 0.85, -1.85) },
+		{ make(Vector3.new(0.5, 0.38, 0.55), belly), CFrame.new(0, 0.75, -2.4) },
+		{ make(Vector3.new(0.12, 0.12, 0.6), rgb(250, 250, 255)), CFrame.new(-0.22, 1.2, -1.55) * CFrame.Angles(math.rad(-35), 0, 0) },
+		{ make(Vector3.new(0.12, 0.12, 0.6), rgb(250, 250, 255)), CFrame.new(0.22, 1.2, -1.55) * CFrame.Angles(math.rad(-35), 0, 0) },
+		{ make(Vector3.new(0.16, 0.16, 0.16), rgb(255, 230, 90), Ball, Enum.Material.Neon), CFrame.new(-0.3, 0.95, -2.1) },
+		{ make(Vector3.new(0.16, 0.16, 0.16), rgb(255, 230, 90), Ball, Enum.Material.Neon), CFrame.new(0.3, 0.95, -2.1) },
+	}
+	for _, z in { -0.5, 0, 0.5 } do
+		table.insert(fixed, { make(Vector3.new(0.25, 0.25, 0.25), rgb(240, 250, 255)), CFrame.new(0, 0.5, z) * CFrame.Angles(math.rad(45), 0, 0) })
+	end
+	for _, x in { -0.42, 0.42 } do
+		for _, z in { -0.6, 0.6 } do
+			table.insert(fixed, { make(Vector3.new(0.25, 0.5, 0.3), scales), CFrame.new(x, -0.55, z) * CFrame.Angles(math.rad(40), 0, 0) })
+		end
+	end
+	local tail = { make(Vector3.new(0.5, 0.45, 0.9), scales), make(Vector3.new(0.35, 0.32, 0.85), scales), make(Vector3.new(0.22, 0.2, 0.8), scales) }
+	local spade = make(Vector3.new(0.5, 0.08, 0.5), membrane, nil, Enum.Material.Neon)
+	local wings = {}
+	for _, s in { -1, 1 } do
+		table.insert(wings, {
+			Side = s,
+			InnerBone = make(Vector3.new(1.4, 0.14, 0.14), bone),
+			Inner = make(Vector3.new(1.4, 0.05, 1.0), membrane, nil, nil, 0.15),
+			OuterBone = make(Vector3.new(1.3, 0.12, 0.12), bone),
+			Outer = make(Vector3.new(1.3, 0.05, 0.8), membrane, nil, nil, 0.15),
+		})
 	end
 	return function(t, mode, powered)
 		local on = mode == 2
 		egg.Transparency = if on then 0.8 else 0
 		for _, p in all do
-			p.Transparency = if on then 0 else 1
+			p.Transparency = if on then p:GetAttribute("Shown") :: number else 1
 		end
 		if not on then
 			return
@@ -616,13 +664,33 @@ function Effects.Incubator(ctx)
 		local angle = t * 0.9
 		local position = home + Vector3.new(math.cos(angle) * radius, 6 + math.sin(t * 1.7) * 2, math.sin(angle) * radius)
 		local forward = Vector3.new(-math.sin(angle), 0, math.cos(angle))
-		local cf = CFrame.lookAlong(position, forward) * CFrame.Angles(0, 0, 0.3)
+		local cf = CFrame.lookAlong(position, forward) * CFrame.Angles(0, 0, 0.3) * CFrame.Angles(math.sin(t * 1.7 + 1) * 0.12, 0, 0)
+		for _, entry in fixed do
+			entry[1].CFrame = cf * entry[2]
+		end
+		-- tail: each part turns a little more than the one before it
+		local joint = cf * CFrame.new(0, 0.05, 0.95)
+		for index, p in tail do
+			joint = joint * CFrame.Angles(0, math.sin(t * 5 - index * 0.8) * 0.25, 0)
+			local length = p.Size.Z
+			p.CFrame = joint * CFrame.new(0, 0, length / 2)
+			joint = joint * CFrame.new(0, 0, length)
+		end
+		spade.CFrame = joint * CFrame.new(0, 0, 0.15) * CFrame.Angles(0, math.rad(45), 0)
+		-- wings: the outer half follows the inner one a bit later
 		local flap = math.sin(t * 9) * 0.7
-		body.CFrame = cf
-		head.CFrame = cf * CFrame.new(0, 0.4, -1.2)
-		tail.CFrame = cf * CFrame.new(0, 0.1, 1.5) * CFrame.Angles(0, math.sin(t * 5) * 0.3, 0)
-		left.CFrame = cf * CFrame.new(-0.4, 0.3, 0) * CFrame.Angles(0, 0, -flap) * CFrame.new(-0.9, 0, 0)
-		right.CFrame = cf * CFrame.new(0.4, 0.3, 0) * CFrame.Angles(0, 0, flap) * CFrame.new(0.9, 0, 0)
+		local flapOuter = math.sin(t * 9 - 0.6) * 0.5
+		for _, wing in wings do
+			local s = wing.Side
+			local shoulder = cf * CFrame.new(s * 0.45, 0.35, -0.3) * CFrame.Angles(0, 0, s * flap)
+			local innerCF = shoulder * CFrame.new(s * 0.7, 0, 0)
+			wing.InnerBone.CFrame = innerCF
+			wing.Inner.CFrame = innerCF * CFrame.new(0, 0, 0.5)
+			local elbow = shoulder * CFrame.new(s * 1.4, 0, 0) * CFrame.Angles(0, 0, s * flapOuter)
+			local outerCF = elbow * CFrame.new(s * 0.65, 0, 0)
+			wing.OuterBone.CFrame = outerCF
+			wing.Outer.CFrame = outerCF * CFrame.new(0, 0, 0.4) * CFrame.Angles(0, s * 0.25, 0)
+		end
 	end
 end
 
@@ -667,6 +735,8 @@ end
 
 function Effects.Toast(ctx)
 	onFire(ctx, function(powered)
+		local pop, popPitch = ItemSounds.ForEvent("ToastLaunch")
+		AudioController.PlayItem(pop, popPitch * (0.95 + math.random() * 0.1), ctx.Base, 1, 90)
 		for index = 1, if powered then 5 else 2 do
 			task.delay(index * 0.12, rocket, top(ctx), 26, Vector3.new(1.3, 1.3, 0.35), rgb(222, 165, 90), { rgb(255, 220, 140), rgb(222, 165, 90) }, 24)
 		end

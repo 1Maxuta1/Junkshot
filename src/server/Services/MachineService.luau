@@ -688,8 +688,8 @@ end
 function MachineService.TuneUp(player: Player, seconds: number): number
 	local machine = machines[player]
 	local job = if machine ~= nil then machine.Data.Job else nil
-	if machine == nil or job == nil or job.Kind == "Mythic" then
-		return 0
+	if machine == nil or job == nil then
+		return 0 -- any running job counts, the Wish Furnace too
 	end
 	local removed = math.min(seconds, remaining(job))
 	if removed <= 0 then
@@ -705,13 +705,13 @@ function MachineService.TuneUp(player: Player, seconds: number): number
 	return removed
 end
 
--- The player whose working machine (no Wish Furnace) is nearest to `position`.
+-- The player whose working machine (any job, the Wish Furnace too) is nearest to `position`.
 function MachineService.NearestWorking(position: Vector3, range: number): Player?
 	local best: Player? = nil
 	local bestDistance = range
 	for player, machine in machines do
 		local model, job = machine.Model, machine.Data.Job
-		if model ~= nil and job ~= nil and job.Kind ~= "Mythic" then
+		if model ~= nil and job ~= nil then
 			local distance = (model:GetPivot().Position - position).Magnitude
 			if distance <= bestDistance then
 				best, bestDistance = player, distance

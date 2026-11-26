@@ -9,6 +9,7 @@
 	  splash   drops in the new color and a sound when any object near you is painted
 ]]
 
+local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
@@ -70,7 +71,11 @@ local function findTarget(): Model?
 		return nil
 	end
 	local best: Model?, bestDistance = nil, GameConfig.Paint.Reach
-	for _, model in folder:GetChildren() do
+	local candidates = folder:GetChildren()
+	for _, chest in CollectionService:GetTagged("BaseChest") do
+		table.insert(candidates, chest) -- your base chest can be painted too
+	end
+	for _, model in candidates do
 		if model:IsA("Model") and model:GetAttribute("OwnerUserId") == localPlayer.UserId then
 			local distance = (model:GetPivot().Position - root.Position).Magnitude
 			if distance < bestDistance then
@@ -287,6 +292,26 @@ local function mount()
 		if model == nil then
 			return
 		end
+		if model:HasTag("BaseChest") then
+			-- The chest: target "Chest", the preview is a copy of the chest itself.
+			w.Open(nil, gamepad)
+			w.Content("PAINT").Visible = false
+			openFor = "Chest"
+			w.SetTitle("PAINT  ·  CHEST")
+			local now = model:GetAttribute("PaintColor")
+			if typeof(now) == "Color3" then
+				hue, saturation, value = now:ToHSV()
+			end
+			local copy = model:Clone()
+			for _, d in copy:GetDescendants() do
+				if d:IsA("ProximityPrompt") or d:IsA("Script") or d:IsA("LocalScript") then
+					d:Destroy()
+				end
+			end
+			Preview.Model(viewport, copy)
+			redraw()
+			return
+		end
 		local deployModel, uid, itemId = model:GetAttribute("DeployModel"), model:GetAttribute("DeployUid"), model:GetAttribute("ItemId")
 		if type(deployModel) ~= "string" or type(uid) ~= "string" or not DeployModels.Exists(deployModel) then
 			return
@@ -308,7 +333,8 @@ function PaintController.Open(_gamepad: boolean) end -- set when the window exis
 
 local function splash(model: Model)
 	local color = model:GetAttribute("PaintColor")
-	local base = model.PrimaryPart
+	local body = model:FindFirstChild("Body")
+	local base = model.PrimaryPart or (if body ~= nil and body:IsA("BasePart") then body else nil)
 	if base == nil then
 		return
 	end
@@ -344,6 +370,17 @@ local function splash(model: Model)
 end
 
 local function watchObjects()
+	local function chest(model: Instance)
+		if model:IsA("Model") then
+			model:GetAttributeChangedSignal("PaintColor"):Connect(function()
+				splash(model)
+			end)
+		end
+	end
+	for _, model in CollectionService:GetTagged("BaseChest") do
+		chest(model)
+	end
+	CollectionService:GetInstanceAddedSignal("BaseChest"):Connect(chest)
 	local folder = Workspace:WaitForChild(PlacementRules.DEPLOYED_FOLDER, 60)
 	if folder == nil then
 		return

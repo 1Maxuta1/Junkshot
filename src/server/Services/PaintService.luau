@@ -3,7 +3,8 @@
 	PaintService: painting your own placed objects with a Paint Bucket (Util/Paint).
 
 	ItemPaint remote (bucketUid, targetUid, hex | ""): the bucket must be carried, the object
-	must be yours, placed and close. "" takes the paint off. One bucket is used up
+	must be yours, placed and close. targetUid "Chest" paints your base chest (saved under the
+	key "Chest"; BaseService puts the color back on every rebuild). "" takes the paint off. One bucket is used up
 	for one coat; taking the paint off or the same color again costs nothing.
 
 	Saved in profile.Data.Paints = { [item uid] = "rrggbb" }: the color stays when the object is
@@ -18,6 +19,7 @@ local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local Paint = require(ReplicatedStorage.Shared.Util.Paint)
 local Validate = require(ReplicatedStorage.Shared.Util.Validate)
 
+local BaseService = require(script.Parent.BaseService)
 local CarryService = require(script.Parent.CarryService)
 local DataService = require(script.Parent.DataService)
 local PlacementService = require(script.Parent.PlacementService)
@@ -40,6 +42,7 @@ local MESSAGES: { [string]: string } = {
 	TooFar = "Come closer to paint it",
 }
 local REACH_TOLERANCE = 8 -- studs on top of the client's reach, for lag and driving
+local CHEST = "Chest" -- target of the base chest (not an item uid)
 local started = false
 
 local function paintsOf(player: Player): { [string]: string }?
@@ -67,7 +70,7 @@ function PaintService.Paint(player: Player, bucketUid: any, targetUid: any, hex:
 	if paints == nil then
 		return false, PaintService.Errors.NotLoaded
 	end
-	if not Validate.IsUid(bucketUid) or not Validate.IsUid(targetUid) or (hex ~= "" and Paint.FromHex(hex) == nil) then
+	if not Validate.IsUid(bucketUid) or not (Validate.IsUid(targetUid) or targetUid == CHEST) or (hex ~= "" and Paint.FromHex(hex) == nil) then
 		return false, PaintService.Errors.InvalidArguments
 	end
 	local bucket = false
@@ -78,6 +81,25 @@ function PaintService.Paint(player: Player, bucketUid: any, targetUid: any, hex:
 	end
 	if not bucket then
 		return false, PaintService.Errors.NoBucket
+	end
+	if targetUid == CHEST then
+		local chest = BaseService.GetChest(player)
+		if chest == nil then
+			return false, PaintService.Errors.NotFound
+		end
+		local root = CarryService.GetLiveRoot(player)
+		if root == nil or (root.Position - chest:GetPivot().Position).Magnitude > GameConfig.Paint.Reach + REACH_TOLERANCE then
+			return false, PaintService.Errors.TooFar
+		end
+		local wanted = if hex == "" then nil else string.lower(hex)
+		if wanted ~= nil and wanted ~= paints[CHEST] and CarryService.TakeByUid(player, bucketUid) == nil then
+			return false, PaintService.Errors.NoBucket
+		end
+		paints[CHEST] = wanted
+		local color = Paint.FromHex(wanted)
+		Paint.Apply(chest, color)
+		chest:SetAttribute("PaintColor", color)
+		return true, nil
 	end
 	local entry = PlacementService.GetEntry(targetUid)
 	if entry == nil then
@@ -122,7 +144,7 @@ local function prune(player: Player)
 		strings(part, owned)
 	end
 	for uid in table.clone(paints) do
-		if not owned[uid] then
+		if not owned[uid] and uid ~= CHEST then
 			paints[uid] = nil
 		end
 	end
@@ -138,7 +160,7 @@ function PaintService.Start()
 		MaxArgs = 3,
 		RateLimit = { MaxRequests = 4, Window = 2 },
 		Validate = function(bucketUid: any, targetUid: any, hex: any): boolean
-			return Validate.IsUid(bucketUid) and Validate.IsUid(targetUid) and Validate.IsString(hex, 0, 6)
+			return Validate.IsUid(bucketUid) and (Validate.IsUid(targetUid) or targetUid == CHEST) and Validate.IsString(hex, 0, 6)
 		end,
 	}, function(player: Player, bucketUid: string, targetUid: string, hex: string)
 		local ok, code = PaintService.Paint(player, bucketUid, targetUid, hex)

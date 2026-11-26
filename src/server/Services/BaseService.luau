@@ -36,6 +36,7 @@ local ItemConfig = require(ReplicatedStorage.Shared.Config.ItemConfig)
 local Rarities = require(ReplicatedStorage.Shared.Config.Rarities)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 local JunkFactory = require(ReplicatedStorage.Shared.Util.JunkFactory)
+local Paint = require(ReplicatedStorage.Shared.Util.Paint)
 local Validate = require(ReplicatedStorage.Shared.Util.Validate)
 
 local CarryService = require(script.Parent.CarryService)
@@ -346,6 +347,19 @@ local function buildChest(base: Base)
 	addPrompt(body, base.Player, "Chest", "Open", BaseConfig.Chest.Levels[data.ChestLevel].Name)
 	chest.Parent = base.Folder
 	base.Chest = chest
+	-- Its paint (PaintService, key "Chest") survives every rebuild, a new chest level too.
+	local profile = DataService.GetData(base.Player) :: any
+	local color = if profile ~= nil and type(profile.Paints) == "table" then Paint.FromHex(profile.Paints.Chest) else nil
+	if color ~= nil then
+		Paint.Apply(chest, color)
+		chest:SetAttribute("PaintColor", color)
+	end
+end
+
+-- The player's chest model (nil while the base is not built).
+function BaseService.GetChest(player: Player): Model?
+	local base = bases[player]
+	return if base ~= nil then base.Chest else nil
 end
 
 local function buildFlag(base: Base)

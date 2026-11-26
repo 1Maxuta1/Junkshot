@@ -19,6 +19,7 @@ local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local AudioConfig = require(ReplicatedStorage.Shared.Config.AudioConfig)
+local Behaviors = require(ReplicatedStorage.Shared.Config.Behaviors)
 local ItemSounds = require(ReplicatedStorage.Shared.Config.ItemSounds)
 local Remotes = require(ReplicatedStorage.Shared.Remotes)
 
@@ -226,18 +227,66 @@ local function rootOf(userId: any): BasePart?
 	return if root ~= nil and root:IsA("BasePart") then root else nil
 end
 
+-- Flames out of both soles (or below the root without feet), for `seconds`.
+local function bootFlames(character: Model, seconds: number)
+	for _, name in { "LeftFoot", "RightFoot", "Left Leg", "Right Leg" } do
+		local foot = character:FindFirstChild(name)
+		if foot ~= nil and foot:IsA("BasePart") then
+			local attachment = Instance.new("Attachment")
+			attachment.Name = "RocketFlame"
+			attachment.Position = Vector3.new(0, -foot.Size.Y / 2, 0)
+			attachment.Parent = foot
+			local flame = Instance.new("ParticleEmitter")
+			flame.Texture = SPARKLE
+			flame.Color = ColorSequence.new(Color3.fromRGB(255, 230, 120), Color3.fromRGB(255, 90, 30))
+			flame.LightEmission = 1
+			flame.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.9), NumberSequenceKeypoint.new(1, 0) })
+			flame.Lifetime = NumberRange.new(0.25, 0.45)
+			flame.Speed = NumberRange.new(10, 16)
+			flame.EmissionDirection = Enum.NormalId.Bottom
+			flame.SpreadAngle = Vector2.new(12, 12)
+			flame.Rate = 90
+			flame.Parent = attachment
+			local glow = Instance.new("PointLight")
+			glow.Color = Color3.fromRGB(255, 150, 60)
+			glow.Range = 8
+			glow.Brightness = 1.5
+			glow.Parent = attachment
+			Debris:AddItem(attachment, seconds)
+		end
+	end
+end
+
+local ROCKET = (Behaviors :: any)["Ability.RocketBoots"].Ability
+
 local function rocketJump(userId: any, direction: Vector3)
 	local root = rootOf(userId)
 	if root == nil then
 		return
 	end
+	local thrust = ROCKET.ThrustSeconds or 0
 	sparkleBurst(root.Position - Vector3.new(0, 2.5, 0), Color3.fromRGB(255, 150, 40), 40)
 	AudioController.PlayAt(AudioConfig.Abilities.CometWhoosh, root, false, 90)
+	local character = root.Parent :: Model
+	bootFlames(character, 0.6 + thrust)
 	if userId == Players.LocalPlayer.UserId then
-		local humanoid = (root.Parent :: Instance):FindFirstChildOfClass("Humanoid")
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
 		if humanoid ~= nil and not humanoid.Sit then
 			humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
 			root.AssemblyLinearVelocity = direction * 45 + Vector3.new(0, 85, 0)
+			-- The boots keep burning: almost no gravity and a push forwards for `thrust` seconds,
+			-- so the flight lasts that much longer.
+			local attachment = root:FindFirstChild("RootAttachment") or root:FindFirstChildOfClass("Attachment")
+			if thrust > 0 and attachment ~= nil and attachment:IsA("Attachment") then
+				local force = Instance.new("VectorForce")
+				force.Name = "RocketThrust"
+				force.Attachment0 = attachment
+				force.RelativeTo = Enum.ActuatorRelativeTo.World
+				force.ApplyAtCenterOfMass = true
+				force.Force = Vector3.new(0, root.AssemblyMass * Workspace.Gravity * 0.92, 0) + direction * root.AssemblyMass * 12
+				force.Parent = root
+				Debris:AddItem(force, thrust)
+			end
 		end
 	end
 end

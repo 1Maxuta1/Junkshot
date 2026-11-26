@@ -23,6 +23,7 @@ export type Mode = "World" | "Cosmetic"
 export type Bounds = { Min: Vector3, Max: Vector3, Size: Vector3 }
 
 local MIN_PART_SIZE = 0.05
+local DETAIL_SIZE = 0.6 -- parts whose largest side is below this cast no shadow
 local ROOT_NAME = "Root"
 
 local JunkFactory = {}
@@ -121,7 +122,9 @@ function buildParts(name: string, parts: { Types.JunkPartSpec }, bounds: Bounds,
 		piece.CanTouch = false
 		piece.CanQuery = false
 		piece.Massless = true
-		piece.CastShadow = isWorld
+		piece.Transparency = spec.Transparency or 0
+		-- Small details (mirror tiles, rivets, bolts) cast no shadow: many parts, almost no cost.
+		piece.CastShadow = isWorld and math.max(spec.Size.X, spec.Size.Y, spec.Size.Z) >= DETAIL_SIZE
 		piece.Parent = model
 
 		if root == nil then

@@ -69,6 +69,8 @@ local Families: { [string]: Family } = {
 	Radio = family(9118027586, 0.8, 0, 0.5),
 	Motor = family(80317022777602, 0.5, 0.4, 0.9),
 	Ding = family(9126073026, 0.9, 0, 0.6),
+	-- A real toaster popping up ("ToasterUp", Roblox audio library, freesound rpew1 #108485).
+	ToasterPop = family(365950085, 0.6, 0, 1.2),
 }
 
 local Items: { [string]: { any } } = {
@@ -129,7 +131,8 @@ local Events: { [string]: { any } } = {
 	SlowField = { "Shimmer", 0.6 },
 	ChestOpen = { "Chest", 1 },
 	Window = { "Swish", 1.3 },
-	Toast = { "Lever", 1.2 },
+	Toast = { "ToasterPop", 1.1 },
+	ToastLaunch = { "ToasterPop", 1 },
 	Eat = { "Toy", 1.2 },
 	Boing1 = { "Boing", 1 },
 	Boing2 = { "Boing", 1.45 },
