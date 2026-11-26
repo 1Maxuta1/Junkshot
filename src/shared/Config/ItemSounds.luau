@@ -37,7 +37,8 @@ local Families: { [string]: Family } = {
 	Coin = family(9125509503, 0.35, 0.35, 0.7),
 	Swish = family(9126283272, 1.4, 0.2, 0.4),
 	Click = family(9119717523, 0.16, 0, 0.2),
-	NeonHum = family(9114246115, 0.5, 0.55, 0.6),
+	JetWhoosh = family(9116417467, 0.45, 1.0, 1.5), -- airy zooming pass-by with a rising whine
+	GearTurn = family(9119077904, 1.8, 0, 1.5), -- a wheel turning, ratchet clicks
 	PowerUp = family(9117887138, 0.45, 0.18, 0.7),
 	FireworkRise = family(9114447104, 0.45, 0, 0.9),
 	FireworkCrackle = family(9114447505, 0.4, 0.4, 1.6),
@@ -82,8 +83,8 @@ local Items: { [string]: { any } } = {
 	circuit_board = { "Beep", 1.2 }, crystal_shard = { "Glass", 1.4 },
 	-- Collectibles
 	tin_robot = { "Tech", 1.1 }, snow_globe = { "Glass", 0.9 }, patched_mitten = { "Cloth", 1.2 }, copper_kettle = { "Whistle", 1.9 },
-	ice_skate = { "Metal", 1.3 }, spring_bot = { "Boing", 1.6 }, neon_gear = { "NeonHum", 1.7 }, arcade_joystick = { "Click", 0.8 },
-	frost_lantern = { "Glass", 1.2 }, plasma_toaster = { "Zap", 0.9 }, crystal_snowman = { "Crystal", 0.6 }, jet_sled = { "Metal", 1 },
+	ice_skate = { "Metal", 1.3 }, spring_bot = { "Boing", 1.6 }, neon_gear = { "GearTurn", 1.25 }, arcade_joystick = { "Click", 0.8 },
+	frost_lantern = { "Glass", 1.2 }, plasma_toaster = { "Zap", 0.9 }, crystal_snowman = { "Crystal", 0.6 }, jet_sled = { "JetWhoosh", 1.05 },
 	golden_wrench = { "Ratchet", 1 }, aurora_orb = { "Toy", 1.3 }, frozen_crown = { "Coin", 1.3 }, starforged_core = { "Ding", 0.65 },
 	dragon_egg = { "Growl", 1.1 }, comet_shard = { "Glass", 1.6 },
 	-- Components
@@ -105,7 +106,7 @@ local Items: { [string]: { any } } = {
 local Equip: { [string]: { any } } = {
 	old_tire = { "Tire", 1 }, bike_wheel = { "BikeDrop", 0.9 }, bicycle = { "BikeBell", 1 }, scooter = { "Motor", 1.5 },
 	homemade_car = { "Motor", 0.9 }, turbo_kart = { "Tire", 1.15 }, jet_board = { "Motor", 1.9 }, small_engine = { "Motor", 1.1 },
-	engine_part = { "Motor", 0.8 }, generator = { "Motor", 0.7 }, jet_sled = { "Motor", 1.7 }, electric_motor = { "Motor", 2 },
+	engine_part = { "Motor", 0.8 }, generator = { "Motor", 0.7 }, jet_sled = { "JetWhoosh", 1 }, electric_motor = { "Motor", 2 },
 	tin_robot = { "RobotVoice", 1 }, spring_bot = { "RobotTalk", 1.15 }, junk_robot = { "RobotTalk", 0.85 }, robot_band = { "RobotVoice", 1.2 },
 	old_radio = { "Radio", 0.9 }, boombox_radio = { "Radio", 1 }, neon_tv = { "Radio", 1.2 },
 	metal_detector = { "Beep", 1.6 }, dented_trophy = { "Ding", 0.7 }, golden_trophy = { "Ding", 0.9 }, frozen_crown = { "Ding", 1.1 },

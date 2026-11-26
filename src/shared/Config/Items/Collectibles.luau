@@ -77,14 +77,21 @@ return {
 	}),
 
 	-- Rare
-	item("neon_gear", "Neon Gear", "Rare", {
-		part(Cylinder, V(0.5, 2.4, 2.4), rgb(60, 150, 255), M.Neon, nil, UPRIGHT),
-		part(Cylinder, V(0.6, 0.9, 0.9), rgb(30, 40, 70), M.Metal, nil, UPRIGHT),
-		part(Block, V(0.6, 0.5, 0.6), rgb(60, 150, 255), M.Neon, V(1.3, 0, 0)),
-		part(Block, V(0.6, 0.5, 0.6), rgb(60, 150, 255), M.Neon, V(-1.3, 0, 0)),
-		part(Block, V(0.6, 0.5, 0.6), rgb(60, 150, 255), M.Neon, V(0, 0, 1.3)),
-		part(Block, V(0.6, 0.5, 0.6), rgb(60, 150, 255), M.Neon, V(0, 0, -1.3)),
-	}),
+	item("neon_gear", "Neon Gear", "Rare", (function()
+		-- A glowing gear: disc, eight clear teeth, a dark hub with a bright axle.
+		local glow = rgb(60, 150, 255)
+		local parts = {
+			part(Cylinder, V(0.5, 2.2, 2.2), glow, M.Neon, nil, UPRIGHT),
+			part(Cylinder, V(0.6, 1, 1), rgb(30, 40, 70), M.Metal, nil, UPRIGHT),
+			part(Cylinder, V(0.65, 0.35, 0.35), rgb(220, 240, 255), M.Neon, nil, UPRIGHT),
+		}
+		for i = 0, 7 do
+			local angle = i * math.pi / 4
+			table.insert(parts, part(Block, V(0.55, 0.5, 0.5), glow, M.Neon,
+				V(math.cos(angle) * 1.3, 0, math.sin(angle) * 1.3), V(0, -math.deg(angle), 0)))
+		end
+		return parts
+	end)()),
 	item("arcade_joystick", "Arcade Joystick", "Rare", {
 		part(Block, V(2.2, 0.6, 1.6), rgb(40, 60, 120), M.SmoothPlastic),
 		part(Cylinder, V(1.2, 0.25, 0.25), rgb(30, 30, 40), M.Metal, V(-0.4, 0.8, 0), UPRIGHT),
